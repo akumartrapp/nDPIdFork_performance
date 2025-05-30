@@ -4123,7 +4123,6 @@ static void ndpi_process_packet(uint8_t * const args,
 
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
     {
-        printf("Ashwani: returning from process_datalink_layer\n");
         return;
     }
 
