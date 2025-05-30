@@ -2591,7 +2591,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
         if (connect_to_collector(reader_thread) == 0)
         {
-            printf("could not connect to connector\n");
             if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
             {
                 logger(1,
@@ -2615,31 +2614,15 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                             ? strerror(reader_thread->collector_sock_last_errno)
                             : "Internal Error."));
             }
-
-            printf(
-                   "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
-                   workflow->packets_captured,
-                   reader_thread->array_index,
-                   GET_CMDARG_STR(nDPId_options.collector_address),
-                   (reader_thread->collector_sock_last_errno != 0 ? strerror(reader_thread->collector_sock_last_errno)
-                                                                  : "Internal Error."));
-            printf("\n\n[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
-                   workflow->packets_captured,
-                   reader_thread->array_index,
-                   GET_CMDARG_STR(nDPId_options.collector_address),
-                   (reader_thread->collector_sock_last_errno != 0 ? strerror(saved_errno)
-                                                                  : "Internal Error2."));
             return;
         }
     }
 
-    printf("before writing to connector\n");
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
     {
-        printf("wrote to collector\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
@@ -2663,13 +2646,11 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         }
         else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
         {
-            printf("wrote again to collector\n");
             size_t pos = (written < 0 ? 0 : written);
             set_collector_block(reader_thread);
             while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
                    s_ret - pos)
             {
-                printf("inside while\n");
                 saved_errno = errno;
                 if (saved_errno == EPIPE || written == 0)
                 {
@@ -4085,29 +4066,24 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
-    //static int printing = -1;
-    //if (printing == 1)
-    //{
-    //    return;
-    //}
 
-    //static time_t start_time = 0;
+    static time_t start_time = 0;
 
-    //time_t now = time(NULL);
+    time_t now = time(NULL);
    
-    //total_bytes = total_bytes + header->len;
-    //if (start_time == 0)
-    //{
-    //    // First call: start the timer
-    //    start_time = now;       
-    //}
-    //else if (difftime(now, start_time) >= 60)
-    //{
-    //    // 60 seconds have passed
-    //    printf("60 seconds elapsed. Stopping...\n");
-    //    print_statistics();
-    //    printing = 1;
-    //}
+    total_bytes = total_bytes + header->len;
+    if (start_time == 0)
+    {
+       // First call: start the timer
+       start_time = now;       
+    }
+    else if (difftime(now, start_time) >= 60)
+    {
+       // 60 seconds have passed
+       printf("60 seconds elapsed. Stopping...\n");
+       print_statistics();
+       start_time = 0;
+    }
    
     workflow->packets_captured++;
     time_us = ndpi_timeval_to_microseconds(header->ts);
