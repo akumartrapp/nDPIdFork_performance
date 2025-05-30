@@ -2613,6 +2613,20 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                             ? strerror(reader_thread->collector_sock_last_errno)
                             : "Internal Error."));
             }
+
+            printf(
+                   "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
+                   workflow->packets_captured,
+                   reader_thread->array_index,
+                   GET_CMDARG_STR(nDPId_options.collector_address),
+                   (reader_thread->collector_sock_last_errno != 0 ? strerror(reader_thread->collector_sock_last_errno)
+                                                                  : "Internal Error."));
+            printf("\n\n[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
+                   workflow->packets_captured,
+                   reader_thread->array_index,
+                   GET_CMDARG_STR(nDPId_options.collector_address),
+                   (reader_thread->collector_sock_last_errno != 0 ? strerror(saved_errno)
+                                                                  : "Internal Error2."));
             return;
         }
     }
