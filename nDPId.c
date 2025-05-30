@@ -4067,29 +4067,29 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
-    static int printing = -1;
-    if (printing == 1)
-    {
-        return;
-    }
+    //static int printing = -1;
+    //if (printing == 1)
+    //{
+    //    return;
+    //}
 
-    static time_t start_time = 0;
+    //static time_t start_time = 0;
 
-    time_t now = time(NULL);
+    //time_t now = time(NULL);
    
-    total_bytes = total_bytes + header->len;
-    if (start_time == 0)
-    {
-        // First call: start the timer
-        start_time = now;       
-    }
-    else if (difftime(now, start_time) >= 60)
-    {
-        // 60 seconds have passed
-        printf("60 seconds elapsed. Stopping...\n");
-        print_statistics();
-        printing = 1;
-    }
+    //total_bytes = total_bytes + header->len;
+    //if (start_time == 0)
+    //{
+    //    // First call: start the timer
+    //    start_time = now;       
+    //}
+    //else if (difftime(now, start_time) >= 60)
+    //{
+    //    // 60 seconds have passed
+    //    printf("60 seconds elapsed. Stopping...\n");
+    //    print_statistics();
+    //    printing = 1;
+    //}
    
     workflow->packets_captured++;
     time_us = ndpi_timeval_to_microseconds(header->ts);
