@@ -421,6 +421,7 @@ endif()
 
 message(STATUS "Ashwani 20")
 if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI)
+    message(STATUS "Ashwani 21")
     add_definitions("-DLIBNDPI_STATIC=1")
     set(STATIC_LIBNDPI_INC "${STATIC_LIBNDPI_INSTALLDIR}/include/ndpi")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -447,6 +448,7 @@ if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI)
     unset(DEFAULT_NDPI_INCLUDE CACHE)
     unset(pkgcfg_lib_NDPI_ndpi CACHE)
 else()
+    message(STATUS "Ashwani 30")
     if(NOT NDPI_NO_PKGCONFIG)
         pkg_check_modules(NDPI REQUIRED libndpi>=4.13.0)
         if(NOT pkgcfg_lib_NDPI_ndpi)
@@ -460,7 +462,7 @@ else()
     set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
 endif()
 
-message(STATUS "Ashwani 21")
+
 
 pkg_check_modules(PCAP libpcap>=1.9.0) # no *.pc file before 1.9.0
 if(NOT pkgcfg_lib_PCAP_pcap)
