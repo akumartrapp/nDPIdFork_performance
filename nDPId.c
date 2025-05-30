@@ -4066,7 +4066,7 @@ static void ndpi_process_packet(uint8_t * const args,
             bytes = bytes + total_bytes[index];
         }
 
-        uint64_t TotalBytes = bytes
+        uint64_t TotalBytes = bytes;
         double bits = TotalBytes * 8.0;
         double gbps = bits / (elapsed * 1e9); // Gbps = bits / seconds / 1e9
 
