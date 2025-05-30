@@ -2526,8 +2526,6 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 1;
     }
 
-    struct sockaddr_un * addr = (struct sockaddr_un *)&nDPId_options.parsed_collector_address.raw;
-  
     if (connect(reader_thread->collector_sockfd,
                 &nDPId_options.parsed_collector_address.raw,
                 nDPId_options.parsed_collector_address.size) < 0)
