@@ -6139,7 +6139,7 @@ static int validate_options(void)
     }
 
 
-    printf ("Ashwani validate_options last retval = %d\n, retval");
+    printf ("Ashwani validate_options last retval = %d\n", retval);
 
     return retval;
 }
