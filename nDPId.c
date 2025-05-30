@@ -4039,15 +4039,15 @@ static void ndpi_process_packet(uint8_t * const args,
 
     double elapsed = difftime(now, start_time);
 
-    struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
-    if (reader_thread == NULL)
+    struct nDPId_reader_thread * const reader_thread2 = (struct nDPId_reader_thread *)args;
+    if (reader_thread2 == NULL)
     {
         return;
     }
 
-    struct nDPId_workflow * workflow = reader_thread->workflow;
+    struct nDPId_workflow * workflow2 = reader_thread2->workflow;
 
-    if (workflow == NULL)
+    if (workflow2 == NULL)
     {
         return;
     }
@@ -4062,7 +4062,7 @@ static void ndpi_process_packet(uint8_t * const args,
         printf("Total packets captured: %lu\n", packet_count);
         printf("Total bytes captured: %lu\n", total_bytes);
         printf("Average speed: %.3f Gbps\n", gbps);
-        print_stats(workflow->pcap_handle);
+        //print_stats(workflow2->pcap_handle);
 
         printf("Restarted measuring...\n");
         // Ask to continue
