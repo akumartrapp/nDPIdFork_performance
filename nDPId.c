@@ -2552,7 +2552,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                               char const * const json_msg,
                               size_t json_msg_len)
 {
-    printf("send_to_collector\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     int s_ret;
@@ -2587,7 +2586,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     if (reader_thread->collector_sock_last_errno != 0)
     {
-        printf("Ashwani: stage 1\n");
         saved_errno = reader_thread->collector_sock_last_errno;
 
         if (connect_to_collector(reader_thread) == 0)
@@ -2605,7 +2603,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         }
         else
         {
-            printf("Ashwani: stage 2\n");
             if (saved_errno != reader_thread->collector_sock_last_errno)
             {
                 logger(1,
