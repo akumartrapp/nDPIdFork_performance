@@ -323,6 +323,7 @@ if(BUILD_NDPI)
     endif()
 endif()
 
+message(STATUS "Ashwani 15")
 execute_process(
     COMMAND git describe --tags
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -337,6 +338,7 @@ if(GIT_VERSION STREQUAL "" OR NOT IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
 endif()
 set(PKG_VERSION "${CPACK_PACKAGE_VERSION}")
 
+message(STATUS "Ashwani 16")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(NDPID_DEFS -DJSMN_STATIC=1 -DJSMN_STRICT=1 -DJSMN_PARENT_LINKS=1)
 set(NDPID_DEPS_INC "${CMAKE_SOURCE_DIR}"
@@ -357,6 +359,7 @@ else()
     set(NDPID_TEST_MPROF_DEFS "-DENABLE_MEMORY_PROFILING=1")
 endif()
 
+message(STATUS "Ashwani 17")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -fno-omit-frame-pointer -fno-inline")
 endif()
@@ -365,6 +368,7 @@ if(ENABLE_SANITIZER AND ENABLE_SANITIZER_THREAD)
     message(FATAL_ERROR "ENABLE_SANITIZER and ENABLE_SANITIZER_THREAD can not be used together!")
 endif()
 
+message(STATUS "Ashwani 18")
 if(BUILD_NDPI)
     include(ExternalProject)
     ExternalProject_Add(
