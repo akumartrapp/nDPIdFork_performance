@@ -4057,7 +4057,7 @@ static void ndpi_process_packet(uint8_t * const args,
     }
 
     static int printing = -1;
-    if (printing)
+    if (printing == 1)
     {
         return;
     }
