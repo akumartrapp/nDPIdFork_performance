@@ -2527,7 +2527,6 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
     }
 
     struct sockaddr_un * addr = (struct sockaddr_un *)&nDPId_options.parsed_collector_address.raw;
-    printf("Trying to connect to collector socket: %s\n", addr->sun_path);
   
     if (connect(reader_thread->collector_sockfd,
                 &nDPId_options.parsed_collector_address.raw,
