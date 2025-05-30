@@ -2583,6 +2583,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     if (reader_thread->collector_sock_last_errno != 0)
     {
+        printf("Ashwani: stage 1\n");
         saved_errno = reader_thread->collector_sock_last_errno;
 
         if (connect_to_collector(reader_thread) == 0)
@@ -2600,6 +2601,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         }
         else
         {
+            printf("Ashwani: stage 2\n");
             if (saved_errno != reader_thread->collector_sock_last_errno)
             {
                 logger(1,
