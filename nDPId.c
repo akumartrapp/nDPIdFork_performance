@@ -5287,7 +5287,7 @@ static int start_reader_threads(void)
         return 1;
     }
 
-    printf("Ashwani: Thread Count = %d", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    printf("Ashwani: Thread Count = %d\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         reader_threads[i].array_index = i;
