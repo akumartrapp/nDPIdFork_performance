@@ -5205,14 +5205,14 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf ("\n Ashwani (processing_thread): processing_thread called\n")
+    printf("\n Ashwani (processing_thread): processing_thread called\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
 
     if (connect_to_collector(reader_thread) != 0)
     {
-        printf ("\n Ashwani (processing_thread): connect_to_collector returned != 0\n")
+        printf("\n Ashwani (processing_thread): connect_to_collector returned != 0\n");
         logger(1,
                "Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
                reader_thread->array_index,
@@ -5222,7 +5222,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        printf ("\n Ashwani (processing_thread): connect_to_collector returned != 0\n")
+        printf("\n Ashwani (processing_thread): connect_to_collector returned != 0\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
