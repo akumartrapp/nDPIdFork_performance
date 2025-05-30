@@ -2503,7 +2503,6 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
 {    
     if (reader_thread->collector_sockfd >= 0)
     {
-        printf("Ashwani: connect_to_collector 1\n");
         close(reader_thread->collector_sockfd);
     }
 
@@ -2512,7 +2511,6 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
     reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
     if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
     {
-        printf("Ashwani: connect_to_collector 2\n");
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
@@ -2520,13 +2518,11 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
     int opt = NETWORK_BUFFER_MAX_SIZE;
     if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
     {
-        printf("Ashwani: connect_to_collector 3\n");
         return 1;
     }
 
     if (set_collector_nonblock(reader_thread) != 0)
     {
-        printf("Ashwani: connect_to_collector 4\n");
         return 1;
     }
 
@@ -2535,7 +2531,6 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
                 &nDPId_options.parsed_collector_address.raw,
                 nDPId_options.parsed_collector_address.size) < 0)
     {
-        printf("Ashwani: connect_to_collector 5\n");
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
@@ -2543,12 +2538,11 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
  
     if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
     {
-        printf("Ashwani: connect_to_collector 6\n");
+      
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
 
-    printf("Ashwani: connect_to_collector SUCCESS\n");
     reader_thread->collector_sock_last_errno = 0;
 
     return 0;
@@ -5211,7 +5205,6 @@ static void * processing_thread(void * const ndpi_thread_arg)
 
     if (connect_to_collector(reader_thread) != 0)
     {
-        printf("\nAshwani (processing_thread): connect_to_collector returned != 0\n");
         logger(1,
                "Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
                reader_thread->array_index,
@@ -5221,7 +5214,6 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        printf("\nAshwani (processing_thread): SUCCESS\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
@@ -5965,7 +5957,6 @@ static int validate_options(void)
    
     int retval = 0;
 
-    printf ("Ashwani validate_options 1 retval = %d\n", retval);
     if (is_daemonize_enabled() != 0 && is_console_logger_enabled() != 0)
     {
         logger_early(1,
@@ -5990,7 +5981,6 @@ static int validate_options(void)
     }
 #endif
 
-    printf ("Ashwani validate_options 2 retval = %d\n", retval);
     if (nDPIsrvd_setup_address(&nDPId_options.parsed_collector_address,
                                GET_CMDARG_STR(nDPId_options.collector_address)) != 0)
     {
@@ -5998,7 +5988,7 @@ static int validate_options(void)
         logger_early(1, "Collector socket invalid address: %s.", GET_CMDARG_STR(nDPId_options.collector_address));
     }
 
-    printf ("Ashwani validate_options 3 retval = %d\n", retval);
+
     if (IS_CMDARG_SET(nDPId_options.instance_alias) == 0)
     {
         char hname[256];
@@ -6022,7 +6012,6 @@ static int validate_options(void)
         }
     }
 
-    printf ("Ashwani validate_options 4 retval = %d\n", retval);
     if (IS_CMDARG_SET(nDPId_options.instance_uuid) != 0)
     {
         size_t uuid_errors = validate_uuid();
@@ -6036,7 +6025,6 @@ static int validate_options(void)
         }
     }
 
-    printf ("Ashwani validate_options 5 retval = %d\n", retval);
     if (GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse) < 2 ||
         GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse) > USHRT_MAX)
     {
@@ -6139,9 +6127,6 @@ static int validate_options(void)
     {
         logger_early(1, "%s", "Higher values of max-packets-per-flow-to-send may cause superfluous network usage.");
     }
-
-
-    printf ("Ashwani validate_options last retval = %d\n", retval);
 
     return retval;
 }
