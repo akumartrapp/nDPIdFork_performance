@@ -5960,9 +5960,10 @@ static size_t validate_uuid(void)
 
 static int validate_options(void)
 {
-    printf ("Ashwani validate_options 1\n");
+   
     int retval = 0;
 
+    printf ("Ashwani validate_options 1 retval = %d\n", reval);
     if (is_daemonize_enabled() != 0 && is_console_logger_enabled() != 0)
     {
         logger_early(1,
@@ -5987,7 +5988,7 @@ static int validate_options(void)
     }
 #endif
 
-    printf ("Ashwani validate_options 2\n");
+     printf ("Ashwani validate_options 2 retval = %d\n", reval);
     if (nDPIsrvd_setup_address(&nDPId_options.parsed_collector_address,
                                GET_CMDARG_STR(nDPId_options.collector_address)) != 0)
     {
@@ -5995,7 +5996,7 @@ static int validate_options(void)
         logger_early(1, "Collector socket invalid address: %s.", GET_CMDARG_STR(nDPId_options.collector_address));
     }
 
-    printf ("Ashwani validate_options 3\n");
+    printf ("Ashwani validate_options 3 retval = %d\n", reval);
     if (IS_CMDARG_SET(nDPId_options.instance_alias) == 0)
     {
         char hname[256];
@@ -6019,7 +6020,7 @@ static int validate_options(void)
         }
     }
 
-    printf ("Ashwani validate_options 4\n");
+    printf ("Ashwani validate_options 4 retval = %d\n", reval);
     if (IS_CMDARG_SET(nDPId_options.instance_uuid) != 0)
     {
         size_t uuid_errors = validate_uuid();
@@ -6033,7 +6034,7 @@ static int validate_options(void)
         }
     }
 
-    printf ("Ashwani validate_options 5\n");
+    printf ("Ashwani validate_options 5 retval = %d\n", reval);
     if (GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse) < 2 ||
         GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse) > USHRT_MAX)
     {
