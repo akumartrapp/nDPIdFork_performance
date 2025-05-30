@@ -3,8 +3,8 @@
 
 /* macros shared across multiple executables */
 #define DEFAULT_CHUSER "nobody"
-#define COLLECTOR_UNIX_SOCKET "/tmp/ndpid-collector.sock"
-#define DISTRIBUTOR_UNIX_SOCKET "/tmp/ndpid-distributor.sock"
+#define COLLECTOR_UNIX_SOCKET "/home/anssetup/repositories/nDPIdFork_performance/socket/ndpid-collector.sock"
+#define DISTRIBUTOR_UNIX_SOCKET "/home/anssetup/repositories/nDPIdFork_performance/socket/ndpid-distributor.sock"
 #define DISTRIBUTOR_HOST "127.0.0.1"
 #define DISTRIBUTOR_PORT 7000u
 
@@ -21,7 +21,7 @@
 #define TIME_S_TO_US(s) (s * 1000llu * 1000llu)
 
 /* nDPId default config options */
-#define nDPId_PIDFILE "/tmp/ndpid.pid"
+#define nDPId_PIDFILE "/home/anssetup/repositories/nDPIdFork_performance/socket/ndpid.pid"
 #define nDPId_MAX_FLOWS_PER_THREAD 65536u
 #define nDPId_MAX_IDLE_FLOWS_PER_THREAD (nDPId_MAX_FLOWS_PER_THREAD / 32u)
 #define nDPId_MAX_READER_THREADS 32u
