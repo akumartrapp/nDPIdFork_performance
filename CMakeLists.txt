@@ -209,6 +209,7 @@ add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c)
 add_executable(nDPIsrvd nDPIsrvd.c nio.c utils.c)
 add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS})
 
+message(STATUS "Ashwani 8")
 add_custom_target(umask_check)
 add_custom_command(
     TARGET umask_check
@@ -217,6 +218,7 @@ add_custom_command(
 )
 add_dependencies(nDPId umask_check)
 
+message(STATUS "Ashwani 9")
 add_custom_target(dist)
 add_custom_command(
     TARGET dist
@@ -224,6 +226,7 @@ add_custom_command(
     COMMAND "${CMAKE_SOURCE_DIR}/scripts/make-dist.sh"
 )
 
+message(STATUS "Ashwani 10")
 add_custom_target(daemon)
 add_custom_command(
     TARGET daemon
@@ -232,6 +235,7 @@ add_custom_command(
 )
 add_dependencies(daemon nDPId nDPIsrvd)
 
+message(STATUS "Ashwani 11")
 if(CMAKE_CROSSCOMPILING)
     set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
     set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -239,7 +243,9 @@ if(CMAKE_CROSSCOMPILING)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 endif()
 
+message(STATUS "Ashwani 12")
 if(BUILD_NDPI)
+    message(STATUS "Ashwani 13")
     enable_testing()
     add_test(NAME run_tests
              COMMAND "${CMAKE_SOURCE_DIR}/test/run_tests.sh"
@@ -251,6 +257,7 @@ if(BUILD_NDPI)
     endif()
 endif()
 
+ message(STATUS "Ashwani 14")
 if(ENABLE_COVERAGE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
