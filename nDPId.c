@@ -5395,6 +5395,7 @@ static int print_statistics(void)
     printf("Total flow updates...........: %llu\n", total_flow_updates);
     printf("Total flow detections updates: %llu\n", total_flow_detection_updates);
 
+    exit(0);
     return 0;
 }
 
