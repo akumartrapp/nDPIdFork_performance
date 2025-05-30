@@ -4015,8 +4015,8 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    static uint64_t total_bytes = 0;
-    static uint64_t packet_count = 0;
+    static uint64_t total_bytes[10] = 0;
+    static uint64_t packet_count[10] = 0;
     static time_t start_time = 0;
     static int measuring = 0; // 0 = not started, 1 = measuring, -1 = stop forever
 
@@ -4034,9 +4034,7 @@ static void ndpi_process_packet(uint8_t * const args,
         printf("Started measuring...\n");
     }
 
-    total_bytes += header->len;
-    packet_count++;
-
+  
     double elapsed = difftime(now, start_time);
 
     struct nDPId_reader_thread * const reader_thread2 = (struct nDPId_reader_thread *)args;
@@ -4044,6 +4042,10 @@ static void ndpi_process_packet(uint8_t * const args,
     {
         return;
     }
+
+    total_bytes[reader_thread2->array_index] += header->len;
+    packet_count++;
+
 
     struct nDPId_workflow * workflow2 = reader_thread2->workflow;
 
@@ -4055,7 +4057,13 @@ static void ndpi_process_packet(uint8_t * const args,
     if (elapsed >= 60.0)
     {
         // Calculate average speed in Gbps
-        double bits = total_bytes * 8.0;
+        double bits = 0;
+        
+        for (int index = 0; index < 10; ++index)
+        {
+            bits = bits + total_bytes[index]
+        }
+        bits = bits * 8.0;
         double gbps = bits / (elapsed * 1e9); // Gbps = bits / seconds / 1e9
 
         printf("\n=== 60 Second Report ===\n");
