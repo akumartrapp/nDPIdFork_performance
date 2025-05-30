@@ -4059,6 +4059,7 @@ static void ndpi_process_packet(uint8_t * const args,
     if (elapsed >= 60.0)
     {
         // Calculate average speed in Gbps
+
         double bytes = 0;
         
         for (int index = 0; index < 10; ++index)
