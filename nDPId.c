@@ -4054,6 +4054,23 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
+    static time_t start_time = 0;
+
+    time_t now = time(NULL);
+
+    if (start_time == 0)
+    {
+        // First call: start the timer
+        start_time = now;
+        printf("Timer started at %ld\n", start_time);
+    }
+    else if (difftime(now, start_time) >= 60)
+    {
+        // 60 seconds have passed
+        printf("60 seconds elapsed. Stopping...\n");
+        stop_reader_threads();
+    }
+   
     workflow->packets_captured++;
     time_us = ndpi_timeval_to_microseconds(header->ts);
     if (workflow->last_global_time < time_us)
