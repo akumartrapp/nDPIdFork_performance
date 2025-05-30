@@ -4077,9 +4077,9 @@ static void ndpi_process_packet(uint8_t * const args,
         // printf("Do you want to continue measuring? (y/n): ");
         fflush(stdout);
 
-        start_time = time(NULL);
-        total_bytes = 0;
-        packet_count = 0;
+        //start_time = time(NULL);
+        //total_bytes = 0;
+        //packet_count = 0;
     }
 
     return;
