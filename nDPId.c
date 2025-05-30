@@ -4043,9 +4043,6 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
-    total_bytes[reader_thread2->array_index] += header->len;
-    packet_count++;
-
 
     struct nDPId_workflow * workflow2 = reader_thread2->workflow;
 
@@ -4054,16 +4051,23 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
+    
+    total_bytes[reader_thread2->array_index] += header->len;
+    packet_count++;
+
+
     if (elapsed >= 60.0)
     {
         // Calculate average speed in Gbps
-        double bits = 0;
+        double bytes = 0;
         
         for (int index = 0; index < 10; ++index)
         {
-            bits = bits + total_bytes[index];
+            bytes = bytes + total_bytes[index];
         }
-        bits = bits * 8.0;
+
+        uint64_t TotalBytes = bytes
+        double bits = TotalBytes * 8.0;
         double gbps = bits / (elapsed * 1e9); // Gbps = bits / seconds / 1e9
 
         printf("\n=== 60 Second Report ===\n");
@@ -4072,13 +4076,7 @@ static void ndpi_process_packet(uint8_t * const args,
         printf("Average speed: %.3f Gbps\n", gbps);
         //print_stats(workflow2->pcap_handle);
 
-           int c = getchar();
-         while (c != '\n' && getchar() != '\n')
-             ; // Clear input
-
-        printf("Restarted measuring...\n");
-        // Ask to continue
-        // printf("Do you want to continue measuring? (y/n): ");
+         measuring = -1;
         fflush(stdout);
 
         //start_time = time(NULL);
