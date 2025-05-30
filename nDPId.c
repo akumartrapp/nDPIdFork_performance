@@ -4015,8 +4015,8 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    static uint64_t total_bytes[10] = 0;
-    static uint64_t packet_count[10] = 0;
+    static uint64_t total_bytes[10] = {0};
+    static uint64_t packet_count[10] = {0};
     static time_t start_time = 0;
     static int measuring = 0; // 0 = not started, 1 = measuring, -1 = stop forever
 
