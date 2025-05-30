@@ -4070,8 +4070,7 @@ static void ndpi_process_packet(uint8_t * const args,
     if (start_time == 0)
     {
         // First call: start the timer
-        start_time = now;
-        printf("Timer started at %ld\n", start_time);
+        start_time = now;       
     }
     else if (difftime(now, start_time) >= 60)
     {
@@ -5386,7 +5385,7 @@ static int print_statistics(void)
            (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
     printf("Total packets processed......: %llu\n", total_packets_processed);
     printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
-    printf("Total speed is....: %.2f Gbps\n", gbps);
+    printf("Total speed is...............: %.2f Gbps\n", gbps);
     printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
     printf("Total flows processed........: %llu\n", total_flows_captured);
     printf("Total flows timed out........: %llu\n", total_flows_idle);
