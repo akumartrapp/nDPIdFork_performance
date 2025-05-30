@@ -5205,7 +5205,6 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf("\nAshwani (processing_thread): processing_thread called\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -5222,7 +5221,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        printf("\nAshwani (processing_thread): connect_to_collector returned != 0\n");
+        printf("\nAshwani (processing_thread): SUCCESS\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
