@@ -5335,6 +5335,13 @@ double bytes_to_gbps_60s(unsigned long long bytes)
 
 static int print_statistics(void)
 {
+    static int i = 0;
+    if (i == 1)
+    {
+        return;
+    }
+
+    i = 1;
     unsigned long long int total_packets_processed = 0;
     unsigned long long int total_l4_payload_len = 0;
     unsigned long long int total_flows_skipped = 0;
@@ -5346,7 +5353,7 @@ static int print_statistics(void)
     unsigned long long int total_flow_detection_updates = 0;
     unsigned long long int total_flow_updates = 0;
 
-    printf("------------------------------------ Results\n");
+    printf("-------------Results--------------\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
