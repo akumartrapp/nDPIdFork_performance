@@ -5338,7 +5338,7 @@ static int print_statistics(void)
     static int i = 0;
     if (i == 1)
     {
-        return;
+        return 0;
     }
 
     i = 1;
