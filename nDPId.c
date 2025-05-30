@@ -4030,7 +4030,7 @@ static void ndpi_process_packet(uint8_t * const args,
         start_time = now;
         //total_bytes = {0};
         //packet_count = {0};
-        //measuring = 1;
+        measuring = 1;
         printf("Started measuring...\n");
     }
 
