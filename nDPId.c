@@ -2548,6 +2548,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                               char const * const json_msg,
                               size_t json_msg_len)
 {
+    printf("send_to_collector\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     int s_ret;
@@ -2586,6 +2587,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
         if (connect_to_collector(reader_thread) == 0)
         {
+            printf("could not connect to connector\n");
             if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
             {
                 logger(1,
@@ -2613,11 +2615,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         }
     }
 
+    printf("before writing to connector\n");
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
     {
+        printf("wrote to collector\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
@@ -2641,11 +2645,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         }
         else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
         {
+            printf("wrote again to collector\n");
             size_t pos = (written < 0 ? 0 : written);
             set_collector_block(reader_thread);
             while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
                    s_ret - pos)
             {
+                printf("inside while\n");
                 saved_errno = errno;
                 if (saved_errno == EPIPE || written == 0)
                 {
