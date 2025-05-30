@@ -5322,6 +5322,14 @@ static void process_remaining_flows(void)
     }
 }
 
+double bytes_to_gbps_60s(unsigned long long bytes)
+{
+    const int seconds = 60;
+    const double bits = bytes * 8.0; // Convert bytes to bits
+    const double gbits = bits / 1e9; // Convert bits to gigabits
+    return gbits / seconds;          // Gbps over 60 seconds
+}
+
 static int print_statistics(void)
 {
     unsigned long long int total_packets_processed = 0;
@@ -5371,11 +5379,14 @@ static int print_statistics(void)
             reader_threads[i].workflow->total_flow_detection_updates,
             reader_threads[i].workflow->total_flow_updates);
     }
+
+    double gbps = bytes_to_gbps_60s(total_l4_payload_len);
     /* total packets captured: same value for all threads as packet2thread distribution happens later */
     printf("Total packets captured.......: %llu\n",
            (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
     printf("Total packets processed......: %llu\n", total_packets_processed);
     printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
+    printf("Total speed iis....: %.2f Gbps\n", gbps);
     printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
     printf("Total flows processed........: %llu\n", total_flows_captured);
     printf("Total flows timed out........: %llu\n", total_flows_idle);
