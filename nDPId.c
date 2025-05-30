@@ -4075,7 +4075,7 @@ static void ndpi_process_packet(uint8_t * const args,
         printf("Total bytes captured: %lu\n", total_bytes);
         printf("Average speed: %.3f Gbps\n", gbps);
         //print_stats(workflow2->pcap_handle);
-
+        exit(0);
          measuring = -1;
         fflush(stdout);
 
