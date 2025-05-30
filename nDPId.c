@@ -5324,6 +5324,17 @@ static void process_remaining_flows(void)
 
 static int print_statistics(void)
 {
+    unsigned long long int total_packets_processed = 0;
+    unsigned long long int total_l4_payload_len = 0;
+    unsigned long long int total_flows_skipped = 0;
+    unsigned long long int total_flows_captured = 0;
+    unsigned long long int total_flows_idle = 0;
+    unsigned long long int total_not_detected = 0;
+    unsigned long long int total_flows_guessed = 0;
+    unsigned long long int total_flows_detected = 0;
+    unsigned long long int total_flow_detection_updates = 0;
+    unsigned long long int total_flow_updates = 0;
+
     printf("------------------------------------ Results\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
