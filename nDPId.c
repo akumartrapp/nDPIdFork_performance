@@ -5362,22 +5362,22 @@ static int print_statistics(void)
         total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
         total_flow_updates += reader_threads[i].workflow->total_flow_updates;
 
-        printf(
-            "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
-            "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
-            "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
-            "\tdetection updates.: %8llu, updated flows..: %8llu\n",
-            reader_threads[i].array_index,
-            reader_threads[i].workflow->packets_processed,
-            reader_threads[i].workflow->total_l4_payload_len,
-            reader_threads[i].workflow->total_skipped_flows,
-            reader_threads[i].workflow->total_active_flows,
-            reader_threads[i].workflow->total_idle_flows,
-            reader_threads[i].workflow->total_not_detected_flows,
-            reader_threads[i].workflow->total_guessed_flows,
-            reader_threads[i].workflow->total_detected_flows,
-            reader_threads[i].workflow->total_flow_detection_updates,
-            reader_threads[i].workflow->total_flow_updates);
+        //printf(
+        //    "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
+        //    "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
+        //    "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
+        //    "\tdetection updates.: %8llu, updated flows..: %8llu\n",
+        //    reader_threads[i].array_index,
+        //    reader_threads[i].workflow->packets_processed,
+        //    reader_threads[i].workflow->total_l4_payload_len,
+        //    reader_threads[i].workflow->total_skipped_flows,
+        //    reader_threads[i].workflow->total_active_flows,
+        //    reader_threads[i].workflow->total_idle_flows,
+        //    reader_threads[i].workflow->total_not_detected_flows,
+        //    reader_threads[i].workflow->total_guessed_flows,
+        //    reader_threads[i].workflow->total_detected_flows,
+        //    reader_threads[i].workflow->total_flow_detection_updates,
+        //    reader_threads[i].workflow->total_flow_updates);
     }
 
     double gbps = bytes_to_gbps_60s(total_l4_payload_len);
