@@ -463,8 +463,9 @@ else()
         unset(STATIC_LIBNDPI_LIB CACHE)
         message(STATUS "Ashwani 36")
     endif()
-    message(STATUS "NDPI_INCLUDE_DIRS = ${NDPI_INCLUDE_DIRS}")
-    set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
+    # commented by Ashwani
+    # set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
+    set(DEFAULT_NDPI_INCLUDE "/usr/include")
 endif()
 
 
