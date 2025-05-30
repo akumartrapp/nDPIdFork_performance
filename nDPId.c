@@ -128,7 +128,11 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
+//----------Ashwani added starts here---------------------
 static int print_statistics(void);
+static unsigned long long int total_bytes = 0;
+
+//----------Ashwani added stops here---------------------
 
 enum nDPId_l3_type
 {
@@ -4066,7 +4070,7 @@ static void ndpi_process_packet(uint8_t * const args,
 
     time_t now = time(NULL);
    
-
+    total_bytes = total_bytes + header->len;
     if (start_time == 0)
     {
         // First call: start the timer
@@ -5385,6 +5389,7 @@ static int print_statistics(void)
            (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
     printf("Total packets processed......: %llu\n", total_packets_processed);
     printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
+    printf("Total bytes captured.........: %llu\n", total_bytes);
     printf("Total speed is...............: %.2f Gbps\n", gbps);
     printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
     printf("Total flows processed........: %llu\n", total_flows_captured);
