@@ -4015,78 +4015,6 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    static uint64_t total_bytes[10] = {0};
-    static uint64_t packet_count = 0;
-    static time_t start_time = 0;
-    static int measuring = 0; // 0 = not started, 1 = measuring, -1 = stop forever
-
-    if (measuring == -1)
-        return; // User chose to stop
-
-    time_t now = time(NULL);
-
-    if (measuring == 0)
-    {
-        start_time = now;
-        //total_bytes = {0};
-        //packet_count = {0};
-        measuring = 1;
-        printf("Started measuring...\n");
-    }
-
-  
-    double elapsed = difftime(now, start_time);
-
-    struct nDPId_reader_thread * const reader_thread2 = (struct nDPId_reader_thread *)args;
-    if (reader_thread2 == NULL)
-    {
-        return;
-    }
-
-
-    struct nDPId_workflow * workflow2 = reader_thread2->workflow;
-
-    if (workflow2 == NULL)
-    {
-        return;
-    }
-
-    
-    total_bytes[reader_thread2->array_index] += header->len;
-    packet_count++;
-
-
-    if (elapsed >= 60.0)
-    {
-        // Calculate average speed in Gbps
-
-        double bytes = 0;
-        
-        for (int index = 0; index < 10; ++index)
-        {
-            bytes = bytes + total_bytes[index];
-        }
-
-        uint64_t TotalBytes = bytes;
-        double bits = TotalBytes * 8.0;
-        double gbps = bits / (elapsed * 1e9); // Gbps = bits / seconds / 1e9
-
-        printf("\n=== 60 Second Report ===\n");
-        printf("Total packets captured: %lu\n", packet_count);
-        printf("Total bytes captured: %lu\n", total_bytes);
-        printf("Average speed: %.3f Gbps\n", gbps);
-        //print_stats(workflow2->pcap_handle);
-        exit(0);
-         measuring = -1;
-        fflush(stdout);
-
-        //start_time = time(NULL);
-        //total_bytes = 0;
-        // 
-        //packet_count = 0;
-    }
-
-    return;
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -5287,7 +5215,6 @@ static int start_reader_threads(void)
         return 1;
     }
 
-    printf("Ashwani: Thread Count = %d\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         reader_threads[i].array_index = i;
