@@ -5985,6 +5985,8 @@ static int validate_options(void)
         }
     }
 #endif
+
+    logger_early(1, "Collector socket invalid address: %s.", GET_CMDARG_STR(nDPId_options.collector_address));
     if (nDPIsrvd_setup_address(&nDPId_options.parsed_collector_address,
                                GET_CMDARG_STR(nDPId_options.collector_address)) != 0)
     {
