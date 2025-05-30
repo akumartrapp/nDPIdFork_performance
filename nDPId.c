@@ -2500,14 +2500,14 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 }
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
-{
-    printf("Ashwani: connect_to_collector\n");
+{    
     if (reader_thread->collector_sockfd >= 0)
     {
+        printf("Ashwani: connect_to_collector 1\n");
         close(reader_thread->collector_sockfd);
     }
 
-    printf("Ashwani: connect_to_collector 1\n");
+    
     int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
     reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
     if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
@@ -2516,39 +2516,39 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
-
-    printf("Ashwani: connect_to_collector 3\n");
+   
     int opt = NETWORK_BUFFER_MAX_SIZE;
     if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
     {
-        printf("Ashwani: connect_to_collector 4\n");
+        printf("Ashwani: connect_to_collector 3\n");
         return 1;
     }
 
     if (set_collector_nonblock(reader_thread) != 0)
     {
-        printf("Ashwani: connect_to_collector 5\n");
+        printf("Ashwani: connect_to_collector 4\n");
         return 1;
     }
 
-    printf("Ashwani: connect_to_collector 6\n");
+  
     if (connect(reader_thread->collector_sockfd,
                 &nDPId_options.parsed_collector_address.raw,
                 nDPId_options.parsed_collector_address.size) < 0)
     {
-        printf("Ashwani: connect_to_collector 7\n");
+        printf("Ashwani: connect_to_collector 5\n");
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
 
-    printf("Ashwani: connect_to_collector 8\n");
+ 
     if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
     {
+        printf("Ashwani: connect_to_collector 6\n");
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
 
-    printf("Ashwani: connect_to_collector 9\n");
+    printf("Ashwani: connect_to_collector SUCCESS\n");
     reader_thread->collector_sock_last_errno = 0;
 
     return 0;
@@ -5205,14 +5205,14 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf("\n Ashwani (processing_thread): processing_thread called\n");
+    printf("\nAshwani (processing_thread): processing_thread called\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
 
     if (connect_to_collector(reader_thread) != 0)
     {
-        printf("\n Ashwani (processing_thread): connect_to_collector returned != 0\n");
+        printf("\nAshwani (processing_thread): connect_to_collector returned != 0\n");
         logger(1,
                "Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
                reader_thread->array_index,
@@ -5222,7 +5222,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        printf("\n Ashwani (processing_thread): connect_to_collector returned != 0\n");
+        printf("\nAshwani (processing_thread): connect_to_collector returned != 0\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
