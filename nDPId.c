@@ -2551,7 +2551,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                               char const * const json_msg,
                               size_t json_msg_len)
 {
-    printf("Ashwani: 1\n");
+    //printf("Ashwani: 1\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     int s_ret;
@@ -2564,7 +2564,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                      (int)json_msg_len,
                      json_msg);
 
-    printf("Ashwani: 2\n");
+    //printf("Ashwani: 2\n");
     if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
     {
         logger(1,
@@ -2585,7 +2585,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         return;
     }
 
-    printf("Ashwani: 3\n");
+    return;
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
