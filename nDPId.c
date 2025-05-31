@@ -2551,6 +2551,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                               char const * const json_msg,
                               size_t json_msg_len)
 {
+    printf("Ashwani: 1\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     int s_ret;
@@ -2563,6 +2564,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                      (int)json_msg_len,
                      json_msg);
 
+    printf("Ashwani: 2\n");
     if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
     {
         logger(1,
@@ -2583,6 +2585,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         return;
     }
 
+    printf("Ashwani: 3\n");
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
@@ -2616,11 +2619,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         }
     }
 
+    printf("Ashwani: 4\n");
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
     {
+        printf("Ashwani: a\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
@@ -2678,6 +2683,8 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
             set_collector_nonblock(reader_thread);
         }
     }
+
+    printf("Ashwani: end\n");
 }
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread)
