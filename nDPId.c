@@ -2586,6 +2586,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         return;
     }
 
+    //Ashwani
     return;
     if (reader_thread->collector_sock_last_errno != 0)
     {
@@ -4085,7 +4086,7 @@ static void ndpi_process_packet(uint8_t * const args,
        // First call: start the timer
        start_time = now;       
     }
-    else if (difftime(now, start_time) >= 60)
+    else if (difftime(now, start_time) >= 300)
     {
        // 60 seconds have passed
        //printf("60 seconds elapsed. Stopping...\n");
