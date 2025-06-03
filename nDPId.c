@@ -5338,7 +5338,7 @@ static void process_remaining_flows(void)
 
 double bytes_to_gbps_60s(unsigned long long bytes)
 {
-    const int seconds = 60;
+    const int seconds = 300;
     const double bits = bytes * 8.0; // Convert bytes to bits
     const double gbits = bits / 1e9; // Convert bits to gigabits
     return gbits / seconds;          // Gbps over 60 seconds
