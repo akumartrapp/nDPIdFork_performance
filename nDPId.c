@@ -5370,7 +5370,7 @@ static int print_statistics(void)
             continue;
         }
         printf("Packet Captured for workflow %lld.....: %llu, Total bytes: %llu\n", i,
-               (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),  reader_threads[0]->bytes);
+               (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),  reader_threads[0].bytes);
         total_packets_processed += reader_threads[i].workflow->packets_processed;
         total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
         total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
