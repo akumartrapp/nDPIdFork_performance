@@ -343,6 +343,7 @@ struct nDPId_reader_thread
     int collector_sockfd;
     int collector_sock_last_errno;
     size_t array_index;
+    unsigned long long int bytes; 
 };
 
 enum packet_event
@@ -4077,6 +4078,8 @@ static void ndpi_process_packet(uint8_t * const args,
     time_t now = time(NULL);
    
     total_bytes = total_bytes + header->len;
+
+    reader_thread->bytes = reader_thread->bytes + header->len;
     if (start_time == 0)
     {
        // First call: start the timer
@@ -5366,8 +5369,8 @@ static int print_statistics(void)
         {
             continue;
         }
-        printf("Packet Captured for workflow %lld.....: %llu\n", i,
-               (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
+        printf("Packet Captured for workflow %lld.....: %llu, Total bytes: %llu\n", i,
+               (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),  reader_threads[0]->bytes);
         total_packets_processed += reader_threads[i].workflow->packets_processed;
         total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
         total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
