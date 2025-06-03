@@ -4113,8 +4113,6 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
-    return;
-
 process_layer3_again:
     if (type == ETH_P_IP)
     {
