@@ -5372,7 +5372,7 @@ static int print_statistics(void)
         }
         total_bytes_all_threads = total_bytes_all_threads + reader_threads[0].bytes;
 
-        printf("Packet Captured for workflow %lld.....: %llu, Total bytes: %llu\n", i,
+        printf("Packet Captured for thread %lld.....: %llu, Total bytes: %llu\n", i+1,
                (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),  reader_threads[0].bytes);
         total_packets_processed += reader_threads[i].workflow->packets_processed;
         total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
