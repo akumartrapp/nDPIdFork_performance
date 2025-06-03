@@ -4084,12 +4084,13 @@ static void ndpi_process_packet(uint8_t * const args,
     if (start_time == 0)
     {
        // First call: start the timer
+       printf("capturing packets...\n");
        start_time = now;       
     }
     else if (difftime(now, start_time) >= 300)
     {
        // 60 seconds have passed
-       //printf("60 seconds elapsed. Stopping...\n");
+       printf("60 seconds elapsed. Stopping...\n");
        print_statistics();
        start_time = 0;
     }
