@@ -4088,7 +4088,7 @@ static void ndpi_process_packet(uint8_t * const args,
     else if (difftime(now, start_time) >= 60)
     {
        // 60 seconds have passed
-       printf("60 seconds elapsed. Stopping...\n");
+       //printf("60 seconds elapsed. Stopping...\n");
        print_statistics();
        start_time = 0;
     }
@@ -5403,7 +5403,7 @@ static int print_statistics(void)
         //    reader_threads[i].workflow->total_flow_updates);
     }
 
-    double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads);
+    double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads) / GET_CMDARG_ULL(nDPId_options.reader_thread_count);
     printf("Average speed is.............: %.2f Gbps\n\n", gbps2);
 
     double gbps = bytes_to_gbps_60s(total_l4_payload_len);
