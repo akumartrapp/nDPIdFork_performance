@@ -5351,6 +5351,7 @@ static int print_statistics(void)
     }
 
     i = 1;
+    unsigned long long int total_bytes_all_threads = 0;
     unsigned long long int total_packets_processed = 0;
     unsigned long long int total_l4_payload_len = 0;
     unsigned long long int total_flows_skipped = 0;
@@ -5369,6 +5370,8 @@ static int print_statistics(void)
         {
             continue;
         }
+        total_bytes_all_threads = total_bytes_all_threads + reader_threads[0].bytes;
+
         printf("Packet Captured for workflow %lld.....: %llu, Total bytes: %llu\n", i,
                (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),  reader_threads[0].bytes);
         total_packets_processed += reader_threads[i].workflow->packets_processed;
@@ -5400,6 +5403,9 @@ static int print_statistics(void)
         //    reader_threads[i].workflow->total_flow_updates);
     }
 
+    double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads);
+    printf("Average speed is.............: %.2f Gbps\n\n", gbps);
+
     double gbps = bytes_to_gbps_60s(total_l4_payload_len);
     /* total packets captured: same value for all threads as packet2thread distribution happens later */
     printf("Total packets captured.......: %lld\n",
@@ -5407,7 +5413,7 @@ static int print_statistics(void)
     printf("Total packets processed......: %llu\n", total_packets_processed);
     printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
     printf("Total bytes captured.........: %llu\n", total_bytes);
-    printf("Total speed is...............: %.2f Gbps\n", gbps);
+    printf("Average speed is.............: %.2f Gbps\n", gbps);
     printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
     printf("Total flows processed........: %llu\n", total_flows_captured);
     printf("Total flows timed out........: %llu\n", total_flows_idle);
