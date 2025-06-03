@@ -5404,7 +5404,7 @@ static int print_statistics(void)
     }
 
     double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads);
-    printf("Average speed is.............: %.2f Gbps\n\n", gbps);
+    printf("Average speed is.............: %.2f Gbps\n\n", gbps2);
 
     double gbps = bytes_to_gbps_60s(total_l4_payload_len);
     /* total packets captured: same value for all threads as packet2thread distribution happens later */
