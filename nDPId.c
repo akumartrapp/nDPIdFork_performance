@@ -2587,7 +2587,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     }
 
     //Ashwani
-    return;
+    ///return;
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
@@ -4087,7 +4087,7 @@ static void ndpi_process_packet(uint8_t * const args,
        printf("capturing packets for 300 seconds...\n");
        start_time = now;       
     }
-    else if (difftime(now, start_time) >= 300)
+    else if (difftime(now, start_time) >= 60)
     {
        // 60 seconds have passed
        //printf("60 seconds elapsed. Stopping...\n");
@@ -5338,7 +5338,7 @@ static void process_remaining_flows(void)
 
 double bytes_to_gbps_60s(unsigned long long bytes)
 {
-    const int seconds = 300;
+    const int seconds = 60;
     const double bits = bytes * 8.0; // Convert bytes to bits
     const double gbits = bits / 1e9; // Convert bits to gigabits
     return gbits / seconds;          // Gbps over 60 seconds
