@@ -24,7 +24,7 @@
 #define nDPId_PIDFILE "/home/anssetup/repositories/nDPIdFork_performance/socket/ndpid.pid"
 #define nDPId_MAX_FLOWS_PER_THREAD 65536u
 #define nDPId_MAX_IDLE_FLOWS_PER_THREAD (nDPId_MAX_FLOWS_PER_THREAD / 32u)
-#define nDPId_MAX_READER_THREADS 48u
+#define nDPId_MAX_READER_THREADS 32u
 #define nDPId_ERROR_EVENT_THRESHOLD_N 16u
 #define nDPId_ERROR_EVENT_THRESHOLD_TIME TIME_S_TO_US(10u)   /* 10 sec */
 #define nDPId_DAEMON_STATUS_INTERVAL TIME_S_TO_US(600u)      /* 600 sec */
