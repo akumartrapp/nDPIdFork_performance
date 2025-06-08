@@ -1742,6 +1742,8 @@ static int setup_reader_threads(void)
 {
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
+    printf("Number of reader threads %d", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
         return 1;
