@@ -4193,7 +4193,7 @@ process_layer3_again:
     /* process layer3 e.g. IPv4 / IPv6 */
     if (ip != NULL && ip->version == 4)
     {
-        printf("Ashwani: 12\n");
+       // printf("Ashwani: 12\n");
         flow_basic.l3_type = L3_IP;
 
         if (ndpi_detection_get_l4(
