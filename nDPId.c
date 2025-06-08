@@ -4212,6 +4212,9 @@ process_layer3_again:
         flow_basic.dst.v4.ip = ip->daddr;
         uint32_t min_addr = (flow_basic.src.v4.ip > flow_basic.dst.v4.ip ? flow_basic.dst.v4.ip : flow_basic.src.v4.ip);
         thread_index += min_addr + ip->protocol;
+
+        // Ashwani
+        return;
     }
     else if (ip6 != NULL)
     {
