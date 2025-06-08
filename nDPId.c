@@ -4102,7 +4102,7 @@ static void ndpi_process_packet(uint8_t * const args,
     workflow->packets_captured++;
 
     // Ashwani
-    printf("Packet Captured for thread %lld\n", workflow->packets_captured);
+    // printf("Packet Captured for thread %lld\n", workflow->packets_captured);
     time_us = ndpi_timeval_to_microseconds(header->ts);
     if (workflow->last_global_time < time_us)
     {
