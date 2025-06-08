@@ -4077,7 +4077,7 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
-
+    return; 
     static time_t start_time = 0;
 
     time_t now = time(NULL);
