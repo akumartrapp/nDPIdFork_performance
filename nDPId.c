@@ -4471,7 +4471,7 @@ process_layer3_again:
     tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
     if (tree_result == NULL)
     {
-        printf("Ashwani: 21\n");
+        //printf("Ashwani: 21\n");
         direction = FD_DST2SRC;
 
         /* flow not found in btree: switch src <-> dst and try to find it again */
@@ -4499,7 +4499,7 @@ process_layer3_again:
 
     if (tree_result == NULL)
     {
-        printf("Ashwani: 22\n");
+        //printf("Ashwani: 22\n");
         /* flow still not found, must be new or midstream */
         direction = FD_SRC2DST;
 
