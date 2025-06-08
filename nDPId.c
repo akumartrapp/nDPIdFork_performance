@@ -2504,6 +2504,8 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {    
+    // Ashwani
+    return 1;
     if (reader_thread->collector_sockfd >= 0)
     {
         close(reader_thread->collector_sockfd);
