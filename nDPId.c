@@ -4113,8 +4113,7 @@ static void ndpi_process_packet(uint8_t * const args,
         workflow->last_thread_time = time_us;
     }
 
-    // Ashwani
-    return; 
+
     do_periodically_work(reader_thread);
 
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
@@ -4125,6 +4124,7 @@ static void ndpi_process_packet(uint8_t * const args,
 process_layer3_again:
     if (type == ETH_P_IP)
     {
+        printf("Ashwani: type == ETH_P_IP\n");
         ip = (struct ndpi_iphdr *)&packet[ip_offset];
         ip6 = NULL;
         if (header->caplen < ip_offset + sizeof(*ip))
@@ -4145,6 +4145,7 @@ process_layer3_again:
     }
     else if (type == ETH_P_IPV6)
     {
+        printf("Ashwani: type == ETH_P_IPV6\n");
         ip = NULL;
         ip6 = (struct ndpi_ipv6hdr *)&packet[ip_offset];
         if (header->caplen < ip_offset + sizeof(*ip6))
@@ -4165,6 +4166,7 @@ process_layer3_again:
     }
     else
     {
+        printf("Ashwani: else\n");
         if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
         {
             jsonize_error_eventf(reader_thread, UNKNOWN_L3_PROTOCOL, "%s%u", "protocol", type);
@@ -4177,6 +4179,7 @@ process_layer3_again:
     if (header->caplen >= ip_offset && header->caplen < header->len && distribute_single_packet(reader_thread) != 0 &&
         is_error_event_threshold(reader_thread->workflow) == 0)
     {
+        printf("Ashwani: 11\n");
         jsonize_error_eventf(reader_thread,
                              CAPTURE_SIZE_SMALLER_THAN_PACKET_SIZE,
                              "%s%u %s%u",
@@ -4190,6 +4193,7 @@ process_layer3_again:
     /* process layer3 e.g. IPv4 / IPv6 */
     if (ip != NULL && ip->version == 4)
     {
+        printf("Ashwani: 12\n");
         flow_basic.l3_type = L3_IP;
 
         if (ndpi_detection_get_l4(
@@ -4211,6 +4215,7 @@ process_layer3_again:
     }
     else if (ip6 != NULL)
     {
+        printf("Ashwani: 13\n");
         flow_basic.l3_type = L3_IP6;
         if (ndpi_detection_get_l4(
                 (uint8_t *)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
@@ -4245,6 +4250,7 @@ process_layer3_again:
     }
     else
     {
+        printf("Ashwani: 14\n");
         if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
         {
             jsonize_error_eventf(reader_thread, UNKNOWN_L3_PROTOCOL, "%s%u", "protocol", type);
@@ -4256,6 +4262,7 @@ process_layer3_again:
     /* process intermediate protocols i.e. layer4 tunnel protocols */
     if (IS_CMDARG_SET(nDPId_options.decode_tunnel) != 0 && flow_basic.l4_protocol == IPPROTO_GRE)
     {
+        printf("Ashwani: 15\n");
         uint32_t const offset = is_valid_gre_tunnel(header, packet, l4_ptr);
 
         if (offset == 0)
@@ -4269,6 +4276,7 @@ process_layer3_again:
         }
         else
         {
+            printf("Ashwani: 16\n");
             struct ndpi_gre_basehdr const * const grehdr = (struct ndpi_gre_basehdr const *)l4_ptr;
 
             if (grehdr->protocol == ntohs(ETH_P_IP) || grehdr->protocol == ntohs(ETH_P_IPV6))
@@ -4329,6 +4337,7 @@ process_layer3_again:
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
     {
+        printf("Ashwani: 17\n");
         if (header->caplen < (l4_ptr - packet) + sizeof(struct ndpi_tcphdr))
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
@@ -4361,6 +4370,7 @@ process_layer3_again:
     }
     else if (flow_basic.l4_protocol == IPPROTO_UDP)
     {
+        printf("Ashwani: 18\n");
         const struct ndpi_udphdr * udp;
 
         if (header->caplen < (l4_ptr - packet) + sizeof(struct ndpi_udphdr))
@@ -4411,6 +4421,7 @@ process_layer3_again:
         workflow->last_thread_time = time_us;
     }
 
+    printf("Ashwani: 19\n");
     /* calculate flow hash for btree find, search(insert) */
     switch (flow_basic.l3_type)
     {
@@ -4844,6 +4855,7 @@ process_layer3_again:
         check_for_compressable_flows(reader_thread);
     }
 #endif
+    printf("Ashwani: End\n");
 }
 
 static void get_current_time(struct timeval * const tval)
