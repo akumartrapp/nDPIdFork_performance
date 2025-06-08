@@ -2591,7 +2591,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     }
 
     //Ashwani
-    ///return;
+    return;
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
