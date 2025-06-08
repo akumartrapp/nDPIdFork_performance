@@ -4377,7 +4377,7 @@ process_layer3_again:
     }
     else if (flow_basic.l4_protocol == IPPROTO_UDP)
     {
-        printf("Ashwani: 18\n");
+        //printf("Ashwani: 18\n");
         const struct ndpi_udphdr * udp;
 
         if (header->caplen < (l4_ptr - packet) + sizeof(struct ndpi_udphdr))
@@ -4429,7 +4429,7 @@ process_layer3_again:
     }
     
     //
-    printf("Ashwani: 19\n");
+   // printf("Ashwani: 19\n");
     /* calculate flow hash for btree find, search(insert) */
     switch (flow_basic.l3_type)
     {
@@ -4643,7 +4643,7 @@ process_layer3_again:
     }
     else
     {
-        printf("Ashwani: 23\n");
+        //printf("Ashwani: 23\n");
         /* flow already exists in the tree */
 
         struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;
@@ -4692,7 +4692,7 @@ process_layer3_again:
         }
     }
 
-    printf("Ashwani: 24\n");
+    //printf("Ashwani: 24\n");
     flow_to_process->flow_extended.packets_processed[direction]++;
     flow_to_process->flow_extended.total_l4_payload_len[direction] += l4_payload_len;
     workflow->packets_processed++;
@@ -4750,7 +4750,8 @@ process_layer3_again:
         }
     }
 
-    printf("Ashwani: 25\n");
+    //printf("Ashwani: 25\n");
+    return; 
     jsonize_packet_event(reader_thread,
                          header,
                          packet,
