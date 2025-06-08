@@ -1742,7 +1742,7 @@ static int setup_reader_threads(void)
 {
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
-    printf("Number of reader threads  %lld", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    printf("Number of reader threads  %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
 
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
@@ -4086,7 +4086,7 @@ static void ndpi_process_packet(uint8_t * const args,
     if (start_time == 0)
     {
        // First call: start the timer
-       printf("capturing packets for 300 seconds...\n");
+       printf("capturing packets for 60 seconds...\n");
        start_time = now;       
     }
     else if (difftime(now, start_time) >= 60)
@@ -4098,6 +4098,9 @@ static void ndpi_process_packet(uint8_t * const args,
     }
    
     workflow->packets_captured++;
+
+    // Ashwani
+    printf("Packet Captured for thread %lld.....: %llu\n", workflow->packets_capture);
     time_us = ndpi_timeval_to_microseconds(header->ts);
     if (workflow->last_global_time < time_us)
     {
