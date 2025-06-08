@@ -4214,8 +4214,8 @@ process_layer3_again:
         uint32_t min_addr = (flow_basic.src.v4.ip > flow_basic.dst.v4.ip ? flow_basic.dst.v4.ip : flow_basic.src.v4.ip);
         thread_index += min_addr + ip->protocol;
 
-        // Ashwani
-        return;
+        // Ashwani no issue till here
+        // return;
     }
     else if (ip6 != NULL)
     {
@@ -4371,6 +4371,9 @@ process_layer3_again:
         flow_basic.tcp_is_midstream_flow = (tcp->syn == 0 ? 1 : 0);
         flow_basic.src_port = ntohs(tcp->source);
         flow_basic.dst_port = ntohs(tcp->dest);
+        
+        // Ashwani
+        return;
     }
     else if (flow_basic.l4_protocol == IPPROTO_UDP)
     {
