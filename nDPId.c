@@ -4124,7 +4124,8 @@ static void ndpi_process_packet(uint8_t * const args,
 process_layer3_again:
     if (type == ETH_P_IP)
     {
-        printf("Ashwani: type == ETH_P_IP\n");
+
+        //printf("Ashwani v: type == ETH_P_IP\n");
         ip = (struct ndpi_iphdr *)&packet[ip_offset];
         ip6 = NULL;
         if (header->caplen < ip_offset + sizeof(*ip))
