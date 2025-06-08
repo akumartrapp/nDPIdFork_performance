@@ -4077,8 +4077,7 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
-    // Ashwani
-    return; 
+
     static time_t start_time = 0;
 
     time_t now = time(NULL);
@@ -4114,6 +4113,8 @@ static void ndpi_process_packet(uint8_t * const args,
         workflow->last_thread_time = time_us;
     }
 
+    // Ashwani
+    return; 
     do_periodically_work(reader_thread);
 
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
