@@ -4037,7 +4037,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    printf("ndpi_process_packet\n");
+    //printf("ndpi_process_packet\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -4341,7 +4341,7 @@ process_layer3_again:
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
     {
-        printf("Ashwani: 17\n");
+        //printf("Ashwani: 17\n");
         if (header->caplen < (l4_ptr - packet) + sizeof(struct ndpi_tcphdr))
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
@@ -4427,11 +4427,13 @@ process_layer3_again:
     {
         workflow->last_thread_time = time_us;
     }
-
+    
+    //
     printf("Ashwani: 19\n");
     /* calculate flow hash for btree find, search(insert) */
     switch (flow_basic.l3_type)
     {
+        printf("Ashwani: 20\n");
         case L3_IP:
             if (ndpi_flowv4_flow_hash(flow_basic.l4_protocol,
                                       flow_basic.src.v4.ip,
@@ -4469,6 +4471,7 @@ process_layer3_again:
     tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
     if (tree_result == NULL)
     {
+        printf("Ashwani: 21\n");
         direction = FD_DST2SRC;
 
         /* flow not found in btree: switch src <-> dst and try to find it again */
@@ -4496,6 +4499,7 @@ process_layer3_again:
 
     if (tree_result == NULL)
     {
+        printf("Ashwani: 22\n");
         /* flow still not found, must be new or midstream */
         direction = FD_SRC2DST;
 
@@ -4639,6 +4643,7 @@ process_layer3_again:
     }
     else
     {
+        printf("Ashwani: 23\n");
         /* flow already exists in the tree */
 
         struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;
@@ -4687,6 +4692,7 @@ process_layer3_again:
         }
     }
 
+    printf("Ashwani: 24\n");
     flow_to_process->flow_extended.packets_processed[direction]++;
     flow_to_process->flow_extended.total_l4_payload_len[direction] += l4_payload_len;
     workflow->packets_processed++;
@@ -4744,6 +4750,7 @@ process_layer3_again:
         }
     }
 
+    printf("Ashwani: 25\n");
     jsonize_packet_event(reader_thread,
                          header,
                          packet,
@@ -4760,6 +4767,7 @@ process_layer3_again:
         return;
     }
 
+    printf("Ashwani: 26\n");
     flow_to_process->flow_extended.detected_l7_protocol =
         ndpi_detection_process_packet(workflow->ndpi_struct,
                                       &flow_to_process->info.detection_data->flow,
