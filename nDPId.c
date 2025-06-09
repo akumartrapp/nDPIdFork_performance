@@ -4719,6 +4719,9 @@ process_layer3_again:
                          &flow_to_process->flow_extended,
                          PACKET_EVENT_PAYLOAD_FLOW);
 
+    
+    // printf("Ashwani: 25\n");
+     return; 
     if (flow_to_process->flow_extended.flow_basic.state != FS_INFO || flow_to_process->info.detection_data == NULL)
     {
         /* Only FS_INFO goes through the whole detection process. */
