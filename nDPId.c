@@ -4104,9 +4104,8 @@ static void ndpi_process_packet(uint8_t * const args,
     }
 
     
-    // printf("Ashwani: 25\n");
-    return;
-
+ // Ashwani
+ // Zone 1 Good.
 process_layer3_again:
     if (type == ETH_P_IP)
     {
@@ -4237,6 +4236,10 @@ process_layer3_again:
         }
         return;
     }
+
+    // Ashwani
+    // Zone 2 .
+    return; 
 
     /* process intermediate protocols i.e. layer4 tunnel protocols */
     if (IS_CMDARG_SET(nDPId_options.decode_tunnel) != 0 && flow_basic.l4_protocol == IPPROTO_GRE)
