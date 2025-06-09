@@ -4238,8 +4238,8 @@ process_layer3_again:
     }
 
     // Ashwani
-    // Zone 2 .
-    return; 
+    // Zone 2 good.
+    // return; 
 
     /* process intermediate protocols i.e. layer4 tunnel protocols */
     if (IS_CMDARG_SET(nDPId_options.decode_tunnel) != 0 && flow_basic.l4_protocol == IPPROTO_GRE)
@@ -4313,6 +4313,10 @@ process_layer3_again:
             }
         }
     }
+
+    // Ashwani
+    // Zone 3 .
+    return; 
 
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
