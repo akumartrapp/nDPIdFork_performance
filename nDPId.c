@@ -5326,103 +5326,102 @@ static void process_remaining_flows(void)
         jsonize_daemon(&reader_threads[i], DAEMON_EVENT_SHUTDOWN);
     }
 }
-    double bytes_to_gbps_60s(unsigned long long bytes)
+
+double bytes_to_gbps_60s(unsigned long long bytes)
+{
+    const int seconds = 60;
+    const double bits = bytes * 8.0; // Convert bytes to bits
+    const double gbits = bits / 1e9; // Convert bits to gigabits
+    return gbits / seconds;          // Gbps over 60 seconds
+}
+
+static int print_statistics(void)
+{
+    static int i = 0;
+    if (i == 1)
     {
-        const int seconds = 60;
-        const double bits = bytes * 8.0; // Convert bytes to bits
-        const double gbits = bits / 1e9; // Convert bits to gigabits
-        return gbits / seconds;          // Gbps over 60 seconds
-    }
-
-    static int print_statistics(void)
-    {
-        static int i = 0;
-        if (i == 1)
-        {
-            return 0;
-        }
-
-        i = 1;
-        unsigned long long int total_bytes_all_threads = 0;
-        unsigned long long int total_packets_processed = 0;
-        unsigned long long int total_l4_payload_len = 0;
-        unsigned long long int total_flows_skipped = 0;
-        unsigned long long int total_flows_captured = 0;
-        unsigned long long int total_flows_idle = 0;
-        unsigned long long int total_not_detected = 0;
-        unsigned long long int total_flows_guessed = 0;
-        unsigned long long int total_flows_detected = 0;
-        unsigned long long int total_flow_detection_updates = 0;
-        unsigned long long int total_flow_updates = 0;
-
-        printf("-------------Results--------------\n");
-        for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
-        {
-            if (reader_threads[i].workflow == NULL)
-            {
-                continue;
-            }
-            total_bytes_all_threads = total_bytes_all_threads + reader_threads[0].bytes;
-
-            printf("Packet Captured for thread %lld.....: %llu, Total bytes: %llu\n",
-                   i + 1,
-                   (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),
-                   reader_threads[0].bytes);
-            total_packets_processed += reader_threads[i].workflow->packets_processed;
-            total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
-            total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
-            total_flows_captured += reader_threads[i].workflow->total_active_flows;
-            total_flows_idle += reader_threads[i].workflow->total_idle_flows;
-            total_not_detected += reader_threads[i].workflow->total_not_detected_flows;
-            total_flows_guessed += reader_threads[i].workflow->total_guessed_flows;
-            total_flows_detected += reader_threads[i].workflow->total_detected_flows;
-            total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
-            total_flow_updates += reader_threads[i].workflow->total_flow_updates;
-
-            // printf(
-            //     "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
-            //     "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
-            //     "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
-            //     "\tdetection updates.: %8llu, updated flows..: %8llu\n",
-            //     reader_threads[i].array_index,
-            //     reader_threads[i].workflow->packets_processed,
-            //     reader_threads[i].workflow->total_l4_payload_len,
-            //     reader_threads[i].workflow->total_skipped_flows,
-            //     reader_threads[i].workflow->total_active_flows,
-            //     reader_threads[i].workflow->total_idle_flows,
-            //     reader_threads[i].workflow->total_not_detected_flows,
-            //     reader_threads[i].workflow->total_guessed_flows,
-            //     reader_threads[i].workflow->total_detected_flows,
-            //     reader_threads[i].workflow->total_flow_detection_updates,
-            //     reader_threads[i].workflow->total_flow_updates);
-        }
-
-        double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads) / GET_CMDARG_ULL(nDPId_options.reader_thread_count);
-        printf("Average speed is.............: %.2f Gbps\n\n", gbps2);
-
-        double gbps = bytes_to_gbps_60s(total_l4_payload_len);
-        /* total packets captured: same value for all threads as packet2thread distribution happens later */
-        printf("Total packets captured.......: %lld\n",
-               (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
-        printf("Total packets processed......: %llu\n", total_packets_processed);
-        printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
-        printf("Total bytes captured.........: %llu\n", total_bytes);
-        printf("Average speed is.............: %.2f Gbps\n", gbps);
-        printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
-        printf("Total flows processed........: %llu\n", total_flows_captured);
-        printf("Total flows timed out........: %llu\n", total_flows_idle);
-        printf("Total flows detected.........: %llu\n", total_flows_detected);
-        printf("Total flows guessed..........: %llu\n", total_flows_guessed);
-        printf("Total flows not detected.....: %llu\n", total_not_detected);
-        printf("Total flow updates...........: %llu\n", total_flow_updates);
-        printf("Total flow detections updates: %llu\n", total_flow_detection_updates);
-
-        exit(0);
         return 0;
     }
 
+    i = 1;
+    unsigned long long int total_bytes_all_threads = 0;
+    unsigned long long int total_packets_processed = 0;
+    unsigned long long int total_l4_payload_len = 0;
+    unsigned long long int total_flows_skipped = 0;
+    unsigned long long int total_flows_captured = 0;
+    unsigned long long int total_flows_idle = 0;
+    unsigned long long int total_not_detected = 0;
+    unsigned long long int total_flows_guessed = 0;
+    unsigned long long int total_flows_detected = 0;
+    unsigned long long int total_flow_detection_updates = 0;
+    unsigned long long int total_flow_updates = 0;
 
+    printf("-------------Results--------------\n");
+    for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
+    {
+        if (reader_threads[i].workflow == NULL)
+        {
+            continue;
+        }
+        total_bytes_all_threads = total_bytes_all_threads + reader_threads[0].bytes;
+
+        printf("Packet Captured for thread %lld.....: %llu, Total bytes: %llu\n",
+               i + 1,
+               (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),
+               reader_threads[0].bytes);
+        total_packets_processed += reader_threads[i].workflow->packets_processed;
+        total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
+        total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
+        total_flows_captured += reader_threads[i].workflow->total_active_flows;
+        total_flows_idle += reader_threads[i].workflow->total_idle_flows;
+        total_not_detected += reader_threads[i].workflow->total_not_detected_flows;
+        total_flows_guessed += reader_threads[i].workflow->total_guessed_flows;
+        total_flows_detected += reader_threads[i].workflow->total_detected_flows;
+        total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
+        total_flow_updates += reader_threads[i].workflow->total_flow_updates;
+
+        // printf(
+        //     "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
+        //     "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
+        //     "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
+        //     "\tdetection updates.: %8llu, updated flows..: %8llu\n",
+        //     reader_threads[i].array_index,
+        //     reader_threads[i].workflow->packets_processed,
+        //     reader_threads[i].workflow->total_l4_payload_len,
+        //     reader_threads[i].workflow->total_skipped_flows,
+        //     reader_threads[i].workflow->total_active_flows,
+        //     reader_threads[i].workflow->total_idle_flows,
+        //     reader_threads[i].workflow->total_not_detected_flows,
+        //     reader_threads[i].workflow->total_guessed_flows,
+        //     reader_threads[i].workflow->total_detected_flows,
+        //     reader_threads[i].workflow->total_flow_detection_updates,
+        //     reader_threads[i].workflow->total_flow_updates);
+    }
+
+    double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads) / GET_CMDARG_ULL(nDPId_options.reader_thread_count);
+    printf("Average speed is.............: %.2f Gbps\n\n", gbps2);
+
+    double gbps = bytes_to_gbps_60s(total_l4_payload_len);
+    /* total packets captured: same value for all threads as packet2thread distribution happens later */
+    printf("Total packets captured.......: %lld\n",
+           (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
+    printf("Total packets processed......: %llu\n", total_packets_processed);
+    printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
+    printf("Total bytes captured.........: %llu\n", total_bytes);
+    printf("Average speed is.............: %.2f Gbps\n", gbps);
+    printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
+    printf("Total flows processed........: %llu\n", total_flows_captured);
+    printf("Total flows timed out........: %llu\n", total_flows_idle);
+    printf("Total flows detected.........: %llu\n", total_flows_detected);
+    printf("Total flows guessed..........: %llu\n", total_flows_guessed);
+    printf("Total flows not detected.....: %llu\n", total_not_detected);
+    printf("Total flow updates...........: %llu\n", total_flow_updates);
+    printf("Total flow detections updates: %llu\n", total_flow_detection_updates);
+
+    exit(0);
+    return 0;
 }
+
 
 static int stop_reader_threads(void)
 {
