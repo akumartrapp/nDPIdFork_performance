@@ -4103,6 +4103,10 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
+    
+    // printf("Ashwani: 25\n");
+    return;
+
 process_layer3_again:
     if (type == ETH_P_IP)
     {
@@ -4720,8 +4724,7 @@ process_layer3_again:
                          PACKET_EVENT_PAYLOAD_FLOW);
 
     
-    // printf("Ashwani: 25\n");
-     return; 
+
     if (flow_to_process->flow_extended.flow_basic.state != FS_INFO || flow_to_process->info.detection_data == NULL)
     {
         /* Only FS_INFO goes through the whole detection process. */
