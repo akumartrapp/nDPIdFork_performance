@@ -2881,6 +2881,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                                  struct nDPId_flow_extended const * const flow_ext,
                                  enum packet_event event)
 {
+    return;
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "packet_event_name";
 
@@ -4706,8 +4707,8 @@ process_layer3_again:
         }
     }
 
-     // printf("Ashwani: 25\n");
-    return; 
+    // printf("Ashwani: 25\n");
+    // return; 
     jsonize_packet_event(reader_thread,
                          header,
                          packet,
