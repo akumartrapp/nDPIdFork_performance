@@ -4949,6 +4949,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 
     if (reader_thread->workflow->is_pcap_file != 0)
     {
+        printf("run_capture_loop 1\n");
         switch (pcap_loop(reader_thread->workflow->pcap_handle, -1, &ndpi_process_packet, (uint8_t *)reader_thread))
         {
             case PCAP_ERROR:
@@ -5150,6 +5151,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     else
 #endif
                     {
+                        printf("run_capture_loop 2\n");
                         switch (pcap_dispatch(
                             reader_thread->workflow->pcap_handle, -1, ndpi_process_packet, (uint8_t *)reader_thread))
                         {
