@@ -4081,8 +4081,8 @@ static void ndpi_process_packet(uint8_t * const args,
     else if (difftime(now, start_time) >= 60)
     {
         // 60 seconds have passed
-        // printf("60 seconds elapsed. Stopping...\n");
-        //print_statistics();
+        printf("60 seconds elapsed. Stopping...\n");
+        print_statistics();
         start_time = 0;
     }
     workflow->packets_captured++;
