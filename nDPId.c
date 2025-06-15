@@ -1743,7 +1743,7 @@ static int setup_reader_threads(void)
 {
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
-    printf("Number of reader threads  %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    printf("Number of reader threads updated  %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
 
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
