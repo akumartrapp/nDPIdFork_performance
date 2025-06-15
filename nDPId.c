@@ -2881,7 +2881,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                                  struct nDPId_flow_extended const * const flow_ext,
                                  enum packet_event event)
 {
-    return;
+
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "packet_event_name";
 
@@ -4316,7 +4316,7 @@ process_layer3_again:
 
     // Ashwani
     // Zone 3 .
-    return; 
+    //return; 
 
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
