@@ -4944,6 +4944,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 #endif
                                             ))
     {
+        printf("run_capture_loop early return\n");
         return;
     }
 
