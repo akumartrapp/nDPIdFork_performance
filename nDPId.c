@@ -4064,7 +4064,7 @@ void ndpi_process_packet_consumer(uint8_t * const args,
                                 const struct pcap_pkthdr * const header,
                                 const uint8_t * const packet)
 {
-    printf("ndpi_process_packet_consumer\n");
+    //printf("ndpi_process_packet_consumer\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -4909,7 +4909,7 @@ void * packet_consumer(void * arg)
         pthread_mutex_unlock(&queue.lock);
 
         struct reader_thread * reader = (struct reader_thread *)pkt.args;
-        printf("[Consumer] Processing packet of length: %u\n", pkt.header.caplen);
+        //printf("[Consumer] Processing packet of length: %u\n", pkt.header.caplen);
 
         ndpi_process_packet_consumer(pkt.args, &pkt.header, pkt.packet);
         // Replace this with your heavy processing logic
@@ -4924,7 +4924,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 const struct pcap_pkthdr * const header,
                                 const uint8_t * const packet)
 {
-    printf("ndpi_process_packet\n");
+    //printf("ndpi_process_packet\n");
     pthread_mutex_lock(&queue.lock);
 
     int next_tail = (queue.tail + 1) % MAX_QUEUE_SIZE;
