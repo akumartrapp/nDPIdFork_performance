@@ -5009,6 +5009,15 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 }
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <pthread.h>
+#include <pcap.h>
+
+#define MAX_QUEUE_SIZE 1024
+
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
     printf("run_capture_loop\n");
