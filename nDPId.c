@@ -4189,6 +4189,7 @@ void ndpi_process_packet_consumer(uint8_t * const args,
     
  // Ashwani
  // Zone 1 Good.
+    printf("\nzone 1");
 process_layer3_again:
     if (type == ETH_P_IP)
     {
@@ -4323,6 +4324,7 @@ process_layer3_again:
     // Ashwani
     // Zone 2 good.
     // return; 
+    printf("\nzone 2");
 
     /* process intermediate protocols i.e. layer4 tunnel protocols */
     if (IS_CMDARG_SET(nDPId_options.decode_tunnel) != 0 && flow_basic.l4_protocol == IPPROTO_GRE)
@@ -4400,6 +4402,8 @@ process_layer3_again:
     // Ashwani
     // Zone 3 .
     //return; 
+
+     printf("\nzone 3");
 
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
