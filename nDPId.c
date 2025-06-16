@@ -4197,7 +4197,7 @@ void ndpi_process_packet_consumer(uint8_t * const args,
     }
 
     printf("\nAshwani 1");
-    do_periodically_work(reader_thread);
+    //do_periodically_work(reader_thread);
 
     printf("\nAshwani 2");
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
