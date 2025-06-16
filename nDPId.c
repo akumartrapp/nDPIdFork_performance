@@ -4196,10 +4196,10 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         workflow->last_thread_time = time_us;
     }
 
-    printf("\nAshwani 1");
+    printf("\nAshwani K 1");
     //do_periodically_work(reader_thread);
 
-    printf("\nAshwani 2");
+    printf("\nAshwani K 2");
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
     {
         printf("\nAshwani 3");
