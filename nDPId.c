@@ -4179,10 +4179,13 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         workflow->last_thread_time = time_us;
     }
 
+    printf("\Ashwani 1");
     do_periodically_work(reader_thread);
 
+    printf("\Ashwani 2");
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
     {
+        printf("\Ashwani 3");
         return;
     }
 
