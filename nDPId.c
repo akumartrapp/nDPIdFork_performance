@@ -130,6 +130,14 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 
 //----------Ashwani added starts here---------------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <pthread.h>
+#include <pcap.h>
+
+#define MAX_QUEUE_SIZE 1024
 static int print_statistics(void);
 static unsigned long long int total_bytes = 0;
 
@@ -5009,14 +5017,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 }
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <pthread.h>
-#include <pcap.h>
 
-#define MAX_QUEUE_SIZE 1024
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
