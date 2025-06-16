@@ -3885,20 +3885,27 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
 
 static void do_periodically_work(struct nDPId_reader_thread * const reader_thread)
 {
+    printf("do_periodically_work\n");
     if (reader_thread->workflow->last_scan_time + GET_CMDARG_ULL(nDPId_options.flow_scan_interval) <=
         reader_thread->workflow->last_global_time)
     {
+        printf("do_periodically_work 1\n");
         check_for_idle_flows(reader_thread);
+        printf("do_periodically_work 2\n");
         check_for_flow_updates(reader_thread);
+        printf("do_periodically_work 3\n");
         reader_thread->workflow->last_scan_time = reader_thread->workflow->last_global_time;
     }
     if (reader_thread->workflow->last_status_time + GET_CMDARG_ULL(nDPId_options.daemon_status_interval) +
             reader_thread->array_index * 1000 <=
         reader_thread->workflow->last_global_time)
     {
+        printf("do_periodically_work 4\n")
         jsonize_daemon(reader_thread, DAEMON_EVENT_STATUS);
+        printf("do_periodically_work 5\n")
         reader_thread->workflow->last_status_time =
             reader_thread->workflow->last_global_time + reader_thread->array_index * 1000;
+        printf("do_periodically_work 6\n")
     }
 #ifdef ENABLE_MEMORY_PROFILING
     if (reader_thread->workflow->last_memory_usage_log_time +
