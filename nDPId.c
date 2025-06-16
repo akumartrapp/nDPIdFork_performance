@@ -3908,12 +3908,16 @@ static void do_periodically_work(struct nDPId_reader_thread * const reader_threa
         printf("do_periodically_work 6\n");
     }
 #ifdef ENABLE_MEMORY_PROFILING
+    printf("do_periodically_work 7\n");
     if (reader_thread->workflow->last_memory_usage_log_time +
             GET_CMDARG_ULL(nDPId_options.memory_profiling_log_interval) <=
         reader_thread->workflow->last_global_time)
     {
+        printf("do_periodically_work 8\n");
         log_memory_usage(reader_thread);
+        printf("do_periodically_work 9\n");
         reader_thread->workflow->last_memory_usage_log_time = reader_thread->workflow->last_global_time;
+        printf("do_periodically_work 10\n");
     }
 #endif
 }
