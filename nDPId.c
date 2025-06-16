@@ -4168,8 +4168,14 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         print_statistics();
         start_time = 0;
     }
+
+    printf("\Ashwani 11");
+
     workflow->packets_captured++;
+
+    printf("\Ashwani 12");
     time_us = ndpi_timeval_to_microseconds(header->ts);
+    printf("\Ashwani 13");
     if (workflow->last_global_time < time_us)
     {
         workflow->last_global_time = time_us;
