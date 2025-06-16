@@ -4057,62 +4057,7 @@ struct packet_queue
     pthread_cond_t not_empty;
 } queue = {.head = 0, .tail = 0, .lock = PTHREAD_MUTEX_INITIALIZER, .not_empty = PTHREAD_COND_INITIALIZER};
 
-void * packet_consumer(void * arg)
-{
-    while (1)
-    {
-        pthread_mutex_lock(&queue.lock);
-        while (queue.head == queue.tail)
-        {
-            pthread_cond_wait(&queue.not_empty, &queue.lock);
-        }
 
-        struct packet_data pkt = queue.packets[queue.head];
-        queue.head = (queue.head + 1) % MAX_QUEUE_SIZE;
-        pthread_mutex_unlock(&queue.lock);
-
-        struct reader_thread * reader = (struct reader_thread *)pkt.args;
-        printf("[Consumer] Processing packet of length: %u\n", pkt.header.caplen);
-
-        ndpi_process_packet_consumer(pkt.args, pkt.header, pkt.packet);
-        // Replace this with your heavy processing logic
-        // e.g., ndpi_workflow_process_packet(reader, &pkt.header, pkt.packet);
-
-        free(pkt.packet);
-    }
-    return NULL;
-}
-
-static void ndpi_process_packet(uint8_t * const args,
-                                const struct pcap_pkthdr * const header,
-                                const uint8_t * const packet)
-{
-    printf("ndpi_process_packet\n");
-    pthread_mutex_lock(&queue.lock);
-
-    int next_tail = (queue.tail + 1) % MAX_QUEUE_SIZE;
-    if (next_tail == queue.head)
-    {
-        fprintf(stderr, "[Producer] Queue full. Dropping packet\n");
-        pthread_mutex_unlock(&queue.lock);
-        return;
-    }
-
-    queue.packets[queue.tail].header = *header;
-    queue.packets[queue.tail].packet = malloc(header->caplen);
-    if (!queue.packets[queue.tail].packet)
-    {
-        fprintf(stderr, "[Producer] Failed to allocate packet buffer\n");
-        pthread_mutex_unlock(&queue.lock);
-        return;
-    }
-    memcpy(queue.packets[queue.tail].packet, packet, header->caplen);
-    queue.packets[queue.tail].args = args;
-
-    queue.tail = next_tail;
-    pthread_cond_signal(&queue.not_empty);
-    pthread_mutex_unlock(&queue.lock);
-}
 
 
 void ndpi_process_packet_consumer(uint8_t * const args,
@@ -4947,6 +4892,63 @@ process_layer3_again:
         check_for_compressable_flows(reader_thread);
     }
 #endif
+}
+
+void * packet_consumer(void * arg)
+{
+    while (1)
+    {
+        pthread_mutex_lock(&queue.lock);
+        while (queue.head == queue.tail)
+        {
+            pthread_cond_wait(&queue.not_empty, &queue.lock);
+        }
+
+        struct packet_data pkt = queue.packets[queue.head];
+        queue.head = (queue.head + 1) % MAX_QUEUE_SIZE;
+        pthread_mutex_unlock(&queue.lock);
+
+        struct reader_thread * reader = (struct reader_thread *)pkt.args;
+        printf("[Consumer] Processing packet of length: %u\n", pkt.header.caplen);
+
+        ndpi_process_packet_consumer(pkt.args, pkt.header, pkt.packet);
+        // Replace this with your heavy processing logic
+        // e.g., ndpi_workflow_process_packet(reader, &pkt.header, pkt.packet);
+
+        free(pkt.packet);
+    }
+    return NULL;
+}
+
+static void ndpi_process_packet(uint8_t * const args,
+                                const struct pcap_pkthdr * const header,
+                                const uint8_t * const packet)
+{
+    printf("ndpi_process_packet\n");
+    pthread_mutex_lock(&queue.lock);
+
+    int next_tail = (queue.tail + 1) % MAX_QUEUE_SIZE;
+    if (next_tail == queue.head)
+    {
+        fprintf(stderr, "[Producer] Queue full. Dropping packet\n");
+        pthread_mutex_unlock(&queue.lock);
+        return;
+    }
+
+    queue.packets[queue.tail].header = *header;
+    queue.packets[queue.tail].packet = malloc(header->caplen);
+    if (!queue.packets[queue.tail].packet)
+    {
+        fprintf(stderr, "[Producer] Failed to allocate packet buffer\n");
+        pthread_mutex_unlock(&queue.lock);
+        return;
+    }
+    memcpy(queue.packets[queue.tail].packet, packet, header->caplen);
+    queue.packets[queue.tail].args = args;
+
+    queue.tail = next_tail;
+    pthread_cond_signal(&queue.not_empty);
+    pthread_mutex_unlock(&queue.lock);
 }
 
 static void get_current_time(struct timeval * const tval)
