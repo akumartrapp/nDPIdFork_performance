@@ -4125,13 +4125,13 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         start_time = 0;
     }
 
-    printf("\nAshwani 11");
+   
 
     workflow->packets_captured++;
 
-    printf("\nAshwani 12");
+   
     time_us = ndpi_timeval_to_microseconds(header->ts);
-    printf("\nAshwani 13");
+   
     if (workflow->last_global_time < time_us)
     {
         workflow->last_global_time = time_us;
@@ -4141,20 +4141,20 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         workflow->last_thread_time = time_us;
     }
 
-    printf("\nAshwani K 1");
+   
     //do_periodically_work(reader_thread);
 
-    printf("\nAshwani K 2");
+   
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
     {
-        printf("\nAshwani 3");
+      
         return;
     }
 
     
  // Ashwani
  // Zone 1 Good.
-    printf("\nzone 1");
+   
 process_layer3_again:
     if (type == ETH_P_IP)
     {
@@ -4289,7 +4289,7 @@ process_layer3_again:
     // Ashwani
     // Zone 2 good.
     // return; 
-    printf("\nzone 2");
+   
 
     /* process intermediate protocols i.e. layer4 tunnel protocols */
     if (IS_CMDARG_SET(nDPId_options.decode_tunnel) != 0 && flow_basic.l4_protocol == IPPROTO_GRE)
@@ -4368,7 +4368,7 @@ process_layer3_again:
     // Zone 3 .
     //return; 
 
-     printf("\nzone 3");
+   
 
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
