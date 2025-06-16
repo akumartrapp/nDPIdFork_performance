@@ -4911,7 +4911,7 @@ void * packet_consumer(void * arg)
         struct reader_thread * reader = (struct reader_thread *)pkt.args;
         printf("[Consumer] Processing packet of length: %u\n", pkt.header.caplen);
 
-        ndpi_process_packet_consumer(pkt.args, pkt.header, pkt.packet);
+        ndpi_process_packet_consumer(pkt.args, &pkt.header, pkt.packet);
         // Replace this with your heavy processing logic
         // e.g., ndpi_workflow_process_packet(reader, &pkt.header, pkt.packet);
 
