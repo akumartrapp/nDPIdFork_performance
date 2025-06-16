@@ -4061,8 +4061,8 @@ struct packet_queue
 
 
 void ndpi_process_packet_consumer(uint8_t * const args,
-                                const struct pcap_pkthdr const * const header,
-                                const uint8_t const * const packet)
+                                const struct pcap_pkthdr * const header,
+                                const uint8_t * const packet)
 {
     printf("ndpi_process_packet_consumer\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
