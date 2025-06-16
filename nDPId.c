@@ -3900,12 +3900,12 @@ static void do_periodically_work(struct nDPId_reader_thread * const reader_threa
             reader_thread->array_index * 1000 <=
         reader_thread->workflow->last_global_time)
     {
-        printf("do_periodically_work 4\n")
+        printf("do_periodically_work 4\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_STATUS);
-        printf("do_periodically_work 5\n")
+        printf("do_periodically_work 5\n");
         reader_thread->workflow->last_status_time =
             reader_thread->workflow->last_global_time + reader_thread->array_index * 1000;
-        printf("do_periodically_work 6\n")
+        printf("do_periodically_work 6\n");
     }
 #ifdef ENABLE_MEMORY_PROFILING
     if (reader_thread->workflow->last_memory_usage_log_time +
