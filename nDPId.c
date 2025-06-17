@@ -137,7 +137,7 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <pthread.h>
 #include <pcap.h>
 
-#define MAX_QUEUE_SIZE 1024
+#define MAX_QUEUE_SIZE 8192
 static int print_statistics(void);
 static unsigned long long int total_bytes = 0;
 
