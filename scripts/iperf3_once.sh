@@ -1,35 +1,10 @@
-
-# SERVER_IP="10.31.1.157"
-# BANDWIDTH="1G"
-# DURATION=10
-
-# # Bind the client to the eth0 IP as source (to force using eth0)
-# SOURCE_IP="$SERVER_IP"
-
-# echo "Starting iperf3 UDP test to $SERVER_IP for $DURATION seconds at $BANDWIDTH from $SOURCE_IP..."
-
-# # Run iperf3 and capture output
-# OUTPUT=$(iperf3 -c "$SERVER_IP" -u -B "$SOURCE_IP" -b "$BANDWIDTH" -t "$DURATION")
-
-# # Print full output
-# echo "$OUTPUT"
-
-# # Extract packets sent from sender summary line
-# PACKETS_SENT=$(echo "$OUTPUT" | grep -Eo '[0-9]+/[0-9]+.*sender' | head -n1 | awk -F'/' '{print $2}' | awk '{print $1}')
-
-# echo "Packets sent: $PACKETS_SENT"
-# echo "Test completed."
-
-#!/bin/bash
-
 SERVER_IP="100.99.37.253"
 BANDWIDTH="1G"
 DURATION=10
-SOURCE_IP="$SERVER_IP"
 
-echo "Starting iperf3 UDP test to $SERVER_IP for $DURATION seconds at $BANDWIDTH from $SOURCE_IP..."
+echo "Starting iperf3 UDP test to $SERVER_IP for $DURATION seconds at $BANDWIDTH..."
 
-# Run the iperf3 test and capture output
+# Run the iperf3 test and capture output (no -B binding)
 OUTPUT=$(iperf3 -c "$SERVER_IP" -u -b "$BANDWIDTH" -t "$DURATION")
 
 echo "$OUTPUT"
@@ -37,7 +12,12 @@ echo "$OUTPUT"
 # Extract the sender summary line
 SENDER_LINE=$(echo "$OUTPUT" | grep -E '\[ *[0-9]+\] +0\.00-.*sec.*sender')
 
-# Extract transfer amount and unit from sender line
+if [ -z "$SENDER_LINE" ]; then
+  echo "iperf3 failed or no sender summary found"
+  exit 1
+fi
+
+# Extract transfer amount and unit
 TRANSFER_VAL=$(echo "$SENDER_LINE" | awk '{for(i=1;i<=NF;i++) if($i=="sec") {print $(i+1); exit}}')
 TRANSFER_UNIT=$(echo "$SENDER_LINE" | awk '{for(i=1;i<=NF;i++) if($i=="sec") {print $(i+2); exit}}')
 
@@ -50,13 +30,8 @@ case "$TRANSFER_UNIT" in
   *) BYTES_SENT="Unknown unit: $TRANSFER_UNIT" ;;
 esac
 
-# Extract packets sent
 PACKETS_SENT=$(echo "$SENDER_LINE" | grep -oP '\d+/\K\d+')
 
 echo "Packets sent: $PACKETS_SENT"
 echo "Total bytes sent: $BYTES_SENT"
 echo "Test completed."
-
-
-
-
