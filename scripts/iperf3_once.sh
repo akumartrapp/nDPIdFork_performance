@@ -30,7 +30,7 @@ SOURCE_IP="$SERVER_IP"
 echo "Starting iperf3 UDP test to $SERVER_IP for $DURATION seconds at $BANDWIDTH from $SOURCE_IP..."
 
 # Run the iperf3 test and capture output
-OUTPUT=$(iperf3 -c "$SERVER_IP" -u -B "$SOURCE_IP" -b "$BANDWIDTH" -t "$DURATION")
+OUTPUT=$(iperf3 -c "$SERVER_IP" -u -b "$BANDWIDTH" -t "$DURATION")
 
 echo "$OUTPUT"
 
