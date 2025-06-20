@@ -4443,7 +4443,7 @@ process_layer3_again:
 
     // Ashwani
     // Zone 4 . good
-    return; 
+    //return; 
 
     /* distribute flows to threads while keeping stability (same flow goes always to same thread) */
     thread_index += (flow_basic.src_port < flow_basic.dst_port ? flow_basic.dst_port : flow_basic.src_port);
@@ -4497,6 +4497,12 @@ process_layer3_again:
     hashed_index = flow_basic.hashval % workflow->max_active_flows;
     direction = FD_SRC2DST;
     tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+
+    
+    // Ashwani
+    // Zone 5 . 
+     return; 
+
     if (tree_result == NULL)
     {
         direction = FD_DST2SRC;
