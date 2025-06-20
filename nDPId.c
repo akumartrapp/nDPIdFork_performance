@@ -4033,6 +4033,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
+    printf("\t\t ndpi_process_packet\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -5043,6 +5044,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
         struct timeval tval_before_epoll, tval_after_epoll;
         while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
         {
+            printf("Ashwani MT_GET_AND_ADD");
             get_current_time(&tval_before_epoll);
             errno = 0;
             if (nio_run(&io, timeout_ms) != NIO_SUCCESS)
