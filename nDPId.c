@@ -5144,7 +5144,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     else
 #endif
                     {
-                        printf("Ashwani pcap_dispatch");
+                        printf("\nAshwani pcap_dispatch");
                         switch (pcap_dispatch(
                             reader_thread->workflow->pcap_handle, -1, ndpi_process_packet, (uint8_t *)reader_thread))
                         {
