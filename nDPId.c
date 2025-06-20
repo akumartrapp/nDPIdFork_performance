@@ -1414,10 +1414,12 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 
         if (access(file_or_device, R_OK) != 0 && errno == ENOENT)
         {
+            printf("Ashwani 1\n");
             workflow->pcap_handle = pcap_open_live(file_or_device, 65535, 1, 250, pcap_error_buffer);
         }
         else
         {
+            printf("Ashwani 2\n");
             workflow->pcap_handle =
                 pcap_open_offline_with_tstamp_precision(file_or_device, PCAP_TSTAMP_PRECISION_MICRO, pcap_error_buffer);
             workflow->is_pcap_file = 1;
@@ -4928,6 +4930,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
+    printf("run_capture_loop 1\n");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -4939,6 +4942,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 
     if (reader_thread->workflow->is_pcap_file != 0)
     {
+        printf("run_capture_loop 2\n");
         switch (pcap_loop(reader_thread->workflow->pcap_handle, -1, &ndpi_process_packet, (uint8_t *)reader_thread))
         {
             case PCAP_ERROR:
@@ -5140,6 +5144,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     else
 #endif
                     {
+                        printf("Ashwani pcap_dispatch");
                         switch (pcap_dispatch(
                             reader_thread->workflow->pcap_handle, -1, ndpi_process_packet, (uint8_t *)reader_thread))
                         {
@@ -5171,6 +5176,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 {
+    printf("break_pcap_loop\n");
     if (reader_thread->workflow != NULL && reader_thread->workflow->pcap_handle != NULL)
     {
         pcap_breakloop(reader_thread->workflow->pcap_handle);
