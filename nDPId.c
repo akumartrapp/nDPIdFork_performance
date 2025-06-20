@@ -5043,9 +5043,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
         int const timeout_ms = 1000; /* TODO: Configurable? */
         struct timeval tval_before_epoll, tval_after_epoll;
         while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
-        {
-            printf("Ashwani MT_GET_AND_ADD");
-            get_current_time(&tval_before_epoll);
+        {            get_current_time(&tval_before_epoll);
             errno = 0;
             if (nio_run(&io, timeout_ms) != NIO_SUCCESS)
             {
@@ -5146,10 +5144,6 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     else
 #endif
                     {
-                        printf("\nAshwani pcap_dispatch");
-                       
-                        printf("Do you want to proceed? (y/n): ");
-                        char choice = getchar();
 
                         switch (pcap_dispatch(
                             reader_thread->workflow->pcap_handle, -1, ndpi_process_packet, (uint8_t *)reader_thread))
