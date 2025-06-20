@@ -102,6 +102,7 @@ endif()
 option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" ON)
 option(BUILD_NDPI "Clone and build nDPI from github." ON)
 message(STATUS "BUILD_NDPI = ${BUILD_NDPI}")
+message(STATUS "ENABLE_PFRING = ${ENABLE_PFRING}")
 
  message(STATUS "Ashwani 1")
 if(ENABLE_PFRING)
