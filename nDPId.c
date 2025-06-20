@@ -128,21 +128,6 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
-
-//----------Ashwani added starts here---------------------
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <pthread.h>
-#include <pcap.h>
-
-#define MAX_QUEUE_SIZE 655360
-static int print_statistics(void);
-static unsigned long long int total_bytes = 0;
-
-//----------Ashwani added stops here---------------------
-
 enum nDPId_l3_type
 {
     L3_IP,
@@ -352,7 +337,6 @@ struct nDPId_reader_thread
     int collector_sockfd;
     int collector_sock_last_errno;
     size_t array_index;
-    unsigned long long int bytes;
 };
 
 enum packet_event
@@ -1751,8 +1735,6 @@ static int setup_reader_threads(void)
 {
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
-    printf("Number of reader threads updated  %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
-
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
         return 1;
@@ -2889,7 +2871,6 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                                  struct nDPId_flow_extended const * const flow_ext,
                                  enum packet_event event)
 {
-
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "packet_event_name";
 
@@ -3885,41 +3866,30 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
 
 static void do_periodically_work(struct nDPId_reader_thread * const reader_thread)
 {
-    //printf("do_periodically_work\n");
     if (reader_thread->workflow->last_scan_time + GET_CMDARG_ULL(nDPId_options.flow_scan_interval) <=
         reader_thread->workflow->last_global_time)
     {
-        //printf("do_periodically_work 1\n");
         check_for_idle_flows(reader_thread);
-        //printf("do_periodically_work 2\n");
         check_for_flow_updates(reader_thread);
-        //printf("do_periodically_work 3\n");
         reader_thread->workflow->last_scan_time = reader_thread->workflow->last_global_time;
     }
     if (reader_thread->workflow->last_status_time + GET_CMDARG_ULL(nDPId_options.daemon_status_interval) +
             reader_thread->array_index * 1000 <=
         reader_thread->workflow->last_global_time)
     {
-        //printf("do_periodically_work 4\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_STATUS);
-        //printf("do_periodically_work 5\n");
         reader_thread->workflow->last_status_time =
             reader_thread->workflow->last_global_time + reader_thread->array_index * 1000;
-        //printf("do_periodically_work 6\n");
     }
-//#ifdef ENABLE_MEMORY_PROFILING
-//    printf("do_periodically_work 7\n");
-//    if (reader_thread->workflow->last_memory_usage_log_time +
-//            GET_CMDARG_ULL(nDPId_options.memory_profiling_log_interval) <=
-//        reader_thread->workflow->last_global_time)
-//    {
-//        printf("do_periodically_work 8\n");
-//        log_memory_usage(reader_thread);
-//        printf("do_periodically_work 9\n");
-//        reader_thread->workflow->last_memory_usage_log_time = reader_thread->workflow->last_global_time;
-//        printf("do_periodically_work 10\n");
-//    }
-//#endif
+#ifdef ENABLE_MEMORY_PROFILING
+    if (reader_thread->workflow->last_memory_usage_log_time +
+            GET_CMDARG_ULL(nDPId_options.memory_profiling_log_interval) <=
+        reader_thread->workflow->last_global_time)
+    {
+        log_memory_usage(reader_thread);
+        reader_thread->workflow->last_memory_usage_log_time = reader_thread->workflow->last_global_time;
+    }
+#endif
 }
 
 static int distribute_single_packet(struct nDPId_reader_thread * const reader_thread)
@@ -4041,30 +4011,10 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
-struct packet_data
+static void ndpi_process_packet(uint8_t * const args,
+                                struct pcap_pkthdr const * const header,
+                                uint8_t const * const packet)
 {
-    struct pcap_pkthdr header;
-    uint8_t * packet;
-    uint8_t * args; // Store original context (reader_thread*)
-};
-
-struct packet_queue
-{
-    struct packet_data packets[MAX_QUEUE_SIZE];
-    int head;
-    int tail;
-    pthread_mutex_t lock;
-    pthread_cond_t not_empty;
-} queue = {.head = 0, .tail = 0, .lock = PTHREAD_MUTEX_INITIALIZER, .not_empty = PTHREAD_COND_INITIALIZER};
-
-
-
-
-void ndpi_process_packet_consumer(uint8_t * const args,
-                                const struct pcap_pkthdr * const header,
-                                const uint8_t * const packet)
-{
-    //printf("ndpi_process_packet_consumer\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -4104,34 +4054,8 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         return;
     }
 
-    static time_t start_time = 0;
-
-    time_t now = time(NULL);
-
-    total_bytes = total_bytes + header->len;
-
-    reader_thread->bytes = reader_thread->bytes + header->len;
-    if (start_time == 0)
-    {
-        // First call: start the timer
-        printf("Ashwani: capturing packets for 60 seconds...\n");
-        start_time = now;
-    }
-    else if (difftime(now, start_time) >= 60)
-    {
-        // 60 seconds have passed
-        printf("60 seconds elapsed. Stopping...\n");
-        print_statistics();
-        start_time = 0;
-    }
-
-   
-
     workflow->packets_captured++;
-
-   
     time_us = ndpi_timeval_to_microseconds(header->ts);
-   
     if (workflow->last_global_time < time_us)
     {
         workflow->last_global_time = time_us;
@@ -4141,20 +4065,13 @@ void ndpi_process_packet_consumer(uint8_t * const args,
         workflow->last_thread_time = time_us;
     }
 
-   
-    //do_periodically_work(reader_thread);
+    do_periodically_work(reader_thread);
 
-   
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
     {
-      
         return;
     }
 
-    
- // Ashwani
- // Zone 1 Good.
-   
 process_layer3_again:
     if (type == ETH_P_IP)
     {
@@ -4286,11 +4203,6 @@ process_layer3_again:
         return;
     }
 
-    // Ashwani
-    // Zone 2 good.
-    // return; 
-   
-
     /* process intermediate protocols i.e. layer4 tunnel protocols */
     if (IS_CMDARG_SET(nDPId_options.decode_tunnel) != 0 && flow_basic.l4_protocol == IPPROTO_GRE)
     {
@@ -4363,12 +4275,6 @@ process_layer3_again:
             }
         }
     }
-
-    // Ashwani
-    // Zone 3 .
-    //return; 
-
-   
 
     /* process layer4 e.g. TCP / UDP */
     if (flow_basic.l4_protocol == IPPROTO_TCP)
@@ -4770,8 +4676,6 @@ process_layer3_again:
         }
     }
 
-    // printf("Ashwani: 25\n");
-    // return; 
     jsonize_packet_event(reader_thread,
                          header,
                          packet,
@@ -4781,8 +4685,6 @@ process_layer3_again:
                          l4_len,
                          &flow_to_process->flow_extended,
                          PACKET_EVENT_PAYLOAD_FLOW);
-
-    
 
     if (flow_to_process->flow_extended.flow_basic.state != FS_INFO || flow_to_process->info.detection_data == NULL)
     {
@@ -4894,63 +4796,6 @@ process_layer3_again:
 #endif
 }
 
-void * packet_consumer(void * arg)
-{
-    while (1)
-    {
-        pthread_mutex_lock(&queue.lock);
-        while (queue.head == queue.tail)
-        {
-            pthread_cond_wait(&queue.not_empty, &queue.lock);
-        }
-
-        struct packet_data pkt = queue.packets[queue.head];
-        queue.head = (queue.head + 1) % MAX_QUEUE_SIZE;
-        pthread_mutex_unlock(&queue.lock);
-
-        struct reader_thread * reader = (struct reader_thread *)pkt.args;
-        //printf("[Consumer] Processing packet of length: %u\n", pkt.header.caplen);
-
-        ndpi_process_packet_consumer(pkt.args, &pkt.header, pkt.packet);
-        // Replace this with your heavy processing logic
-        // e.g., ndpi_workflow_process_packet(reader, &pkt.header, pkt.packet);
-
-        free(pkt.packet);
-    }
-    return NULL;
-}
-
-static void ndpi_process_packet(uint8_t * const args,
-                                const struct pcap_pkthdr * const header,
-                                const uint8_t * const packet)
-{
-    //printf("ndpi_process_packet\n");
-    pthread_mutex_lock(&queue.lock);
-
-    int next_tail = (queue.tail + 1) % MAX_QUEUE_SIZE;
-    if (next_tail == queue.head)
-    {
-        fprintf(stderr, "[Producer] Queue full. Dropping packet\n");
-        pthread_mutex_unlock(&queue.lock);
-        return;
-    }
-
-    queue.packets[queue.tail].header = *header;
-    queue.packets[queue.tail].packet = malloc(header->caplen);
-    if (!queue.packets[queue.tail].packet)
-    {
-        fprintf(stderr, "[Producer] Failed to allocate packet buffer\n");
-        pthread_mutex_unlock(&queue.lock);
-        return;
-    }
-    memcpy(queue.packets[queue.tail].packet, packet, header->caplen);
-    queue.packets[queue.tail].args = args;
-
-    queue.tail = next_tail;
-    pthread_cond_signal(&queue.not_empty);
-    pthread_mutex_unlock(&queue.lock);
-}
-
 static void get_current_time(struct timeval * const tval)
 {
     gettimeofday(tval, NULL);
@@ -5043,27 +4888,19 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 }
 #endif
 
-
-
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
-    printf("run_capture_loop\n");
-    pthread_t consumer_thread;
-    pthread_create(&consumer_thread, NULL, packet_consumer, NULL);
-
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
 #endif
                                             ))
     {
-        printf("run_capture_loop early return\n");
         return;
     }
 
     if (reader_thread->workflow->is_pcap_file != 0)
     {
-        printf("run_capture_loop 1\n");
         switch (pcap_loop(reader_thread->workflow->pcap_handle, -1, &ndpi_process_packet, (uint8_t *)reader_thread))
         {
             case PCAP_ERROR:
@@ -5265,7 +5102,6 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     else
 #endif
                     {
-                       // printf("run_capture_loop 2\n");
                         switch (pcap_dispatch(
                             reader_thread->workflow->pcap_handle, -1, ndpi_process_packet, (uint8_t *)reader_thread))
                         {
@@ -5305,7 +5141,6 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf("processing_thread\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -5459,102 +5294,6 @@ static void process_remaining_flows(void)
         jsonize_daemon(&reader_threads[i], DAEMON_EVENT_SHUTDOWN);
     }
 }
-
-double bytes_to_gbps_60s(unsigned long long bytes)
-{
-    const int seconds = 60;
-    const double bits = bytes * 8.0; // Convert bytes to bits
-    const double gbits = bits / 1e9; // Convert bits to gigabits
-    return gbits / seconds;          // Gbps over 60 seconds
-}
-
-static int print_statistics(void)
-{
-    static int i = 0;
-    if (i == 1)
-    {
-        return 0;
-    }
-
-    i = 1;
-    unsigned long long int total_bytes_all_threads = 0;
-    unsigned long long int total_packets_processed = 0;
-    unsigned long long int total_l4_payload_len = 0;
-    unsigned long long int total_flows_skipped = 0;
-    unsigned long long int total_flows_captured = 0;
-    unsigned long long int total_flows_idle = 0;
-    unsigned long long int total_not_detected = 0;
-    unsigned long long int total_flows_guessed = 0;
-    unsigned long long int total_flows_detected = 0;
-    unsigned long long int total_flow_detection_updates = 0;
-    unsigned long long int total_flow_updates = 0;
-
-    printf("-------------Results--------------\n");
-    for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
-    {
-        if (reader_threads[i].workflow == NULL)
-        {
-            continue;
-        }
-        total_bytes_all_threads = total_bytes_all_threads + reader_threads[0].bytes;
-
-        printf("Packet Captured for thread %lld.....: %llu, Total bytes: %llu\n",
-               i + 1,
-               (reader_threads[i].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0),
-               reader_threads[0].bytes);
-        total_packets_processed += reader_threads[i].workflow->packets_processed;
-        total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
-        total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
-        total_flows_captured += reader_threads[i].workflow->total_active_flows;
-        total_flows_idle += reader_threads[i].workflow->total_idle_flows;
-        total_not_detected += reader_threads[i].workflow->total_not_detected_flows;
-        total_flows_guessed += reader_threads[i].workflow->total_guessed_flows;
-        total_flows_detected += reader_threads[i].workflow->total_detected_flows;
-        total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
-        total_flow_updates += reader_threads[i].workflow->total_flow_updates;
-
-        // printf(
-        //     "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
-        //     "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
-        //     "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
-        //     "\tdetection updates.: %8llu, updated flows..: %8llu\n",
-        //     reader_threads[i].array_index,
-        //     reader_threads[i].workflow->packets_processed,
-        //     reader_threads[i].workflow->total_l4_payload_len,
-        //     reader_threads[i].workflow->total_skipped_flows,
-        //     reader_threads[i].workflow->total_active_flows,
-        //     reader_threads[i].workflow->total_idle_flows,
-        //     reader_threads[i].workflow->total_not_detected_flows,
-        //     reader_threads[i].workflow->total_guessed_flows,
-        //     reader_threads[i].workflow->total_detected_flows,
-        //     reader_threads[i].workflow->total_flow_detection_updates,
-        //     reader_threads[i].workflow->total_flow_updates);
-    }
-
-    double gbps2 = bytes_to_gbps_60s(total_bytes_all_threads) / GET_CMDARG_ULL(nDPId_options.reader_thread_count);
-    printf("Average speed is.............: %.2f Gbps\n\n", gbps2);
-
-    double gbps = bytes_to_gbps_60s(total_l4_payload_len);
-    /* total packets captured: same value for all threads as packet2thread distribution happens later */
-    printf("Total packets captured.......: %lld\n",
-           (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
-    printf("Total packets processed......: %llu\n", total_packets_processed);
-    printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
-    printf("Total bytes captured.........: %llu\n", total_bytes);
-    printf("Average speed is.............: %.2f Gbps\n", gbps);
-    printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
-    printf("Total flows processed........: %llu\n", total_flows_captured);
-    printf("Total flows timed out........: %llu\n", total_flows_idle);
-    printf("Total flows detected.........: %llu\n", total_flows_detected);
-    printf("Total flows guessed..........: %llu\n", total_flows_guessed);
-    printf("Total flows not detected.....: %llu\n", total_not_detected);
-    printf("Total flow updates...........: %llu\n", total_flow_updates);
-    printf("Total flow detections updates: %llu\n", total_flow_detection_updates);
-
-    exit(0);
-    return 0;
-}
-
 
 static int stop_reader_threads(void)
 {
