@@ -4365,8 +4365,8 @@ process_layer3_again:
     }
 
     // Ashwani
-    // Zone 3 .
-    return; 
+    // Zone 3 . good
+    // return; 
 
    
 
@@ -4440,6 +4440,10 @@ process_layer3_again:
         /* Use layer4 length returned from libnDPI. */
         l4_payload_len = l4_len;
     }
+
+    // Ashwani
+    // Zone 4 . good
+    return; 
 
     /* distribute flows to threads while keeping stability (same flow goes always to same thread) */
     thread_index += (flow_basic.src_port < flow_basic.dst_port ? flow_basic.dst_port : flow_basic.src_port);
