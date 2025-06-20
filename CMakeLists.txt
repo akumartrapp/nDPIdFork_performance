@@ -99,7 +99,7 @@ if(BUILD_EXAMPLES)
 option(ENABLE_DBUS "Build DBus notification example." OFF)
 option(ENABLE_CURL "Build influxdb data write example." OFF)
 endif()
-option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" OFF)
+option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" ON)
 option(BUILD_NDPI "Clone and build nDPI from github." ON)
 message(STATUS "BUILD_NDPI = ${BUILD_NDPI}")
 
