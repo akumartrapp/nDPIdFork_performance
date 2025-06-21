@@ -4111,19 +4111,19 @@ void ndpi_process_packet_consumer(uint8_t * const args,
     total_bytes = total_bytes + header->len;
 
     reader_thread->bytes = reader_thread->bytes + header->len;
-    if (start_time == 0)
-    {
-        // First call: start the timer
-        printf("Ashwani: capturing packets for 60 seconds...\n");
-        start_time = now;
-    }
-    else if (difftime(now, start_time) >= 60)
-    {
-        // 60 seconds have passed
-        printf("60 seconds elapsed. Stopping...\n");
-        print_statistics();
-        start_time = 0;
-    }
+    //if (start_time == 0)
+    //{
+    //    // First call: start the timer
+    //    printf("Ashwani: capturing packets for 60 seconds...\n");
+    //    start_time = now;
+    //}
+    //else if (difftime(now, start_time) >= 60)
+    //{
+    //    // 60 seconds have passed
+    //    printf("60 seconds elapsed. Stopping...\n");
+    //    print_statistics();
+    //    start_time = 0;
+    //}
 
    
 
