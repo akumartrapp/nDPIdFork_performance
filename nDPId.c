@@ -1466,11 +1466,12 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
-    // Ashwani
-    cfg_set(workflow, NULL, "community_id", "0");
-    // Ashwani end
     ndpi_set_user_data(workflow->ndpi_struct, workflow);
     set_ndpi_debug_function(workflow->ndpi_struct, ndpi_debug_printf);
+
+    // Ashwani start
+    ndpi_set_community_id(workflow->ndpi_struct, 0, NULL, 0);  // Disable SHA1-based Community ID
+    // Ashwani end
 
     {
         int ret;
