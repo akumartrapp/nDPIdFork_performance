@@ -469,6 +469,11 @@ else()
         unset(STATIC_LIBNDPI_INC CACHE)
         unset(STATIC_LIBNDPI_LIB CACHE)
         message(STATUS "Ashwani 36")
+
+         message(STATUS "Found libndpi include dirs: ${NDPI_INCLUDE_DIRS}")
+    message(STATUS "Found libndpi library dirs: ${NDPI_LIBRARY_DIRS}")
+    message(STATUS "Found libndpi libraries: ${NDPI_LIBRARIES}")
+
     endif()
     # commented by Ashwani
     # set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
