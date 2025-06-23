@@ -476,7 +476,7 @@ else()
 
     endif()
     # commented by Ashwani
-    # set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
+     set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
     #set(DEFAULT_NDPI_INCLUDE "/usr/include")
     # include_directories("/home/anssetup/repositories/nDPI/src/include")
     
