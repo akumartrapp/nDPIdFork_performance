@@ -100,16 +100,12 @@ option(ENABLE_DBUS "Build DBus notification example." OFF)
 option(ENABLE_CURL "Build influxdb data write example." OFF)
 endif()
 option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" OFF)
-option(BUILD_NDPI "Clone and build nDPI from github." OFF)
+option(BUILD_NDPI "Clone and build nDPI from github." ON)
 message(STATUS "BUILD_NDPI = ${BUILD_NDPI}")
-message(STATUS "ENABLE_PFRING = ${ENABLE_PFRING}")
 
  message(STATUS "Ashwani 1")
 if(ENABLE_PFRING)
     option(PFRING_LINK_STATIC "Link against a static version of pfring." ON)
-
-    # You will pass this from the command line:
-    # -DPFRING_KERNEL_INC=/home/anssetup/repositories/PF_RING_Fork/kernel
     set(PFRING_KERNEL_INC "" CACHE STRING "Path to PFRING kernel module include directory.")
     set(PFRING_DEFS "-DENABLE_PFRING=1")
 
@@ -120,14 +116,12 @@ if(ENABLE_PFRING)
         message(FATAL_ERROR "Expected to find <linux/pf_ring.h> below ${PFRING_KERNEL_INC}, but none found.")
     endif()
 
-    # Updated path to your local userland build of PF_RING
-    set(PFRING_INSTALLDIR "/home/anssetup/repositories/PF_RING_Fork/userland" CACHE STRING "")
-    set(PFRING_INC "${PFRING_INSTALLDIR}/lib")
+    set(PFRING_INSTALLDIR "/opt/PF_RING/usr" CACHE STRING "")
+    set(PFRING_INC "${PFRING_INSTALLDIR}/include")
 
     if(NOT EXISTS "${PFRING_INC}")
         message(FATAL_ERROR "Include directory \"${PFRING_INC}\" does not exist!")
     endif()
-
     if(PFRING_LINK_STATIC)
         if(CMAKE_SIZEOF_VOID_P EQUAL 8)
             if(EXISTS "${PFRING_INSTALLDIR}/lib64")
@@ -166,8 +160,8 @@ if(ENABLE_PFRING)
         endif()
     endif()
 
-    if(NOT EXISTS "${PFRING_INSTALLDIR}/lib/pfring.h")
-        message(FATAL_ERROR "Expected to find <lib/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
+    if(NOT EXISTS "${PFRING_INSTALLDIR}/include/pfring.h")
+        message(FATAL_ERROR "Expected to find <include/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
     endif()
 else()
     unset(PFRING_INSTALLDIR CACHE)
@@ -469,17 +463,11 @@ else()
         unset(STATIC_LIBNDPI_INC CACHE)
         unset(STATIC_LIBNDPI_LIB CACHE)
         message(STATUS "Ashwani 36")
-
-         message(STATUS "Found libndpi include dirs: ${NDPI_INCLUDE_DIRS}")
-    message(STATUS "Found libndpi library dirs: ${NDPI_LIBRARY_DIRS}")
-    message(STATUS "Found libndpi libraries: ${NDPI_LIBRARIES}")
-
     endif()
     # commented by Ashwani
-     set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
+    set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
     #set(DEFAULT_NDPI_INCLUDE "/usr/include")
-    # include_directories("/home/anssetup/repositories/nDPI/src/include")
-    
+    # include_directories("/home/anssetup/repositories/nDPIFork/src/include")
 endif()
 
 
