@@ -1505,7 +1505,6 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
                 GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process));
     cfg_set_u64(workflow, "tls", "application_blocks_tracking", 1);
     cfg_set_u64(workflow, "tls", "certificate_expiration_threshold", 5);
-    cfg_set_u64(workflow, NULL, "enable-community-id", 0);
 
     workflow->total_skipped_flows = 0;
     workflow->total_active_flows = 0;
@@ -4367,39 +4366,67 @@ process_layer3_again:
     }
 
     /* calculate flow hash for btree find, search(insert) */
+    //switch (flow_basic.l3_type)
+    //{
+    //    case L3_IP:
+    //        if (ndpi_flowv4_flow_hash(flow_basic.l4_protocol,
+    //                                  flow_basic.src.v4.ip,
+    //                                  flow_basic.dst.v4.ip,
+    //                                  flow_basic.src_port,
+    //                                  flow_basic.dst_port,
+    //                                  0,
+    //                                  0,
+    //                                  (uint8_t *)&flow_basic.hashval,
+    //                                  sizeof(flow_basic.hashval)) != 0)
+    //        {
+    //            flow_basic.hashval = flow_basic.src.v4.ip + flow_basic.dst.v4.ip; // fallback
+    //        }
+    //        break;
+    //    case L3_IP6:
+    //        if (ndpi_flowv6_flow_hash(flow_basic.l4_protocol,
+    //                                  &ip6->ip6_src,
+    //                                  &ip6->ip6_dst,
+    //                                  flow_basic.src_port,
+    //                                  flow_basic.dst_port,
+    //                                  0,
+    //                                  0,
+    //                                  (uint8_t *)&flow_basic.hashval,
+    //                                  sizeof(flow_basic.hashval)) != 0)
+    //        {
+    //            flow_basic.hashval = flow_basic.src.v6.ip[0] + flow_basic.src.v6.ip[1];
+    //            flow_basic.hashval += flow_basic.dst.v6.ip[0] + flow_basic.dst.v6.ip[1];
+    //        }
+    //        break;
+    //}
+    //flow_basic.hashval += flow_basic.l4_protocol + flow_basic.src_port + flow_basic.dst_port;
+
     switch (flow_basic.l3_type)
     {
         case L3_IP:
-            if (ndpi_flowv4_flow_hash(flow_basic.l4_protocol,
-                                      flow_basic.src.v4.ip,
-                                      flow_basic.dst.v4.ip,
-                                      flow_basic.src_port,
-                                      flow_basic.dst_port,
-                                      0,
-                                      0,
-                                      (uint8_t *)&flow_basic.hashval,
-                                      sizeof(flow_basic.hashval)) != 0)
-            {
-                flow_basic.hashval = flow_basic.src.v4.ip + flow_basic.dst.v4.ip; // fallback
-            }
+            // Fast XOR-based hash for IPv4
+            flow_basic.hashval = flow_basic.src.v4.ip ^ flow_basic.dst.v4.ip ^ ((uint32_t)flow_basic.src_port << 16) |
+                                 (uint32_t)flow_basic.dst_port ^ flow_basic.l4_protocol;
             break;
+
         case L3_IP6:
-            if (ndpi_flowv6_flow_hash(flow_basic.l4_protocol,
-                                      &ip6->ip6_src,
-                                      &ip6->ip6_dst,
-                                      flow_basic.src_port,
-                                      flow_basic.dst_port,
-                                      0,
-                                      0,
-                                      (uint8_t *)&flow_basic.hashval,
-                                      sizeof(flow_basic.hashval)) != 0)
-            {
-                flow_basic.hashval = flow_basic.src.v6.ip[0] + flow_basic.src.v6.ip[1];
-                flow_basic.hashval += flow_basic.dst.v6.ip[0] + flow_basic.dst.v6.ip[1];
-            }
+        {
+            // Fast XOR-based hash for IPv6 (assumes ip[0] and ip[1] are 64-bit chunks)
+            uint64_t * src_ip = flow_basic.src.v6.ip;
+            uint64_t * dst_ip = flow_basic.dst.v6.ip;
+
+            uint64_t ipv6_hash = src_ip[0] ^ src_ip[1] ^ dst_ip[0] ^ dst_ip[1];
+            ipv6_hash ^=
+                ((uint64_t)flow_basic.src_port << 48) | ((uint64_t)flow_basic.dst_port << 32) | flow_basic.l4_protocol;
+
+            flow_basic.hashval = (uint32_t)(ipv6_hash ^ (ipv6_hash >> 32)); // collapse to 32 bits
+            break;
+        }
+
+        default:
+            flow_basic.hashval = 0; // fallback in case of unknown L3
             break;
     }
-    flow_basic.hashval += flow_basic.l4_protocol + flow_basic.src_port + flow_basic.dst_port;
+
 
     hashed_index = flow_basic.hashval % workflow->max_active_flows;
     direction = FD_SRC2DST;
