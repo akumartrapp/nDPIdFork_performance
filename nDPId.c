@@ -1784,6 +1784,7 @@ static int setup_reader_threads(void)
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         reader_threads[i].workflow = init_workflow(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
+        ndpi_set_config(reader_threads[i].workflow, "enable-community-id", "false");
         if (reader_threads[i].workflow == NULL)
         {
             return 1;
