@@ -4404,8 +4404,11 @@ process_layer3_again:
     {
         case L3_IP:
             // Fast XOR-based hash for IPv4
-            flow_basic.hashval = flow_basic.src.v4.ip ^ flow_basic.dst.v4.ip ^ ((uint32_t)flow_basic.src_port << 16) |
-                                 (uint32_t)flow_basic.dst_port ^ flow_basic.l4_protocol;
+
+            flow_basic.hashval = flow_basic.src.v4.ip ^ flow_basic.dst.v4.ip ^
+                                 (((uint32_t)flow_basic.src_port << 16) | (uint32_t)flow_basic.dst_port) ^
+                                 flow_basic.l4_protocol;
+
             break;
 
         case L3_IP6:
