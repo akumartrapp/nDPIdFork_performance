@@ -1505,6 +1505,7 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
                 GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process));
     cfg_set_u64(workflow, "tls", "application_blocks_tracking", 1);
     cfg_set_u64(workflow, "tls", "certificate_expiration_threshold", 5);
+    cfg_set_u64(rworkflow, NULL, "enable-community-id", "false");
 
     workflow->total_skipped_flows = 0;
     workflow->total_active_flows = 0;
@@ -1784,7 +1785,7 @@ static int setup_reader_threads(void)
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         reader_threads[i].workflow = init_workflow(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
-        ndpi_set_config(reader_threads[i].workflow, "enable-community-id", "false");
+
         if (reader_threads[i].workflow == NULL)
         {
             return 1;
