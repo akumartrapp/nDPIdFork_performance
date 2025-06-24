@@ -1505,7 +1505,7 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
                 GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process));
     cfg_set_u64(workflow, "tls", "application_blocks_tracking", 1);
     cfg_set_u64(workflow, "tls", "certificate_expiration_threshold", 5);
-    cfg_set_u64(workflow, NULL, "enable-community-id", "false");
+    cfg_set_u64(workflow, NULL, "enable-community-id", 0);
 
     workflow->total_skipped_flows = 0;
     workflow->total_active_flows = 0;
