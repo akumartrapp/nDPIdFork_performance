@@ -3996,6 +3996,7 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
 {
     size_t s;
 
+    printf("add_new_flow\n");
     switch (state)
     {
         case FS_UNKNOWN:
@@ -4033,6 +4034,8 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
     HASH_FIND( hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), existing_flow);
     if (existing_flow)
     {
+        printf("add_new_flow-existing_flow\n");
+        switch (state)
         // Flow already exists, free newly allocated and return existing
         ndpi_free(flow_basic);
         return existing_flow;
@@ -4041,6 +4044,7 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
     // Add new flow to hash table
     HASH_ADD(hh, workflow->ndpi_flows_active_hash[hashed_index], key, sizeof(struct flow_key), flow_basic);
 
+     printf("add_new_flow-flow added\n");
     workflow->cur_active_flows++;
 
     return flow_basic;
