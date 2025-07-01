@@ -4507,7 +4507,7 @@ process_layer3_again:
 
     // Make sure flow_basic.key is set before searching
     printf("1\n");
-    nDPId_flow_basic_set;_key(&flow_basic);
+    nDPId_flow_basic_set_key(&flow_basic);
 
     printf("2\n");
     // Lookup
