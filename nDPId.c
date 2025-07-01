@@ -4923,7 +4923,9 @@ process_layer3_again:
         /* flow already exists in the tree */
 
         printf("else\n");
-        struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;
+        /*struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;*/
+        struct nDPId_flow_basic * const flow_basic_to_process = tree_result;
+        printf("AFER ASSIGNMENT\n");
         /* Update last seen timestamp for timeout handling. */
         last_pkt_time = flow_basic_to_process->last_pkt_time[direction];
         flow_basic_to_process->last_pkt_time[direction] = workflow->last_thread_time;
