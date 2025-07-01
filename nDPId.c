@@ -4572,6 +4572,8 @@ process_layer3_again:
         flow_basic.dst.v6.ip[1] = orig_dst_ip[1];
         flow_basic.src_port = orig_src_port;
         flow_basic.dst_port = orig_dst_port;
+
+        HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
     }
 
     if (tree_result == NULL)
