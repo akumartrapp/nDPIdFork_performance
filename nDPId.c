@@ -4698,7 +4698,7 @@ process_layer3_again:
 
     printf("2\n");
     // Lookup
-    HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic-.key, sizeof(struct flow_key), tree_result);
+    HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
 
     printf("3\n");
     if (tree_result)
