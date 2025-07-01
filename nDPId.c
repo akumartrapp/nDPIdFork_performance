@@ -4449,11 +4449,11 @@ process_layer3_again:
     {
         // Reuse cached result
         tree_result = last_tree_result;
-        printf("\t\t\t cached\n");
+        //printf("\t\t\t cached\n");
     }
     else
     {
-        printf("non cached\n");
+       // printf("non cached\n");
         // New search
         tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
 
