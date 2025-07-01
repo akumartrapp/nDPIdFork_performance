@@ -5648,40 +5648,66 @@ static int start_reader_threads(void)
     return 0;
 }
 
-static void ndpi_shutdown_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+//static void ndpi_shutdown_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+//{
+//    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
+//
+//    (void)depth;
+//
+//    if (workflow == NULL || flow_basic == NULL)
+//    {
+//        return;
+//    }
+//
+//    if (workflow->cur_idle_flows == GET_CMDARG_ULL(nDPId_options.max_idle_flows_per_thread))
+//    {
+//        return;
+//    }
+//
+//    if (which == ndpi_preorder || which == ndpi_leaf)
+//    {
+//        workflow->ndpi_flows_idle[workflow->cur_idle_flows++] = flow_basic;
+//        switch (flow_basic->state)
+//        {
+//            case FS_UNKNOWN:
+//            case FS_COUNT:
+//
+//            case FS_SKIPPED:
+//                break;
+//            case FS_INFO:
+//            case FS_FINISHED:
+//                workflow->total_idle_flows++;
+//                break;
+//        }
+//    }
+//}
+
+static void ndpi_shutdown_walker(struct nDPId_flow_basic * flow_basic, struct nDPId_workflow * workflow)
 {
-    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
-    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
-
-    (void)depth;
-
     if (workflow == NULL || flow_basic == NULL)
-    {
         return;
-    }
 
     if (workflow->cur_idle_flows == GET_CMDARG_ULL(nDPId_options.max_idle_flows_per_thread))
-    {
         return;
-    }
 
-    if (which == ndpi_preorder || which == ndpi_leaf)
+    workflow->ndpi_flows_idle[workflow->cur_idle_flows++] = flow_basic;
+
+    switch (flow_basic->state)
     {
-        workflow->ndpi_flows_idle[workflow->cur_idle_flows++] = flow_basic;
-        switch (flow_basic->state)
-        {
-            case FS_UNKNOWN:
-            case FS_COUNT:
+        case FS_UNKNOWN:
+        case FS_COUNT:
+        case FS_SKIPPED:
+            break;
 
-            case FS_SKIPPED:
-                break;
-            case FS_INFO:
-            case FS_FINISHED:
-                workflow->total_idle_flows++;
-                break;
-        }
+        case FS_INFO:
+        case FS_FINISHED:
+            workflow->total_idle_flows++;
+            break;
     }
 }
+
+
 //
 //static void process_remaining_flows(void)
 //{
