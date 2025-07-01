@@ -132,6 +132,32 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 #include <uthash.h>
 
+struct flow_key
+{
+    union nDPId_ip src;
+    union nDPId_ip dst;
+    uint8_t l4_protocol;
+    uint16_t vlan_id;
+    uint16_t src_port;
+    uint16_t dst_port;
+} __attribute__((packed));
+
+
+static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
+{
+    // copies relevant fields to key for hashing
+    memcpy(&flow->key.src, &flow->src, sizeof(union nDPId_ip));
+    memcpy(&flow->key.dst, &flow->dst, sizeof(union nDPId_ip));
+    flow->key.l4_protocol = flow->l4_protocol;
+    flow->key.vlan_id = flow->vlan_id;
+    flow->key.src_port = flow->src_port;
+    flow->key.dst_port = flow->dst_port;
+}
+
+
+struct nDPId_flow_basic * flows_hash = NULL; // Initialize to NULL before use
+
+
 //----------Ashwani added ends here---------------------
 enum nDPId_l3_type
 {
@@ -198,7 +224,10 @@ struct nDPId_flow_basic
     uint16_t src_port;
     uint16_t dst_port;
     uint64_t last_pkt_time[FD_COUNT];
+    struct flow_key key; // flow key for hashing
+    UT_hash_handle hh;
 };
+
 
 // Ashwani
 static __thread struct nDPId_flow_basic last_flow_key;
@@ -4036,7 +4065,7 @@ static void ndpi_process_packet(uint8_t * const args,
     enum nDPId_flow_direction direction;
 
     size_t hashed_index;
-    void * tree_result;
+   // void * tree_result;
     struct nDPId_flow * flow_to_process;
 
     uint8_t is_new_flow = 0;
@@ -4446,29 +4475,65 @@ process_layer3_again:
     direction = FD_SRC2DST;
     
     // Ashwani new start
-    if (last_flow_valid && last_flow_key.hashval == flow_basic.hashval && last_flow_key.l3_type == flow_basic.l3_type &&
-        last_flow_key.src_port == flow_basic.src_port && last_flow_key.dst_port == flow_basic.dst_port &&
-        last_flow_key.l4_protocol == flow_basic.l4_protocol &&
-        memcmp(&last_flow_key.src, &flow_basic.src, sizeof(flow_basic.src)) == 0 &&
-        memcmp(&last_flow_key.dst, &flow_basic.dst, sizeof(flow_basic.dst)) == 0)
+    //if (last_flow_valid && last_flow_key.hashval == flow_basic.hashval && last_flow_key.l3_type == flow_basic.l3_type &&
+    //    last_flow_key.src_port == flow_basic.src_port && last_flow_key.dst_port == flow_basic.dst_port &&
+    //    last_flow_key.l4_protocol == flow_basic.l4_protocol &&
+    //    memcmp(&last_flow_key.src, &flow_basic.src, sizeof(flow_basic.src)) == 0 &&
+    //    memcmp(&last_flow_key.dst, &flow_basic.dst, sizeof(flow_basic.dst)) == 0)
+    //{
+    //    // Reuse cached result
+    //    tree_result = last_tree_result;
+    //    //printf("\t\t\t cached\n");
+    //}
+    //else
+    //{
+    //   // printf("non cached\n");
+    //    // New search
+    //    tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+
+    //    // Cache this result
+    //    last_flow_key = flow_basic;
+    //    last_tree_result = tree_result;
+    //    last_flow_valid = 1;
+    //}
+
+    // Ashwani new end
+
+    // Ashwani 2 start
+
+
+
+    struct nDPId_flow_basic * tree_result = NULL;
+
+    // Make sure flow_basic.key is set before searching
+    nDPId_flow_basic_set_key(&flow_basic);
+
+    // Lookup
+    HASH_FIND(hh, flows_hash, &flow_basic.key, sizeof(struct flow_key), tree_result);
+
+    if (tree_result)
     {
-        // Reuse cached result
-        tree_result = last_tree_result;
-        //printf("\t\t\t cached\n");
+        printf("\t\t\t found\n");
     }
     else
     {
-       // printf("non cached\n");
-        // New search
-        tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+        printf("\t Missing\n");
+        // Not found, allocate new flow and add
+        tree_result = malloc(sizeof(struct nDPId_flow_basic));
+        if (!tree_result)
+        {
+            perror("malloc");
+            // handle error
+        }
+        memcpy(tree_result, &flow_basic, sizeof(struct nDPId_flow_basic));
+        nDPId_flow_basic_set_key(tree_result);
 
-        // Cache this result
-        last_flow_key = flow_basic;
-        last_tree_result = tree_result;
-        last_flow_valid = 1;
+        HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
     }
 
-    // Ashwani new end
+   
+
+    // Ashwani 2 end
 
     // Ashwani
     //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
