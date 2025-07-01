@@ -342,7 +342,7 @@ struct nDPId_workflow
     unsigned long long int total_events_serialized;
 
     ndpi_serializer ndpi_serializer;
-    struct nDPId_flow_basic * ndpi_flows_active_hash[MAX_HASHED_INDEX];
+    struct nDPId_flow_basic ** ndpi_flows_active_hash; // pointer to array of bucket heads
     struct ndpi_detection_module_struct * ndpi_struct;
 };
 
@@ -1404,10 +1404,14 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
-    for (int i = 0; i < MAX_HASHED_INDEX; i++)
+    // Allocate the hash table array for active flows
+    workflow->ndpi_flows_active_hash = (struct nDPId_flow_basic **)ndpi_calloc(MAX_HASHED_INDEX, sizeof(struct nDPId_flow_basic *));
+    if (workflow->ndpi_flows_active_hash == NULL)
     {
-        workflow->ndpi_flows_active_hash[i] = NULL;
+        free(workflow);
+        return NULL;
     }
+
 
     MT_INIT2(workflow->error_or_eof, 0);
 
