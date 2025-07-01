@@ -128,6 +128,11 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
+//----------Ashwani added starts here---------------------
+
+#include <uthash.h>
+
+//----------Ashwani added ends here---------------------
 enum nDPId_l3_type
 {
     L3_IP,
