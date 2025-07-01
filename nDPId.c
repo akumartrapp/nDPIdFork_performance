@@ -373,15 +373,7 @@ enum packet_event
 
 #include <uthash.h>
 
-struct flow_key
-{
-    union nDPId_ip src;
-    union nDPId_ip dst;
-    uint8_t l4_protocol;
-    uint16_t vlan_id;
-    uint16_t src_port;
-    uint16_t dst_port;
-} __attribute__((packed));
+
 
 static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
 {
