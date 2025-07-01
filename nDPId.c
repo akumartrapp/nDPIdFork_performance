@@ -4034,7 +4034,7 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
     HASH_FIND( hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), existing_flow);
     if (existing_flow)
     {
-        printf("add_new_flow-existing_flow\n");
+        //printf("add_new_flow-existing_flow\n");
         switch (state)
         // Flow already exists, free newly allocated and return existing
         ndpi_free(flow_basic);
@@ -4044,7 +4044,7 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
     // Add new flow to hash table
     HASH_ADD(hh, workflow->ndpi_flows_active_hash[hashed_index], key, sizeof(struct flow_key), flow_basic);
 
-     printf("add_new_flow-flow added\n");
+     //printf("add_new_flow-flow added\n");
     workflow->cur_active_flows++;
 
     return flow_basic;
@@ -4693,21 +4693,21 @@ process_layer3_again:
     struct nDPId_flow_basic * tree_result = NULL;
 
     // Make sure flow_basic.key is set before searching
-    printf("1\n");
+    //printf("1\n");
     nDPId_flow_basic_set_key(&flow_basic);
 
-    printf("2\n");
+    //printf("2\n");
     // Lookup
     HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
 
-    printf("3\n");
+   //printf("3\n");
     if (tree_result)
     {
-        printf("\t\t\t found\n");
+        //printf("\t\t\t found\n");
     }
     else
     {
-        printf("not found\n");
+        //printf("not found\n");
         // Not found, allocate new flow and add
         //tree_result = malloc(sizeof(struct nDPId_flow_basic));
         //if (!tree_result)
@@ -4735,7 +4735,7 @@ process_layer3_again:
     //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
     if (tree_result == NULL)
     {
-        printf("4\n");
+        //printf("4\n");
         direction = FD_DST2SRC;
 
         /* flow not found in btree: switch src <-> dst and try to find it again */
@@ -4751,11 +4751,11 @@ process_layer3_again:
         flow_basic.src_port = orig_dst_port;
         flow_basic.dst_port = orig_src_port;
 
-        printf("5\n");
+        //printf("5\n");
         HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
 
         //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
-        printf("6\n");
+        //printf("6\n");
 
         flow_basic.src.v6.ip[0] = orig_src_ip[0];
         flow_basic.src.v6.ip[1] = orig_src_ip[1];
@@ -4766,15 +4766,15 @@ process_layer3_again:
 
         if (tree_result)
         {
-            printf("7 tree_result found\n");
+            //printf("7 tree_result found\n");
             HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
         }
-        printf("8\n");
+        //printf("8\n");
     }
 
     if (tree_result == NULL)
     {
-        printf("9\n");
+        //printf("9\n");
         /* flow still not found, must be new or midstream */
         direction = FD_SRC2DST;
 
@@ -4916,16 +4916,16 @@ process_layer3_again:
 
         is_new_flow = 1;
 
-        printf("10\n");
+        //printf("10\n");
     }
     else
     {
         /* flow already exists in the tree */
 
-        printf("else\n");
+       // printf("else\n");
         /*struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;*/
         struct nDPId_flow_basic * const flow_basic_to_process = tree_result;
-        printf("AFER ASSIGNMENT\n");
+       // printf("AFER ASSIGNMENT\n");
         /* Update last seen timestamp for timeout handling. */
         last_pkt_time = flow_basic_to_process->last_pkt_time[direction];
         flow_basic_to_process->last_pkt_time[direction] = workflow->last_thread_time;
