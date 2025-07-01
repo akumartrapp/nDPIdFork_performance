@@ -4698,7 +4698,7 @@ process_layer3_again:
 
     printf("2\n");
     // Lookup
-    HASH_FIND(hh, flows_hash, &flow_basic.key, sizeof(struct flow_key), tree_result);
+    HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), tree_result);
 
     printf("3\n");
     if (tree_result)
@@ -4752,7 +4752,7 @@ process_layer3_again:
         flow_basic.dst_port = orig_src_port;
 
         printf("5\n");
-        HASH_FIND(hh, flows_hash, &flow_basic.key, sizeof(struct flow_key), tree_result);
+       HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), tree_result);
 
         //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
         printf("6\n");
