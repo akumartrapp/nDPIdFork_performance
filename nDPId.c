@@ -2236,46 +2236,79 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 }
 
 
+//
+//static void ndpi_flow_update_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+//{
+//    struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)user_data;
+//    struct nDPId_workflow * const workflow = reader_thread->workflow;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
+//
+//    (void)depth;
+//
+//    if (workflow == NULL || flow_basic == NULL)
+//    {
+//        return;
+//    }
+//
+//    if (which == ndpi_preorder || which == ndpi_leaf)
+//    {
+//        switch (flow_basic->state)
+//        {
+//            case FS_UNKNOWN:
+//            case FS_COUNT:
+//
+//            case FS_SKIPPED:
+//                break;
+//
+//            case FS_FINISHED:
+//            case FS_INFO:
+//            {
+//                struct nDPId_flow_extended * const flow_ext = (struct nDPId_flow_extended *)flow_basic;
+//
+//                if (is_flow_update_required(workflow, flow_ext) != 0)
+//                {
+//                    workflow->total_flow_updates++;
+//                    jsonize_flow_event(reader_thread, flow_ext, FLOW_EVENT_UPDATE);
+//                    flow_ext->last_flow_update = workflow->last_thread_time;
+//                }
+//                break;
+//            }
+//        }
+//    }
+//}
 
-static void ndpi_flow_update_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+static void ndpi_flow_update_scan_walker(struct nDPId_flow_basic * flow_basic,
+                                         struct nDPId_reader_thread * reader_thread)
 {
-    struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)user_data;
     struct nDPId_workflow * const workflow = reader_thread->workflow;
-    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
-
-    (void)depth;
 
     if (workflow == NULL || flow_basic == NULL)
-    {
         return;
-    }
 
-    if (which == ndpi_preorder || which == ndpi_leaf)
+    switch (flow_basic->state)
     {
-        switch (flow_basic->state)
+        case FS_UNKNOWN:
+        case FS_COUNT:
+        case FS_SKIPPED:
+            break;
+
+        case FS_FINISHED:
+        case FS_INFO:
         {
-            case FS_UNKNOWN:
-            case FS_COUNT:
+            struct nDPId_flow_extended * const flow_ext = (struct nDPId_flow_extended *)flow_basic;
 
-            case FS_SKIPPED:
-                break;
-
-            case FS_FINISHED:
-            case FS_INFO:
+            if (is_flow_update_required(workflow, flow_ext) != 0)
             {
-                struct nDPId_flow_extended * const flow_ext = (struct nDPId_flow_extended *)flow_basic;
-
-                if (is_flow_update_required(workflow, flow_ext) != 0)
-                {
-                    workflow->total_flow_updates++;
-                    jsonize_flow_event(reader_thread, flow_ext, FLOW_EVENT_UPDATE);
-                    flow_ext->last_flow_update = workflow->last_thread_time;
-                }
-                break;
+                workflow->total_flow_updates++;
+                jsonize_flow_event(reader_thread, flow_ext, FLOW_EVENT_UPDATE);
+                flow_ext->last_flow_update = workflow->last_thread_time;
             }
+            break;
         }
     }
 }
+
+
 
 //static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thread)
 //{
