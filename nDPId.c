@@ -176,6 +176,8 @@ struct nDPId_flow_analysis
     float * entropies;
 };
 
+struct flow_key;
+
 /*
  * Minimal per-flow information required for flow mgmt and timeout handling.
  */
