@@ -342,6 +342,7 @@ struct nDPId_workflow
     unsigned long long int total_events_serialized;
 
     ndpi_serializer ndpi_serializer;
+    struct nDPId_flow_basic * ndpi_flows_active_hash[MAX_HASHED_INDEX];
     struct ndpi_detection_module_struct * ndpi_struct;
 };
 
@@ -384,6 +385,7 @@ static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
     flow->key.dst_port = flow->dst_port;
 }
 
+#define MAX_HASHED_INDEX 1024 // or whatever your max is
 
 //----------Ashwani added ends here---------------------
 
@@ -1402,6 +1404,11 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
+    for (int i = 0; i < MAX_HASHED_INDEX; i++)
+    {
+        workflow->ndpi_flows_active_hash[i] = NULL;
+    }
+
     MT_INIT2(workflow->error_or_eof, 0);
 
 #ifdef ENABLE_PFRING
@@ -1544,15 +1551,27 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
     workflow->total_skipped_flows = 0;
     workflow->total_active_flows = 0;
     workflow->max_active_flows = GET_CMDARG_ULL(nDPId_options.max_flows_per_thread);
-    workflow->ndpi_flows_active = (void **)ndpi_calloc(workflow->max_active_flows, sizeof(void *));
-    if (workflow->ndpi_flows_active == NULL)
+    //workflow->ndpi_flows_active = (void **)ndpi_calloc(workflow->max_active_flows, sizeof(void *));
+    //if (workflow->ndpi_flows_active == NULL)
+    //{
+    //    logger_early(1,
+    //                 "Could not allocate %llu bytes for (active) flow tracking",
+    //                 workflow->max_active_flows * sizeof(void *));
+    //    free_workflow(&workflow);
+    //    return NULL;
+    //}
+
+    workflow->ndpi_flows_active_hash =
+        (struct nDPId_flow_basic **)ndpi_calloc(workflow->max_active_flows, sizeof(struct nDPId_flow_basic *));
+    if (workflow->ndpi_flows_active_hash == NULL)
     {
         logger_early(1,
                      "Could not allocate %llu bytes for (active) flow tracking",
-                     workflow->max_active_flows * sizeof(void *));
+                     workflow->max_active_flows * sizeof(struct nDPId_flow_basic *));
         free_workflow(&workflow);
         return NULL;
     }
+
 
     workflow->total_idle_flows = 0;
     workflow->max_idle_flows = GET_CMDARG_ULL(nDPId_options.max_idle_flows_per_thread);
@@ -2142,11 +2161,27 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
             }
         }
 
-        ndpi_tdelete(flow_basic, &workflow->ndpi_flows_active[idle_scan_index], ndpi_workflow_node_cmp);
+        // Ashwani
+        //ndpi_tdelete(flow_basic, &workflow->ndpi_flows_active[idle_scan_index], ndpi_workflow_node_cmp);
+        //ndpi_flow_info_free(flow_basic);
+
+        HASH_DEL(workflow->ndpi_flows_active_hash[idle_scan_index], flow_basic);
         ndpi_flow_info_free(flow_basic);
+
         workflow->cur_active_flows--;
     }
 }
+
+//static void check_for_idle_flows(struct nDPId_reader_thread * const reader_thread)
+//{
+//    struct nDPId_workflow * const workflow = reader_thread->workflow;
+//
+//    for (size_t idle_scan_index = 0; idle_scan_index < workflow->max_active_flows; ++idle_scan_index)
+//    {
+//        ndpi_twalk(workflow->ndpi_flows_active[idle_scan_index], ndpi_idle_scan_walker, workflow);
+//        process_idle_flow(reader_thread, idle_scan_index);
+//    }
+//}
 
 static void check_for_idle_flows(struct nDPId_reader_thread * const reader_thread)
 {
@@ -2154,10 +2189,17 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 
     for (size_t idle_scan_index = 0; idle_scan_index < workflow->max_active_flows; ++idle_scan_index)
     {
-        ndpi_twalk(workflow->ndpi_flows_active[idle_scan_index], ndpi_idle_scan_walker, workflow);
+        struct nDPId_flow_basic *flow, *tmp;
+
+        HASH_ITER(hh, workflow->ndpi_flows_active_hash[idle_scan_index], flow, tmp)
+        {
+            ndpi_idle_scan_walker(flow, workflow);
+        }
+
         process_idle_flow(reader_thread, idle_scan_index);
     }
 }
+
 
 static void ndpi_flow_update_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 {
@@ -2199,15 +2241,31 @@ static void ndpi_flow_update_scan_walker(void const * const A, ndpi_VISIT which,
     }
 }
 
+//static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thread)
+//{
+//    struct nDPId_workflow * const workflow = reader_thread->workflow;
+//
+//    for (size_t update_scan_index = 0; update_scan_index < workflow->max_active_flows; ++update_scan_index)
+//    {
+//        ndpi_twalk(workflow->ndpi_flows_active[update_scan_index], ndpi_flow_update_scan_walker, reader_thread);
+//    }
+//}
+
 static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thread)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
 
     for (size_t update_scan_index = 0; update_scan_index < workflow->max_active_flows; ++update_scan_index)
     {
-        ndpi_twalk(workflow->ndpi_flows_active[update_scan_index], ndpi_flow_update_scan_walker, reader_thread);
+        struct nDPId_flow_basic *flow, *tmp;
+
+        HASH_ITER(hh, workflow->ndpi_flows_active_hash[update_scan_index], flow, tmp)
+        {
+            ndpi_flow_update_scan_walker(flow, reader_thread);
+        }
     }
 }
+
 
 static void jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_flow_basic const * const flow_basic)
 {
@@ -5099,11 +5157,33 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
            (unsigned long long int)workflow->last_global_time,
            (unsigned long long int)workflow->last_thread_time,
            (unsigned long long int)workflow->last_scan_time);
+
     for (size_t scan_index = 0; scan_index < workflow->max_active_flows; ++scan_index)
     {
-        ndpi_twalk(workflow->ndpi_flows_active[scan_index], ndpi_log_flow_walker, (void *)reader_thread);
+        struct nDPId_flow_basic *flow, *tmp;
+        HASH_ITER(hh, workflow->ndpi_flows_active_hash[scan_index], flow, tmp)
+        {
+            ndpi_log_flow_walker(flow, (void *)reader_thread);
+        }
     }
 }
+
+
+//static void log_all_flows(struct nDPId_reader_thread const * const reader_thread)
+//{
+//    struct nDPId_workflow const * const workflow = reader_thread->workflow;
+//
+//    logger(0,
+//           "[%2zu][last-global-time: %13llu][last-thread-time: %13llu][last-scan-time: %13llu]",
+//           reader_thread->array_index,
+//           (unsigned long long int)workflow->last_global_time,
+//           (unsigned long long int)workflow->last_thread_time,
+//           (unsigned long long int)workflow->last_scan_time);
+//    for (size_t scan_index = 0; scan_index < workflow->max_active_flows; ++scan_index)
+//    {
+//        ndpi_twalk(workflow->ndpi_flows_active[scan_index], ndpi_log_flow_walker, (void *)reader_thread);
+//    }
+//}
 #endif
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
@@ -5493,6 +5573,25 @@ static void ndpi_shutdown_walker(void const * const A, ndpi_VISIT which, int dep
         }
     }
 }
+//
+//static void process_remaining_flows(void)
+//{
+//    for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
+//    {
+//        set_collector_block(&reader_threads[i]);
+//
+//        for (size_t idle_scan_index = 0; idle_scan_index < reader_threads[i].workflow->max_active_flows;
+//             ++idle_scan_index)
+//        {
+//            ndpi_twalk(reader_threads[i].workflow->ndpi_flows_active[idle_scan_index],
+//                       ndpi_shutdown_walker,
+//                       reader_threads[i].workflow);
+//            process_idle_flow(&reader_threads[i], idle_scan_index);
+//        }
+//
+//        jsonize_daemon(&reader_threads[i], DAEMON_EVENT_SHUTDOWN);
+//    }
+//}
 
 static void process_remaining_flows(void)
 {
@@ -5503,15 +5602,21 @@ static void process_remaining_flows(void)
         for (size_t idle_scan_index = 0; idle_scan_index < reader_threads[i].workflow->max_active_flows;
              ++idle_scan_index)
         {
-            ndpi_twalk(reader_threads[i].workflow->ndpi_flows_active[idle_scan_index],
-                       ndpi_shutdown_walker,
-                       reader_threads[i].workflow);
+            struct nDPId_flow_basic *flow, *tmp;
+
+            HASH_ITER(hh, reader_threads[i].workflow->ndpi_flows_active_hash[idle_scan_index], flow, tmp)
+            {
+                ndpi_shutdown_walker(flow, reader_threads[i].workflow);
+            }
+
             process_idle_flow(&reader_threads[i], idle_scan_index);
         }
 
         jsonize_daemon(&reader_threads[i], DAEMON_EVENT_SHUTDOWN);
     }
 }
+
+
 
 static int stop_reader_threads(void)
 {
