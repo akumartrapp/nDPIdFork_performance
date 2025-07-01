@@ -4020,13 +4020,6 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
-static inline int ndpi_flow_key_match(struct ndpi_flow_struct * cached, struct ndpi_flow_struct * current)
-{
-    return (cached->lower_ip.v4 == current->lower_ip.v4 && cached->upper_ip.v4 == current->upper_ip.v4 &&
-            cached->lower_port == current->lower_port && cached->upper_port == current->upper_port &&
-            cached->protocol == current->protocol);
-}
-
 
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
