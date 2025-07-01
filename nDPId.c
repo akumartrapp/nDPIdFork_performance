@@ -5148,74 +5148,114 @@ static void get_current_time(struct timeval * const tval)
 }
 
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
-static void ndpi_log_flow_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+//static void ndpi_log_flow_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+//{
+//    struct nDPId_reader_thread const * const reader_thread = (struct nDPId_reader_thread *)user_data;
+//    struct nDPId_flow_basic const * const flow_basic = *(struct nDPId_flow_basic **)A;
+//
+//    (void)depth;
+//    (void)user_data;
+//
+//    if (flow_basic == NULL)
+//    {
+//        return;
+//    }
+//
+//    if (which == ndpi_preorder || which == ndpi_leaf)
+//    {
+//        switch (flow_basic->state)
+//        {
+//            case FS_UNKNOWN:
+//                break;
+//
+//            case FS_COUNT:
+//                break;
+//
+//            case FS_SKIPPED:
+//                break;
+//
+//            case FS_FINISHED:
+//            {
+//                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
+//
+//                uint64_t last_seen = get_last_pkt_time(flow_basic);
+//                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
+//                logger(0,
+//                       "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: "
+//                       "%7llu]",
+//                       reader_thread->array_index,
+//                       flow->flow_extended.flow_id,
+//                       (unsigned long long int)last_seen,
+//                       (unsigned long long int)flow->flow_extended.last_flow_update,
+//                       (unsigned long long int)idle_time,
+//                       (unsigned long long int)(last_seen + idle_time >= reader_thread->workflow->last_thread_time
+//                                                    ? last_seen + idle_time - reader_thread->workflow->last_thread_time
+//                                                    : 0));
+//                break;
+//            }
+//
+//            case FS_INFO:
+//            {
+//                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
+//
+//                uint64_t last_seen = get_last_pkt_time(flow_basic);
+//                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
+//                logger(0,
+//                       "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: "
+//                       "%7llu]",
+//                       reader_thread->array_index,
+//                       flow->flow_extended.flow_id,
+//                       (unsigned long long int)last_seen,
+//                       (unsigned long long int)flow->flow_extended.last_flow_update,
+//                       (unsigned long long int)idle_time,
+//                       (unsigned long long int)(last_seen + idle_time >= reader_thread->workflow->last_thread_time
+//                                                    ? last_seen + idle_time - reader_thread->workflow->last_thread_time
+//                                                    : 0));
+//                break;
+//            }
+//        }
+//    }
+//}
+
+static void ndpi_log_flow_walker(struct nDPId_flow_basic const * flow_basic,
+                                 struct nDPId_reader_thread const * reader_thread)
 {
-    struct nDPId_reader_thread const * const reader_thread = (struct nDPId_reader_thread *)user_data;
-    struct nDPId_flow_basic const * const flow_basic = *(struct nDPId_flow_basic **)A;
-
-    (void)depth;
-    (void)user_data;
-
     if (flow_basic == NULL)
-    {
         return;
-    }
 
-    if (which == ndpi_preorder || which == ndpi_leaf)
+    switch (flow_basic->state)
     {
-        switch (flow_basic->state)
+        case FS_UNKNOWN:
+        case FS_COUNT:
+        case FS_SKIPPED:
+            break;
+
+        case FS_FINISHED:
+        case FS_INFO:
         {
-            case FS_UNKNOWN:
-                break;
+            struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
 
-            case FS_COUNT:
-                break;
+            uint64_t last_seen = get_last_pkt_time(flow_basic);
+            uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
+            uint64_t last_thread_time = reader_thread->workflow->last_thread_time;
+            uint64_t time_until_timeout = 0;
 
-            case FS_SKIPPED:
-                break;
+            if (last_seen + idle_time >= last_thread_time)
+                time_until_timeout = last_seen + idle_time - last_thread_time;
 
-            case FS_FINISHED:
-            {
-                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
-
-                uint64_t last_seen = get_last_pkt_time(flow_basic);
-                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
-                logger(0,
-                       "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: "
-                       "%7llu]",
-                       reader_thread->array_index,
-                       flow->flow_extended.flow_id,
-                       (unsigned long long int)last_seen,
-                       (unsigned long long int)flow->flow_extended.last_flow_update,
-                       (unsigned long long int)idle_time,
-                       (unsigned long long int)(last_seen + idle_time >= reader_thread->workflow->last_thread_time
-                                                    ? last_seen + idle_time - reader_thread->workflow->last_thread_time
-                                                    : 0));
-                break;
-            }
-
-            case FS_INFO:
-            {
-                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
-
-                uint64_t last_seen = get_last_pkt_time(flow_basic);
-                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
-                logger(0,
-                       "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: "
-                       "%7llu]",
-                       reader_thread->array_index,
-                       flow->flow_extended.flow_id,
-                       (unsigned long long int)last_seen,
-                       (unsigned long long int)flow->flow_extended.last_flow_update,
-                       (unsigned long long int)idle_time,
-                       (unsigned long long int)(last_seen + idle_time >= reader_thread->workflow->last_thread_time
-                                                    ? last_seen + idle_time - reader_thread->workflow->last_thread_time
-                                                    : 0));
-                break;
-            }
+            logger(0,
+                   "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: %7llu]",
+                   reader_thread->array_index,
+                   flow->flow_extended.flow_id,
+                   (unsigned long long int)last_seen,
+                   (unsigned long long int)flow->flow_extended.last_flow_update,
+                   (unsigned long long int)idle_time,
+                   (unsigned long long int)time_until_timeout);
+            break;
         }
     }
 }
+
 
 static void log_all_flows(struct nDPId_reader_thread const * const reader_thread)
 {
