@@ -128,37 +128,7 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
-//----------Ashwani added starts here---------------------
 
-#include <uthash.h>
-
-struct flow_key
-{
-    union nDPId_ip src;
-    union nDPId_ip dst;
-    uint8_t l4_protocol;
-    uint16_t vlan_id;
-    uint16_t src_port;
-    uint16_t dst_port;
-} __attribute__((packed));
-
-
-static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
-{
-    // copies relevant fields to key for hashing
-    memcpy(&flow->key.src, &flow->src, sizeof(union nDPId_ip));
-    memcpy(&flow->key.dst, &flow->dst, sizeof(union nDPId_ip));
-    flow->key.l4_protocol = flow->l4_protocol;
-    flow->key.vlan_id = flow->vlan_id;
-    flow->key.src_port = flow->src_port;
-    flow->key.dst_port = flow->dst_port;
-}
-
-
-struct nDPId_flow_basic * flows_hash = NULL; // Initialize to NULL before use
-
-
-//----------Ashwani added ends here---------------------
 enum nDPId_l3_type
 {
     L3_IP,
@@ -389,6 +359,35 @@ enum packet_event
 
     PACKET_EVENT_COUNT
 };
+
+//----------Ashwani added starts here---------------------
+
+#include <uthash.h>
+
+struct flow_key
+{
+    union nDPId_ip src;
+    union nDPId_ip dst;
+    uint8_t l4_protocol;
+    uint16_t vlan_id;
+    uint16_t src_port;
+    uint16_t dst_port;
+} __attribute__((packed));
+
+static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
+{
+    // copies relevant fields to key for hashing
+    memcpy(&flow->key.src, &flow->src, sizeof(union nDPId_ip));
+    memcpy(&flow->key.dst, &flow->dst, sizeof(union nDPId_ip));
+    flow->key.l4_protocol = flow->l4_protocol;
+    flow->key.vlan_id = flow->vlan_id;
+    flow->key.src_port = flow->src_port;
+    flow->key.dst_port = flow->dst_port;
+}
+
+struct nDPId_flow_basic * flows_hash = NULL; // Initialize to NULL before use
+
+//----------Ashwani added ends here---------------------
 
 enum flow_event
 {
