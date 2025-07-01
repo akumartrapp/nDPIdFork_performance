@@ -195,6 +195,10 @@ struct nDPId_flow_basic
     uint64_t last_pkt_time[FD_COUNT];
 };
 
+// Ashwani
+static __thread struct nDPId_flow_basic last_flow_key;
+static __thread void * last_tree_result = NULL;
+static __thread uint8_t last_flow_valid = 0;
 /*
  * Information required for a full detection cycle.
  */
@@ -4016,6 +4020,14 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
+static inline int ndpi_flow_key_match(struct ndpi_flow_struct * cached, struct ndpi_flow_struct * current)
+{
+    return (cached->lower_ip.v4 == current->lower_ip.v4 && cached->upper_ip.v4 == current->upper_ip.v4 &&
+            cached->lower_port == current->lower_port && cached->upper_port == current->upper_port &&
+            cached->protocol == current->protocol);
+}
+
+
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
@@ -4434,7 +4446,34 @@ process_layer3_again:
 
     hashed_index = flow_basic.hashval % workflow->max_active_flows;
     direction = FD_SRC2DST;
-    tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+    
+    // Ashwani new start
+    if (last_flow_valid && last_flow_key.hashval == flow_basic.hashval && last_flow_key.l3_type == flow_basic.l3_type &&
+        last_flow_key.src_port == flow_basic.src_port && last_flow_key.dst_port == flow_basic.dst_port &&
+        last_flow_key.l4_protocol == flow_basic.l4_protocol &&
+        memcmp(&last_flow_key.src, &flow_basic.src, sizeof(flow_basic.src)) == 0 &&
+        memcmp(&last_flow_key.dst, &flow_basic.dst, sizeof(flow_basic.dst)) == 0)
+    {
+        // Reuse cached result
+        tree_result = last_tree_result;
+        printf("\t\t\t cached\n");
+    }
+    else
+    {
+        printf("non cached\n");
+        // New search
+        tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+
+        // Cache this result
+        last_flow_key = flow_basic;
+        last_tree_result = tree_result;
+        last_flow_valid = 1;
+    }
+
+    // Ashwani new end
+
+    // Ashwani
+    //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
     if (tree_result == NULL)
     {
         direction = FD_DST2SRC;
