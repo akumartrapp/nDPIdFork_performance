@@ -209,9 +209,7 @@ struct nDPId_flow_basic
 
 
 // Ashwani
-static __thread struct nDPId_flow_basic last_flow_key;
-static __thread void * last_tree_result = NULL;
-static __thread uint8_t last_flow_valid = 0;
+
 /*
  * Information required for a full detection cycle.
  */
@@ -373,7 +371,7 @@ enum packet_event
 
 #include <uthash.h>
 
-
+struct nDPId_flow_basic * flows_hash = NULL;  
 
 static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
 {
@@ -386,7 +384,6 @@ static inline void nDPId_flow_basic_set_key(struct nDPId_flow_basic * flow)
     flow->key.dst_port = flow->dst_port;
 }
 
-struct nDPId_flow_basic * flows_hash = NULL; // Initialize to NULL before use
 
 //----------Ashwani added ends here---------------------
 
@@ -3875,8 +3872,7 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
     {
         case FS_UNKNOWN:
         case FS_COUNT:
-
-        case FS_FINISHED: // do not allocate something for FS_FINISHED as we are re-using memory allocated by FS_INFO
+        case FS_FINISHED:
             return NULL;
 
         case FS_SKIPPED:
@@ -3887,25 +3883,84 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
         case FS_INFO:
             s = sizeof(struct nDPId_flow);
             break;
+
+        default:
+            // Handle unexpected state if necessary
+            return NULL;
     }
 
     struct nDPId_flow_basic * flow_basic = (struct nDPId_flow_basic *)ndpi_malloc(s);
-    if (flow_basic == NULL)
-    {
+    if (!flow_basic)
         return NULL;
-    }
+
     memset(flow_basic, 0, s);
     *flow_basic = *orig_flow_basic;
     flow_basic->state = state;
-    if (ndpi_tsearch(flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp) == NULL)
+
+    // Set flow key before inserting into hash
+    nDPId_flow_basic_set_key(flow_basic);
+
+    // Check if flow already exists to avoid duplicates (optional)
+    struct nDPId_flow_basic * existing_flow = NULL;
+    HASH_FIND( hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), existing_flow);
+    if (existing_flow)
     {
+        // Flow already exists, free newly allocated and return existing
         ndpi_free(flow_basic);
-        return NULL;
+        return existing_flow;
     }
 
+    // Add new flow to hash table
+    HASH_ADD(hh, workflow->ndpi_flows_active_hash[hashed_index], key, sizeof(struct flow_key), flow_basic);
+
     workflow->cur_active_flows++;
+
     return flow_basic;
 }
+
+
+//static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const workflow,
+//                                              struct nDPId_flow_basic * orig_flow_basic,
+//                                              enum nDPId_flow_state state,
+//                                              size_t hashed_index)
+//{
+//    size_t s;
+//
+//    switch (state)
+//    {
+//        case FS_UNKNOWN:
+//        case FS_COUNT:
+//
+//        case FS_FINISHED: // do not allocate something for FS_FINISHED as we are re-using memory allocated by FS_INFO
+//            return NULL;
+//
+//        case FS_SKIPPED:
+//            workflow->total_skipped_flows++;
+//            s = sizeof(struct nDPId_flow_skipped);
+//            break;
+//
+//        case FS_INFO:
+//            s = sizeof(struct nDPId_flow);
+//            break;
+//    }
+//
+//    struct nDPId_flow_basic * flow_basic = (struct nDPId_flow_basic *)ndpi_malloc(s);
+//    if (flow_basic == NULL)
+//    {
+//        return NULL;
+//    }
+//    memset(flow_basic, 0, s);
+//    *flow_basic = *orig_flow_basic;
+//    flow_basic->state = state;
+//    if (ndpi_tsearch(flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp) == NULL)
+//    {
+//        ndpi_free(flow_basic);
+//        return NULL;
+//    }
+//
+//    workflow->cur_active_flows++;
+//    return flow_basic;
+//}
 
 static void do_periodically_work(struct nDPId_reader_thread * const reader_thread)
 {
@@ -4565,7 +4620,9 @@ process_layer3_again:
         flow_basic.dst_port = orig_src_port;
 
         printf("5\n");
-        tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+        HASH_FIND(hh, flows_hash, &flow_basic.key, sizeof(struct flow_key), tree_result);
+
+        //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
         printf("6\n");
 
         flow_basic.src.v6.ip[0] = orig_src_ip[0];
@@ -4577,7 +4634,7 @@ process_layer3_again:
 
         if (tree_result)
         {
-            printf("7\n");
+            printf("7 tree_result found\n");
             HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
         }
         printf("8\n");
@@ -4727,7 +4784,7 @@ process_layer3_again:
 
         is_new_flow = 1;
 
-         printf("10\n");
+        printf("10\n");
     }
     else
     {
