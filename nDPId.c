@@ -1996,48 +1996,79 @@ static int is_error_event_threshold(struct nDPId_workflow * const workflow)
     workflow->error_count++;
     return 0;
 }
+//
+//static void ndpi_idle_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+//{
+//    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
+//
+//    (void)depth;
+//
+//    if (workflow == NULL || flow_basic == NULL)
+//    {
+//        return;
+//    }
+//
+//    if (workflow->cur_idle_flows == GET_CMDARG_ULL(nDPId_options.max_idle_flows_per_thread))
+//    {
+//        return;
+//    }
+//
+//    if (which == ndpi_preorder || which == ndpi_leaf)
+//    {
+//        if (is_l4_protocol_timed_out(workflow, flow_basic) != 0)
+//        {
+//            if (is_tcp_post_end(workflow, flow_basic) != 0)
+//            {
+//                workflow->ndpi_flows_idle[workflow->cur_idle_flows++] = flow_basic;
+//                switch (flow_basic->state)
+//                {
+//                    case FS_UNKNOWN:
+//                    case FS_COUNT:
+//
+//                    case FS_SKIPPED:
+//                        break;
+//
+//                    case FS_FINISHED:
+//                    case FS_INFO:
+//                        workflow->total_idle_flows++;
+//                        break;
+//                }
+//            }
+//        }
+//    }
+//}
 
-static void ndpi_idle_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
+static void ndpi_idle_scan_walker(struct nDPId_flow_basic * flow_basic, struct nDPId_workflow * workflow)
 {
-    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
-    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
-
-    (void)depth;
-
     if (workflow == NULL || flow_basic == NULL)
-    {
         return;
-    }
 
     if (workflow->cur_idle_flows == GET_CMDARG_ULL(nDPId_options.max_idle_flows_per_thread))
-    {
         return;
-    }
 
-    if (which == ndpi_preorder || which == ndpi_leaf)
+    if (is_l4_protocol_timed_out(workflow, flow_basic))
     {
-        if (is_l4_protocol_timed_out(workflow, flow_basic) != 0)
+        if (is_tcp_post_end(workflow, flow_basic))
         {
-            if (is_tcp_post_end(workflow, flow_basic) != 0)
+            workflow->ndpi_flows_idle[workflow->cur_idle_flows++] = flow_basic;
+
+            switch (flow_basic->state)
             {
-                workflow->ndpi_flows_idle[workflow->cur_idle_flows++] = flow_basic;
-                switch (flow_basic->state)
-                {
-                    case FS_UNKNOWN:
-                    case FS_COUNT:
+                case FS_UNKNOWN:
+                case FS_COUNT:
+                case FS_SKIPPED:
+                    break;
 
-                    case FS_SKIPPED:
-                        break;
-
-                    case FS_FINISHED:
-                    case FS_INFO:
-                        workflow->total_idle_flows++;
-                        break;
-                }
+                case FS_FINISHED:
+                case FS_INFO:
+                    workflow->total_idle_flows++;
+                    break;
             }
         }
     }
 }
+
 
 static int ndpi_workflow_node_cmp(void const * const A, void const * const B)
 {
