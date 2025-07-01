@@ -3996,7 +3996,7 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
 {
     size_t s;
 
-    printf("add_new_flow\n");
+    //printf("add_new_flow\n");
     switch (state)
     {
         case FS_UNKNOWN:
