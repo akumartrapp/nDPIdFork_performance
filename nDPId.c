@@ -4506,11 +4506,14 @@ process_layer3_again:
     struct nDPId_flow_basic * tree_result = NULL;
 
     // Make sure flow_basic.key is set before searching
-    nDPId_flow_basic_set_key(&flow_basic);
+    printf("1\n");
+    nDPId_flow_basic_set;_key(&flow_basic);
 
+    printf("2\n");
     // Lookup
     HASH_FIND(hh, flows_hash, &flow_basic.key, sizeof(struct flow_key), tree_result);
 
+    printf("3\n");
     if (tree_result)
     {
         printf("\t\t\t found\n");
@@ -4531,6 +4534,8 @@ process_layer3_again:
         HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
     }
 
+    printf("end\n");
+   
    
 
     // Ashwani 2 end
