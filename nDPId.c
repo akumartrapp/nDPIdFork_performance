@@ -2205,6 +2205,7 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 }
 
 
+
 static void ndpi_flow_update_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 {
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)user_data;
@@ -2259,16 +2260,17 @@ static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thr
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
 
-    for (size_t update_scan_index = 0; update_scan_index < workflow->max_active_flows; ++update_scan_index)
+    for (size_t bucket_index = 0; bucket_index < MAX_HASHED_INDEX; ++bucket_index)
     {
         struct nDPId_flow_basic *flow, *tmp;
 
-        HASH_ITER(hh, workflow->ndpi_flows_active_hash[update_scan_index], flow, tmp)
+        HASH_ITER(hh, workflow->ndpi_flows_active_hash[bucket_index], flow, tmp)
         {
             ndpi_flow_update_scan_walker(flow, reader_thread);
         }
     }
 }
+
 
 
 static void jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_flow_basic const * const flow_basic)
@@ -5162,16 +5164,15 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
            (unsigned long long int)workflow->last_thread_time,
            (unsigned long long int)workflow->last_scan_time);
 
-    for (size_t scan_index = 0; scan_index < workflow->max_active_flows; ++scan_index)
+    for (size_t bucket_index = 0; bucket_index < MAX_HASHED_INDEX; ++bucket_index)
     {
         struct nDPId_flow_basic *flow, *tmp;
-        HASH_ITER(hh, workflow->ndpi_flows_active_hash[scan_index], flow, tmp)
+        HASH_ITER(hh, workflow->ndpi_flows_active_hash[bucket_index], flow, tmp)
         {
             ndpi_log_flow_walker(flow, (void *)reader_thread);
         }
     }
 }
-
 
 //static void log_all_flows(struct nDPId_reader_thread const * const reader_thread)
 //{
@@ -5603,17 +5604,16 @@ static void process_remaining_flows(void)
     {
         set_collector_block(&reader_threads[i]);
 
-        for (size_t idle_scan_index = 0; idle_scan_index < reader_threads[i].workflow->max_active_flows;
-             ++idle_scan_index)
+        for (size_t bucket_index = 0; bucket_index < MAX_HASHED_INDEX; ++bucket_index)
         {
             struct nDPId_flow_basic *flow, *tmp;
 
-            HASH_ITER(hh, reader_threads[i].workflow->ndpi_flows_active_hash[idle_scan_index], flow, tmp)
+            HASH_ITER(hh, reader_threads[i].workflow->ndpi_flows_active_hash[bucket_index], flow, tmp)
             {
                 ndpi_shutdown_walker(flow, reader_threads[i].workflow);
             }
 
-            process_idle_flow(&reader_threads[i], idle_scan_index);
+            process_idle_flow(&reader_threads[i], bucket_index);
         }
 
         jsonize_daemon(&reader_threads[i], DAEMON_EVENT_SHUTDOWN);
