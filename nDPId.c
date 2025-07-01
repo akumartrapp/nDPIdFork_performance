@@ -4577,13 +4577,15 @@ process_layer3_again:
 
         if (tree_result)
         {
+            printf("7\n");
             HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
         }
-        printf("7\n");
+        printf("8\n");
     }
 
     if (tree_result == NULL)
     {
+        printf("9\n");
         /* flow still not found, must be new or midstream */
         direction = FD_SRC2DST;
 
@@ -4724,6 +4726,8 @@ process_layer3_again:
         }
 
         is_new_flow = 1;
+
+         printf("10\n");
     }
     else
     {
