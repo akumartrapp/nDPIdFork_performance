@@ -4520,18 +4520,23 @@ process_layer3_again:
     }
     else
     {
-        printf("\t Missing\n");
+        printf("4\n");
         // Not found, allocate new flow and add
         tree_result = malloc(sizeof(struct nDPId_flow_basic));
         if (!tree_result)
         {
+            printf("\t malloc\n");
             perror("malloc");
             // handle error
         }
+        printf("5\n");
         memcpy(tree_result, &flow_basic, sizeof(struct nDPId_flow_basic));
+        printf("6\n");
         nDPId_flow_basic_set_key(tree_result);
+        printf("7\n");
 
         HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
+        printf("8\n");
     }
 
     printf("end\n");
