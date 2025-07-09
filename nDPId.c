@@ -235,7 +235,7 @@ void create_events_and_alerts_folders()
         printf("mkdir(events_full_path, 0777) FAILED");
         if (errno != EEXIST)
         {
-            printf(Error creating folder 'Events': %s\n", strerror(errno));
+            printf("Error creating folder 'Events': %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
