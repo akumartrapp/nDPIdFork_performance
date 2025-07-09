@@ -99,11 +99,17 @@ if(BUILD_EXAMPLES)
 option(ENABLE_DBUS "Build DBus notification example." OFF)
 option(ENABLE_CURL "Build influxdb data write example." OFF)
 endif()
+
+# Ashwani: Turned ENABLE_PFRING and BUILD_NDPI ON from default value of OFF
+#
 option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" ON)
 option(BUILD_NDPI "Clone and build nDPI from github." ON)
+
+# Ashwani: Printing these two options value
+#
 message(STATUS "BUILD_NDPI = ${BUILD_NDPI}")
 message(STATUS "ENABLE_PFRING = ${ENABLE_PFRING}")
- message(STATUS "Ashwani 1")
+
 if(ENABLE_PFRING)
     option(PFRING_LINK_STATIC "Link against a static version of pfring." ON)
     set(PFRING_KERNEL_INC "" CACHE STRING "Path to PFRING kernel module include directory.")
@@ -116,9 +122,15 @@ if(ENABLE_PFRING)
         message(FATAL_ERROR "Expected to find <linux/pf_ring.h> below ${PFRING_KERNEL_INC}, but none found.")
     endif()
 
+    # Ashwani: Commenting out next two lines.
+    # 
     # set(PFRING_INSTALLDIR "/opt/PF_RING/usr" CACHE STRING "")
     # set(PFRING_INC "${PFRING_INSTALLDIR}/include")
 
+    # Ashwani: Setting PF_RING paths to local respositories.
+    # 
+    message(STATUS "Ashwani: PFRING_INSTALLDIR path is set to /home/anssetup/repositories/PF_RING_Fork/userland")
+    message(STATUS "Ashwani: PFRING lib folder path is set to /home/anssetup/repositories/PF_RING_Fork/userland/lib")
     set(PFRING_INSTALLDIR "/home/anssetup/repositories/PF_RING_Fork/userland" CACHE STRING "")
     set(PFRING_INC "${PFRING_INSTALLDIR}/lib")
 
@@ -163,6 +175,12 @@ if(ENABLE_PFRING)
         endif()
     endif()
 
+    # Ashwani: Next 3 lines are commented out
+    #if(NOT EXISTS "${PFRING_INSTALLDIR}/include/pfring.h")
+    #    message(FATAL_ERROR "Expected to find <include/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
+    #endif()
+
+    # Ashwani: Change the path to where it exists in local repository.
     if(NOT EXISTS "${PFRING_INSTALLDIR}/lib/pfring.h")
         message(FATAL_ERROR "Expected to find <lib/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
     endif()
@@ -174,14 +192,11 @@ else()
 endif()
 
 
-message(STATUS "Ashwani 2")
 if(BUILD_NDPI)
-    message(STATUS "Ashwani 3")
     option(BUILD_NDPI_FORCE_GIT_UPDATE "Forcefully instruments nDPI build script to update the git submodule." OFF)
     unset(NDPI_NO_PKGCONFIG CACHE)
     unset(STATIC_LIBNDPI_INSTALLDIR CACHE)
 else()
-    message(STATUS "Ashwani 4")
     option(NDPI_NO_PKGCONFIG "Do not use pkgconfig to search for libnDPI." OFF)
     if(NDPI_NO_PKGCONFIG)
         set(STATIC_LIBNDPI_INSTALLDIR "/opt/libnDPI/usr" CACHE STRING "Path to a installation directory of libnDPI e.g. /opt/libnDPI/usr")
@@ -193,14 +208,11 @@ else()
     endif()
 endif()
 
-message(STATUS "Ashwani 5")
 if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI OR NDPI_NO_PKGCONFIG)
-    message(STATUS "Ashwani 6")
     option(NDPI_WITH_GCRYPT "Link static libndpi library against libgcrypt." OFF)
     option(NDPI_WITH_PCRE "Link static libndpi library against libpcre." OFF)
     option(NDPI_WITH_MAXMINDDB "Link static libndpi library against libmaxminddb." OFF)
 else()
-    message(STATUS "Ashwani 7")
     unset(NDPI_WITH_GCRYPT CACHE)
     unset(NDPI_WITH_PCRE CACHE)
     unset(NDPI_WITH_MAXMINDDB CACHE)
@@ -213,7 +225,6 @@ add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c)
 add_executable(nDPIsrvd nDPIsrvd.c nio.c utils.c)
 add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS})
 
-message(STATUS "Ashwani 8")
 add_custom_target(umask_check)
 add_custom_command(
     TARGET umask_check
@@ -222,7 +233,6 @@ add_custom_command(
 )
 add_dependencies(nDPId umask_check)
 
-message(STATUS "Ashwani 9")
 add_custom_target(dist)
 add_custom_command(
     TARGET dist
@@ -230,7 +240,6 @@ add_custom_command(
     COMMAND "${CMAKE_SOURCE_DIR}/scripts/make-dist.sh"
 )
 
-message(STATUS "Ashwani 10")
 add_custom_target(daemon)
 add_custom_command(
     TARGET daemon
@@ -239,7 +248,6 @@ add_custom_command(
 )
 add_dependencies(daemon nDPId nDPIsrvd)
 
-message(STATUS "Ashwani 11")
 if(CMAKE_CROSSCOMPILING)
     set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
     set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -247,9 +255,7 @@ if(CMAKE_CROSSCOMPILING)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 endif()
 
-message(STATUS "Ashwani 12")
 if(BUILD_NDPI)
-    message(STATUS "Ashwani 13")
     enable_testing()
     add_test(NAME run_tests
              COMMAND "${CMAKE_SOURCE_DIR}/test/run_tests.sh"
@@ -261,7 +267,6 @@ if(BUILD_NDPI)
     endif()
 endif()
 
- message(STATUS "Ashwani 14")
 if(ENABLE_COVERAGE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
@@ -327,7 +332,6 @@ if(BUILD_NDPI)
     endif()
 endif()
 
-message(STATUS "Ashwani 15")
 execute_process(
     COMMAND git describe --tags
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -342,7 +346,6 @@ if(GIT_VERSION STREQUAL "" OR NOT IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
 endif()
 set(PKG_VERSION "${CPACK_PACKAGE_VERSION}")
 
-message(STATUS "Ashwani 16")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(NDPID_DEFS -DJSMN_STATIC=1 -DJSMN_STRICT=1 -DJSMN_PARENT_LINKS=1)
 set(NDPID_DEPS_INC "${CMAKE_SOURCE_DIR}"
@@ -363,7 +366,6 @@ else()
     set(NDPID_TEST_MPROF_DEFS "-DENABLE_MEMORY_PROFILING=1")
 endif()
 
-message(STATUS "Ashwani 17")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -fno-omit-frame-pointer -fno-inline")
 endif()
@@ -372,7 +374,6 @@ if(ENABLE_SANITIZER AND ENABLE_SANITIZER_THREAD)
     message(FATAL_ERROR "ENABLE_SANITIZER and ENABLE_SANITIZER_THREAD can not be used together!")
 endif()
 
-message(STATUS "Ashwani 18")
 if(BUILD_NDPI)
     include(ExternalProject)
     ExternalProject_Add(
@@ -408,7 +409,6 @@ if(BUILD_NDPI)
     add_dependencies(nDPId-test libnDPI)
 endif()
 
-message(STATUS "Ashwani 19")
 if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI OR NDPI_NO_PKGCONFIG)
     if(NDPI_WITH_GCRYPT)
         find_package(GCRYPT "1.4.2" REQUIRED)
@@ -423,9 +423,7 @@ if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI OR NDPI_NO_PKGCONFIG)
     endif()
 endif()
 
-message(STATUS "Ashwani 20")
 if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI)
-    message(STATUS "Ashwani 21")
     add_definitions("-DLIBNDPI_STATIC=1")
     set(STATIC_LIBNDPI_INC "${STATIC_LIBNDPI_INSTALLDIR}/include/ndpi")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -452,25 +450,15 @@ if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI)
     unset(DEFAULT_NDPI_INCLUDE CACHE)
     unset(pkgcfg_lib_NDPI_ndpi CACHE)
 else()
-    message(STATUS "Ashwani 30")
     if(NOT NDPI_NO_PKGCONFIG)
-        message(STATUS "Ashwani 31")
         pkg_check_modules(NDPI REQUIRED libndpi>=4.13.0)
-        message(STATUS "Ashwani 32")
         if(NOT pkgcfg_lib_NDPI_ndpi)
-            message(STATUS "Ashwani 33")
             find_package(NDPI "4.13.0" REQUIRED)
-            message(STATUS "Ashwani 34")
         endif()
-        message(STATUS "Ashwani 35")
         unset(STATIC_LIBNDPI_INC CACHE)
         unset(STATIC_LIBNDPI_LIB CACHE)
-        message(STATUS "Ashwani 36")
     endif()
-    # commented by Ashwani
     set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
-    #set(DEFAULT_NDPI_INCLUDE "/usr/include")
-    # include_directories("/home/anssetup/repositories/nDPIFork/src/include")
 endif()
 
 
@@ -483,7 +471,6 @@ if(NOT pkgcfg_lib_PCAP_pcap)
     find_package(PCAP "1.9.0" REQUIRED)
 endif()
 
-message(STATUS "Ashwani 22")
 target_compile_options(nDPId PRIVATE "-pthread")
 target_compile_definitions(nDPId PRIVATE -D_GNU_SOURCE=1 -DPKG_VERSION=\"${PKG_VERSION}\" -DGIT_VERSION=\"${GIT_VERSION}\" ${NDPID_DEFS} ${EPOLL_DEFS} ${ZLIB_DEFS} ${PFRING_DEFS})
 target_include_directories(nDPId PRIVATE "${STATIC_LIBNDPI_INC}" "${DEFAULT_NDPI_INCLUDE}" ${NDPID_DEPS_INC} ${PFRING_KERNEL_INC} ${PFRING_INC})
