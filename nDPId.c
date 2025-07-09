@@ -128,7 +128,20 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
+// -----------------------------Ashwani added code Starts here--------------------------------------------------------------------
+#include <uthash.h>
 
+struct flow_key
+{
+    union nDPId_ip src;
+    union nDPId_ip dst;
+    uint8_t l4_protocol;
+    uint16_t vlan_id;
+    uint16_t src_port;
+    uint16_t dst_port;
+} __attribute__((packed));
+
+// -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
 enum nDPId_l3_type
 {
     L3_IP,
@@ -176,15 +189,7 @@ struct nDPId_flow_analysis
     float * entropies;
 };
 
-struct flow_key
-{
-    union nDPId_ip src;
-    union nDPId_ip dst;
-    uint8_t l4_protocol;
-    uint16_t vlan_id;
-    uint16_t src_port;
-    uint16_t dst_port;
-} __attribute__((packed));
+
 /*
  * Minimal per-flow information required for flow mgmt and timeout handling.
  */
@@ -203,12 +208,10 @@ struct nDPId_flow_basic
     uint16_t src_port;
     uint16_t dst_port;
     uint64_t last_pkt_time[FD_COUNT];
-    struct flow_key key; // flow key for hashing
-    UT_hash_handle hh;
+    struct flow_key key; // Ashwani: flow key for hashing
+    UT_hash_handle hh;   // Ashwani: handle
 };
 
-
-// Ashwani
 
 /*
  * Information required for a full detection cycle.
@@ -368,9 +371,7 @@ enum packet_event
     PACKET_EVENT_COUNT
 };
 
-//----------Ashwani added starts here---------------------
-
-#include <uthash.h>
+//----------Ashwani added code starts here---------------------
 
 struct nDPId_flow_basic * flows_hash = NULL;  
 
@@ -1404,7 +1405,8 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
-    // Allocate the hash table array for active flows
+    // 
+    // Ashwani: Allocate the hash table array for active flows
     workflow->ndpi_flows_active_hash = (struct nDPId_flow_basic **)ndpi_calloc(MAX_HASHED_INDEX, sizeof(struct nDPId_flow_basic *));
     if (workflow->ndpi_flows_active_hash == NULL)
     {
@@ -1555,6 +1557,8 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
     workflow->total_skipped_flows = 0;
     workflow->total_active_flows = 0;
     workflow->max_active_flows = GET_CMDARG_ULL(nDPId_options.max_flows_per_thread);
+
+    // Ashwani: Commented out following lines
     //workflow->ndpi_flows_active = (void **)ndpi_calloc(workflow->max_active_flows, sizeof(void *));
     //if (workflow->ndpi_flows_active == NULL)
     //{
@@ -1996,6 +2000,8 @@ static int is_error_event_threshold(struct nDPId_workflow * const workflow)
     workflow->error_count++;
     return 0;
 }
+
+// Ashwani: Following method is commented out. New implementation is below.
 //
 //static void ndpi_idle_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
@@ -2042,10 +2048,14 @@ static int is_error_event_threshold(struct nDPId_workflow * const workflow)
 static void ndpi_idle_scan_walker(struct nDPId_flow_basic * flow_basic, struct nDPId_workflow * workflow)
 {
     if (workflow == NULL || flow_basic == NULL)
+    {
         return;
+    }
 
     if (workflow->cur_idle_flows == GET_CMDARG_ULL(nDPId_options.max_idle_flows_per_thread))
+    {
         return;
+    }
 
     if (is_l4_protocol_timed_out(workflow, flow_basic))
     {
@@ -2196,10 +2206,11 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
             }
         }
 
-        // Ashwani
+        // Ashwani: commented out following code
         //ndpi_tdelete(flow_basic, &workflow->ndpi_flows_active[idle_scan_index], ndpi_workflow_node_cmp);
         //ndpi_flow_info_free(flow_basic);
 
+        // Ashwani: Added following line 
         HASH_DEL(workflow->ndpi_flows_active_hash[idle_scan_index], flow_basic);
         ndpi_flow_info_free(flow_basic);
 
@@ -2207,6 +2218,8 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
     }
 }
 
+// Ashwani: commented out following routine and added new 
+// 
 //static void check_for_idle_flows(struct nDPId_reader_thread * const reader_thread)
 //{
 //    struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -2218,6 +2231,8 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
 //    }
 //}
 
+// Ashwani: New Replacement Routine
+//
 static void check_for_idle_flows(struct nDPId_reader_thread * const reader_thread)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -2236,6 +2251,7 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 }
 
 
+// Ashwani: commented out following routine and added new
 //
 //static void ndpi_flow_update_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
@@ -2277,6 +2293,8 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 //    }
 //}
 
+// Ashwani: New Replacement Routine
+//
 static void ndpi_flow_update_scan_walker(struct nDPId_flow_basic * flow_basic,
                                          struct nDPId_reader_thread * reader_thread)
 {
@@ -2309,7 +2327,8 @@ static void ndpi_flow_update_scan_walker(struct nDPId_flow_basic * flow_basic,
 }
 
 
-
+// Ashwani: commented out following routine and added new
+//
 //static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thread)
 //{
 //    struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -2320,6 +2339,8 @@ static void ndpi_flow_update_scan_walker(struct nDPId_flow_basic * flow_basic,
 //    }
 //}
 
+// Ashwani: New Replacement Routine
+//
 static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thread)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -2334,7 +2355,6 @@ static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thr
         }
     }
 }
-
 
 
 static void jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_flow_basic const * const flow_basic)
@@ -2741,6 +2761,10 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         return;
     }
 
+    // Ashwani 
+    // We are not using socket so no need to connect just return from here.
+    return;
+
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
@@ -2844,7 +2868,9 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread)
     uint32_t json_msg_len;
 
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
-   // printf("%s\n", json_msg);
+
+    // Ashwani: This prints json output to console log.
+    // printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
@@ -3989,6 +4015,8 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
     return 0;
 }
 
+// Ashwani: New Implementation.
+// Existing is commented out
 static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const workflow,
                                               struct nDPId_flow_basic * orig_flow_basic,
                                               enum nDPId_flow_state state,
@@ -3996,7 +4024,6 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
 {
     size_t s;
 
-    //printf("add_new_flow\n");
     switch (state)
     {
         case FS_UNKNOWN:
@@ -4020,37 +4047,39 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
 
     struct nDPId_flow_basic * flow_basic = (struct nDPId_flow_basic *)ndpi_malloc(s);
     if (!flow_basic)
+    {
         return NULL;
+    }
 
     memset(flow_basic, 0, s);
     *flow_basic = *orig_flow_basic;
     flow_basic->state = state;
 
-    // Set flow key before inserting into hash
+    // Ashwani: Set flow key before inserting into hash
     nDPId_flow_basic_set_key(flow_basic);
 
-    // Check if flow already exists to avoid duplicates (optional)
+    // Ashwani: Check if flow already exists to avoid duplicates (optional)
     struct nDPId_flow_basic * existing_flow = NULL;
     HASH_FIND( hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), existing_flow);
     if (existing_flow)
     {
-        //printf("add_new_flow-existing_flow\n");
         switch (state)
-        // Flow already exists, free newly allocated and return existing
+
+        // Ashwani: Flow already exists, free newly allocated and return existing
         ndpi_free(flow_basic);
         return existing_flow;
     }
 
-    // Add new flow to hash table
+    // Ashwani: Add new flow to hash table
     HASH_ADD(hh, workflow->ndpi_flows_active_hash[hashed_index], key, sizeof(struct flow_key), flow_basic);
 
-     //printf("add_new_flow-flow added\n");
     workflow->cur_active_flows++;
 
     return flow_basic;
 }
 
 
+// Ashwani: Comment out this
 //static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const workflow,
 //                                              struct nDPId_flow_basic * orig_flow_basic,
 //                                              enum nDPId_flow_state state,
@@ -4252,7 +4281,9 @@ static void ndpi_process_packet(uint8_t * const args,
     enum nDPId_flow_direction direction;
 
     size_t hashed_index;
-   // void * tree_result;
+    
+    // Ashwani: Comment out this
+    // void * tree_result;
     struct nDPId_flow * flow_to_process;
 
     uint8_t is_new_flow = 0;
@@ -4592,6 +4623,9 @@ process_layer3_again:
         workflow->last_thread_time = time_us;
     }
 
+    // Ashwani: Comment out this code.
+    // A different approach which gives better performance is used.
+    //
     /* calculate flow hash for btree find, search(insert) */
     //switch (flow_basic.l3_type)
     //{
@@ -4627,6 +4661,9 @@ process_layer3_again:
     //}
     //flow_basic.hashval += flow_basic.l4_protocol + flow_basic.src_port + flow_basic.dst_port;
 
+
+    // Ashwani: New code which gives better performance.
+    //
     switch (flow_basic.l3_type)
     {
         case L3_IP:
@@ -4661,81 +4698,19 @@ process_layer3_again:
     hashed_index = flow_basic.hashval % workflow->max_active_flows;
     direction = FD_SRC2DST;
     
-    // Ashwani new start
-    //if (last_flow_valid && last_flow_key.hashval == flow_basic.hashval && last_flow_key.l3_type == flow_basic.l3_type &&
-    //    last_flow_key.src_port == flow_basic.src_port && last_flow_key.dst_port == flow_basic.dst_port &&
-    //    last_flow_key.l4_protocol == flow_basic.l4_protocol &&
-    //    memcmp(&last_flow_key.src, &flow_basic.src, sizeof(flow_basic.src)) == 0 &&
-    //    memcmp(&last_flow_key.dst, &flow_basic.dst, sizeof(flow_basic.dst)) == 0)
-    //{
-    //    // Reuse cached result
-    //    tree_result = last_tree_result;
-    //    //printf("\t\t\t cached\n");
-    //}
-    //else
-    //{
-    //   // printf("non cached\n");
-    //    // New search
-    //    tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
-
-    //    // Cache this result
-    //    last_flow_key = flow_basic;
-    //    last_tree_result = tree_result;
-    //    last_flow_valid = 1;
-    //}
-
-    // Ashwani new end
-
-    // Ashwani 2 start
-
-
-
     struct nDPId_flow_basic * tree_result = NULL;
 
     // Make sure flow_basic.key is set before searching
-    //printf("1\n");
     nDPId_flow_basic_set_key(&flow_basic);
 
-    //printf("2\n");
     // Lookup
     HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
 
-   //printf("3\n");
-    if (tree_result)
-    {
-        //printf("\t\t\t found\n");
-    }
-    else
-    {
-        //printf("not found\n");
-        // Not found, allocate new flow and add
-        //tree_result = malloc(sizeof(struct nDPId_flow_basic));
-        //if (!tree_result)
-        //{
-        //    printf("\t malloc\n");
-        //    perror("malloc");
-        //     handle error
-        //}
-        //printf("5\n");
-        //memcpy(tree_result, &flow_basic, sizeof(struct nDPId_flow_basic));
-        //printf("6\n");
-        //nDPId_flow_basic_set_key(tree_result);
-        //printf("7\n");
-
-        //HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
-        //printf("8\n");
-    }
- 
-   
-   
-
-    // Ashwani 2 end
-
-    // Ashwani
-    //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+    // Ashwani: commented this code
+    // tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
+    //
     if (tree_result == NULL)
     {
-        //printf("4\n");
         direction = FD_DST2SRC;
 
         /* flow not found in btree: switch src <-> dst and try to find it again */
@@ -4750,12 +4725,10 @@ process_layer3_again:
         flow_basic.dst.v6.ip[1] = orig_src_ip[1];
         flow_basic.src_port = orig_dst_port;
         flow_basic.dst_port = orig_src_port;
-
-        //printf("5\n");
         HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
 
+        // Ashwani: commented this code
         //tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
-        //printf("6\n");
 
         flow_basic.src.v6.ip[0] = orig_src_ip[0];
         flow_basic.src.v6.ip[1] = orig_src_ip[1];
@@ -4763,18 +4736,10 @@ process_layer3_again:
         flow_basic.dst.v6.ip[1] = orig_dst_ip[1];
         flow_basic.src_port = orig_src_port;
         flow_basic.dst_port = orig_dst_port;
-
-        if (tree_result)
-        {
-            //printf("7 tree_result found\n");
-            HASH_ADD(hh, flows_hash, key, sizeof(struct flow_key), tree_result);
-        }
-        //printf("8\n");
     }
 
     if (tree_result == NULL)
     {
-        //printf("9\n");
         /* flow still not found, must be new or midstream */
         direction = FD_SRC2DST;
 
@@ -4915,17 +4880,14 @@ process_layer3_again:
         }
 
         is_new_flow = 1;
-
-        //printf("10\n");
     }
     else
     {
-        /* flow already exists in the tree */
-
-       // printf("else\n");
-        /*struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;*/
+        // flow already exists in the tree */
+        // Ashwani: Comment out following code.
+        // struct nDPId_flow_basic * const flow_basic_to_process = *(struct nDPId_flow_basic **)tree_result;*/
         struct nDPId_flow_basic * const flow_basic_to_process = tree_result;
-       // printf("AFER ASSIGNMENT\n");
+
         /* Update last seen timestamp for timeout handling. */
         last_pkt_time = flow_basic_to_process->last_pkt_time[direction];
         flow_basic_to_process->last_pkt_time[direction] = workflow->last_thread_time;
@@ -5153,6 +5115,7 @@ static void get_current_time(struct timeval * const tval)
     gettimeofday(tval, NULL);
 }
 
+// Ashwani: Comment out existing implementation
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 //static void ndpi_log_flow_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
@@ -5223,6 +5186,8 @@ static void get_current_time(struct timeval * const tval)
 //    }
 //}
 
+
+// Ashwani: New implementation
 static void ndpi_log_flow_walker(struct nDPId_flow_basic const * flow_basic,
                                  struct nDPId_reader_thread const * reader_thread)
 {
@@ -5262,7 +5227,7 @@ static void ndpi_log_flow_walker(struct nDPId_flow_basic const * flow_basic,
     }
 }
 
-
+// Ashwani: New implementation
 static void log_all_flows(struct nDPId_reader_thread const * const reader_thread)
 {
     struct nDPId_workflow const * const workflow = reader_thread->workflow;
@@ -5284,6 +5249,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
     }
 }
 
+// Ashwani: comment out existing implementation
 //static void log_all_flows(struct nDPId_reader_thread const * const reader_thread)
 //{
 //    struct nDPId_workflow const * const workflow = reader_thread->workflow;
@@ -5654,6 +5620,7 @@ static int start_reader_threads(void)
     return 0;
 }
 
+// Ashwani: Comment out existing implementation
 //static void ndpi_shutdown_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
 //    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
@@ -5689,6 +5656,8 @@ static int start_reader_threads(void)
 //    }
 //}
 
+
+// Ashwani: New Code
 static void ndpi_shutdown_walker(struct nDPId_flow_basic * flow_basic, struct nDPId_workflow * workflow)
 {
     if (workflow == NULL || flow_basic == NULL)
@@ -5714,6 +5683,7 @@ static void ndpi_shutdown_walker(struct nDPId_flow_basic * flow_basic, struct nD
 }
 
 
+// Ashwani: Comment out existing implementation
 //
 //static void process_remaining_flows(void)
 //{
@@ -5734,6 +5704,7 @@ static void ndpi_shutdown_walker(struct nDPId_flow_basic * flow_basic, struct nD
 //    }
 //}
 
+// Ashwani: New Code
 static void process_remaining_flows(void)
 {
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
