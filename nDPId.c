@@ -189,7 +189,7 @@ void create_events_and_alerts_folders()
     {
         // Null-terminate the string
         executable_directory[count] = '\0';
-        logger(0, "Executable path: %s", executable_directory);
+        printf("Executable path: %s", executable_directory);
 
         char * last_slash = strrchr(executable_directory, '/');
         if (last_slash != NULL)
@@ -201,7 +201,7 @@ void create_events_and_alerts_folders()
     }
     else
     {
-        logger(stderr, "Error getting current exe path\n");
+        printf("Error getting current exe path\n");
         exit(EXIT_FAILURE);
     }
 
@@ -210,17 +210,17 @@ void create_events_and_alerts_folders()
     char * events_full_path = malloc(strlen(executable_directory) + strlen(events_folder_name) + 2);
 
     sprintf(alerts_full_path, "%s/%s", executable_directory, alerts_folder_name);
-    logger(0, "Alerts Folder Path: %s", alerts_full_path);
+    printf("Alerts Folder Path: %s", alerts_full_path);
     sprintf(events_full_path, "%s/%s", executable_directory, events_folder_name);
-    logger(0, "Events Folder Path: %s", events_full_path);
+    printf("Events Folder Path: %s", events_full_path);
 
     // Create the "Alerts" folder
     if (mkdir(alerts_full_path, 0777) == -1)
     {
-        logger(0, "mkdir(alerts_full_path, 0777) FAILED");
+        printf("mkdir(alerts_full_path, 0777) FAILED");
         if (errno != EEXIST)
         {
-            logger(stderr, "Error creating folder 'Alerts': %s\n", strerror(errno));
+            printf("Error creating folder 'Alerts': %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -232,16 +232,16 @@ void create_events_and_alerts_folders()
     // Create the "Events" folder
     if (mkdir(events_full_path, 0777) == -1)
     {
-        logger(0, "mkdir(events_full_path, 0777) FAILED");
+        printf("mkdir(events_full_path, 0777) FAILED");
         if (errno != EEXIST)
         {
-            fprintf(stderr, "Error creating folder 'Events': %s\n", strerror(errno));
+            printf(Error creating folder 'Events': %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        logger(0, "Events folder created successfully");
+        printf("Events folder created successfully");
     }
 
     create_all_events_file();
