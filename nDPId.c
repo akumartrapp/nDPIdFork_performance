@@ -192,14 +192,14 @@ void create_events_and_alerts_folders()
     {
         // Null-terminate the string
         executable_directory[count] = '\0';
-        printf("Executable path: %s", executable_directory);
+        printf("Executable path: %s\n", executable_directory);
 
         char * last_slash = strrchr(executable_directory, '/');
         if (last_slash != NULL)
         {
             // Terminate the string at the last '/'
             *last_slash = '\0';
-            logger(0, "Executable directory: %s", executable_directory);
+            printf("Executable directory: %s\n", executable_directory);
         }
     }
     else
@@ -213,9 +213,9 @@ void create_events_and_alerts_folders()
     char * events_full_path = malloc(strlen(executable_directory) + strlen(events_folder_name) + 2);
 
     sprintf(alerts_full_path, "%s/%s", executable_directory, alerts_folder_name);
-    printf("Alerts Folder Path: %s", alerts_full_path);
+    printf("Alerts Folder Path: %s\n", alerts_full_path);
     sprintf(events_full_path, "%s/%s", executable_directory, events_folder_name);
-    printf("Events Folder Path: %s", events_full_path);
+    printf("Events Folder Path: %s\n", events_full_path);
 
     // Create the "Alerts" folder
     if (mkdir(alerts_full_path, 0777) == -1)
