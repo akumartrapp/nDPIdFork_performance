@@ -4025,15 +4025,10 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
                                               enum nDPId_flow_state state,
                                               size_t hashed_index)
 {
-    size_t s;
+    size_t s = 0 ;
 
     switch (state)
     {
-        case FS_UNKNOWN:
-        case FS_COUNT:
-        case FS_FINISHED:
-            return NULL;
-
         case FS_SKIPPED:
             workflow->total_skipped_flows++;
             s = sizeof(struct nDPId_flow_skipped);
@@ -4043,9 +4038,20 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
             s = sizeof(struct nDPId_flow);
             break;
 
+        case FS_UNKNOWN:
+        case FS_COUNT:
+        case FS_FINISHED:
+            // fallthrough to default behavior (s remains 0)
+            break;
+
         default:
-            // Handle unexpected state if necessary
-            return NULL;
+            // fallthrough
+            break;
+    }
+
+    if (s == 0)
+    {
+        return NULL;
     }
 
     struct nDPId_flow_basic * flow_basic = (struct nDPId_flow_basic *)ndpi_malloc(s);
