@@ -2082,42 +2082,43 @@ static void ndpi_idle_scan_walker(struct nDPId_flow_basic * flow_basic, struct n
     }
 }
 
+// Ashwani: Comment out as it is not used anymore
 
-static int ndpi_workflow_node_cmp(void const * const A, void const * const B)
-{
-    struct nDPId_flow_basic const * const flow_basic_a = (struct nDPId_flow_basic *)A;
-    struct nDPId_flow_basic const * const flow_basic_b = (struct nDPId_flow_basic *)B;
-
-    if (flow_basic_a->hashval < flow_basic_b->hashval)
-    {
-        return -1;
-    }
-    else if (flow_basic_a->hashval > flow_basic_b->hashval)
-    {
-        return 1;
-    }
-
-    if (flow_basic_a->vlan_id < flow_basic_b->vlan_id)
-    {
-        return -1;
-    }
-    else if (flow_basic_a->vlan_id > flow_basic_b->vlan_id)
-    {
-        return 1;
-    }
-
-    /* flows have the same hash */
-    if (flow_basic_a->l4_protocol < flow_basic_b->l4_protocol)
-    {
-        return -1;
-    }
-    else if (flow_basic_a->l4_protocol > flow_basic_b->l4_protocol)
-    {
-        return 1;
-    }
-
-    return ip_tuples_compare(flow_basic_a, flow_basic_b);
-}
+//static int ndpi_workflow_node_cmp(void const * const A, void const * const B)
+//{
+//    struct nDPId_flow_basic const * const flow_basic_a = (struct nDPId_flow_basic *)A;
+//    struct nDPId_flow_basic const * const flow_basic_b = (struct nDPId_flow_basic *)B;
+//
+//    if (flow_basic_a->hashval < flow_basic_b->hashval)
+//    {
+//        return -1;
+//    }
+//    else if (flow_basic_a->hashval > flow_basic_b->hashval)
+//    {
+//        return 1;
+//    }
+//
+//    if (flow_basic_a->vlan_id < flow_basic_b->vlan_id)
+//    {
+//        return -1;
+//    }
+//    else if (flow_basic_a->vlan_id > flow_basic_b->vlan_id)
+//    {
+//        return 1;
+//    }
+//
+//    /* flows have the same hash */
+//    if (flow_basic_a->l4_protocol < flow_basic_b->l4_protocol)
+//    {
+//        return -1;
+//    }
+//    else if (flow_basic_a->l4_protocol > flow_basic_b->l4_protocol)
+//    {
+//        return 1;
+//    }
+//
+//    return ip_tuples_compare(flow_basic_a, flow_basic_b);
+//}
 
 static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, size_t idle_scan_index)
 {
