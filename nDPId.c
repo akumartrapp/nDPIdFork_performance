@@ -4072,8 +4072,6 @@ static struct nDPId_flow_basic * add_new_flow(struct nDPId_workflow * const work
     HASH_FIND( hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic->key, sizeof(struct flow_key), existing_flow);
     if (existing_flow)
     {
-        switch (state)
-
         // Ashwani: Flow already exists, free newly allocated and return existing
         ndpi_free(flow_basic);
         return existing_flow;
