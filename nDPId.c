@@ -130,6 +130,9 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 // -----------------------------Ashwani added code Starts here--------------------------------------------------------------------
 #include <uthash.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 
 char * alerts_folder_name = "Alerts";
 char * events_folder_name = "Events";
