@@ -1859,74 +1859,76 @@ static int setup_reader_threads(void)
     return 0;
 }
 
-static int ip_tuples_compare(struct nDPId_flow_basic const * const A, struct nDPId_flow_basic const * const B)
-{
-    // generate a warning if the enum changes
-    switch (A->l3_type)
-    {
-        case L3_IP:
-        case L3_IP6:
-            break;
-    }
+// Ashwani: comment out as its not used anymore
 
-    if (A->l3_type == L3_IP && B->l3_type == L3_IP)
-    {
-        if (A->src.v4.ip < B->src.v4.ip)
-        {
-            return -1;
-        }
-        if (A->src.v4.ip > B->src.v4.ip)
-        {
-            return 1;
-        }
-        if (A->dst.v4.ip < B->dst.v4.ip)
-        {
-            return -1;
-        }
-        if (A->dst.v4.ip > B->dst.v4.ip)
-        {
-            return 1;
-        }
-    }
-    else if (A->l3_type == L3_IP6 && B->l3_type == L3_IP6)
-    {
-        if (A->src.v6.ip[0] < B->src.v6.ip[0] && A->src.v6.ip[1] < B->src.v6.ip[1])
-        {
-            return -1;
-        }
-        if (A->src.v6.ip[0] > B->src.v6.ip[0] && A->src.v6.ip[1] > B->src.v6.ip[1])
-        {
-            return 1;
-        }
-        if (A->dst.v6.ip[0] < B->dst.v6.ip[0] && A->dst.v6.ip[1] < B->dst.v6.ip[1])
-        {
-            return -1;
-        }
-        if (A->dst.v6.ip[0] > B->dst.v6.ip[0] && A->dst.v6.ip[1] > B->dst.v6.ip[1])
-        {
-            return 1;
-        }
-    }
-
-    if (A->src_port < B->src_port)
-    {
-        return -1;
-    }
-    if (A->src_port > B->src_port)
-    {
-        return 1;
-    }
-    if (A->dst_port < B->dst_port)
-    {
-        return -1;
-    }
-    if (A->dst_port > B->dst_port)
-    {
-        return 1;
-    }
-
-    return 0;
-}
+//static int ip_tuples_compare(struct nDPId_flow_basic const * const A, struct nDPId_flow_basic const * const B)
+//{
+//    // generate a warning if the enum changes
+//    switch (A->l3_type)
+//    {
+//        case L3_IP:
+//        case L3_IP6:
+//            break;
+//    }
+//
+//    if (A->l3_type == L3_IP && B->l3_type == L3_IP)
+//    {
+//        if (A->src.v4.ip < B->src.v4.ip)
+//        {
+//            return -1;
+//        }
+//        if (A->src.v4.ip > B->src.v4.ip)
+//        {
+//            return 1;
+//        }
+//        if (A->dst.v4.ip < B->dst.v4.ip)
+//        {
+//            return -1;
+//        }
+//        if (A->dst.v4.ip > B->dst.v4.ip)
+//        {
+//            return 1;
+//        }
+//    }
+//    else if (A->l3_type == L3_IP6 && B->l3_type == L3_IP6)
+//    {
+//        if (A->src.v6.ip[0] < B->src.v6.ip[0] && A->src.v6.ip[1] < B->src.v6.ip[1])
+//        {
+//            return -1;
+//        }
+//        if (A->src.v6.ip[0] > B->src.v6.ip[0] && A->src.v6.ip[1] > B->src.v6.ip[1])
+//        {
+//            return 1;
+//        }
+//        if (A->dst.v6.ip[0] < B->dst.v6.ip[0] && A->dst.v6.ip[1] < B->dst.v6.ip[1])
+//        {
+//            return -1;
+//        }
+//        if (A->dst.v6.ip[0] > B->dst.v6.ip[0] && A->dst.v6.ip[1] > B->dst.v6.ip[1])
+//        {
+//            return 1;
+//        }
+//    }
+//
+//    if (A->src_port < B->src_port)
+//    {
+//        return -1;
+//    }
+//    if (A->src_port > B->src_port)
+//    {
+//        return 1;
+//    }
+//    if (A->dst_port < B->dst_port)
+//    {
+//        return -1;
+//    }
+//    if (A->dst_port > B->dst_port)
+//    {
+//        return 1;
+//    }
+//
+//    return 0;
+//}
 
 static uint64_t get_l4_protocol_idle_time(uint8_t l4_protocol)
 {
