@@ -218,6 +218,8 @@ void create_events_and_alerts_folders()
     printf("Alerts Folder Path: [%s]\n", alerts_full_path);
     printf("Events Folder Path: [%s]\n", events_full_path);
 
+    printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
+
     // Check access to parent directory
     if (access(executable_directory, W_OK | X_OK) != 0)
     {
@@ -225,7 +227,6 @@ void create_events_and_alerts_folders()
         exit(EXIT_FAILURE);
     }
 
-    printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
     // Create "Alerts" folder
     if (mkdir(alerts_full_path, 0777) == -1)
     {
