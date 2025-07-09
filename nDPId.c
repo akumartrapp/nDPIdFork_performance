@@ -132,6 +132,8 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <uthash.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <stdio.h>
 
 
 char * alerts_folder_name = "Alerts";
@@ -223,6 +225,7 @@ void create_events_and_alerts_folders()
         exit(EXIT_FAILURE);
     }
 
+    printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
     // Create "Alerts" folder
     if (mkdir(alerts_full_path, 0777) == -1)
     {
