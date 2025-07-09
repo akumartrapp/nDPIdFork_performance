@@ -190,69 +190,78 @@ void create_events_and_alerts_folders()
     ssize_t count = readlink("/proc/self/exe", executable_directory, PATH_MAX - 1);
     if (count != -1)
     {
-        // Null-terminate the string
         executable_directory[count] = '\0';
-        printf("Executable path: %s\n", executable_directory);
+        printf("Executable path: [%s]\n", executable_directory);
 
         char * last_slash = strrchr(executable_directory, '/');
         if (last_slash != NULL)
         {
-            // Terminate the string at the last '/'
             *last_slash = '\0';
-            printf("Executable directory: %s\n", executable_directory);
+            printf("Executable directory: [%s]\n", executable_directory);
         }
     }
     else
     {
-        printf("Error getting current exe path\n");
+        perror("readlink() failed");
         exit(EXIT_FAILURE);
     }
 
-    // Concatenate the directory path with folder names
+    // Full paths
     char * alerts_full_path = malloc(strlen(executable_directory) + strlen(alerts_folder_name) + 2);
     char * events_full_path = malloc(strlen(executable_directory) + strlen(events_folder_name) + 2);
 
     sprintf(alerts_full_path, "%s/%s", executable_directory, alerts_folder_name);
-    printf("Alerts Folder Path: %s\n", alerts_full_path);
     sprintf(events_full_path, "%s/%s", executable_directory, events_folder_name);
-    printf("Events Folder Path: %s\n", events_full_path);
 
-    // Create the "Alerts" folder
+    printf("Alerts Folder Path: [%s]\n", alerts_full_path);
+    printf("Events Folder Path: [%s]\n", events_full_path);
+
+    // Check access to parent directory
+    if (access(executable_directory, W_OK | X_OK) != 0)
+    {
+        perror("access() to executable_directory failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create "Alerts" folder
     if (mkdir(alerts_full_path, 0777) == -1)
     {
-        printf("mkdir(alerts_full_path, 0777) FAILED");
-        if (errno != EEXIST)
+        if (errno == EEXIST)
+            printf("Alerts folder already exists.\n");
+        else
         {
-            printf("Error creating folder 'Alerts': %s\n", strerror(errno));
+            fprintf(stderr, "mkdir('%s') failed: %s\n", alerts_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        logger(0, "Alerts folder created successfully");
+        printf("Alerts folder created successfully.\n");
     }
 
-    // Create the "Events" folder
+    // Create "Events" folder
     if (mkdir(events_full_path, 0777) == -1)
     {
-        printf("mkdir(events_full_path, 0777) FAILED");
-        if (errno != EEXIST)
+        if (errno == EEXIST)
+            printf("Events folder already exists.\n");
+        else
         {
-            printf("Error creating folder 'Events': %s\n", strerror(errno));
+            fprintf(stderr, "mkdir('%s') failed: %s\n", events_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        printf("Events folder created successfully");
+        printf("Events folder created successfully.\n");
     }
 
+    // Continue
     create_all_events_file();
 
-    // Free allocated memory
     free(alerts_full_path);
     free(events_full_path);
 }
+
 
 // -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
 enum nDPId_l3_type
