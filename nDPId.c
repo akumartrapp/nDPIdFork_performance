@@ -130,6 +130,127 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 // -----------------------------Ashwani added code Starts here--------------------------------------------------------------------
 #include <uthash.h>
+
+char * alerts_folder_name = "Alerts";
+char * events_folder_name = "Events";
+char all_events_path[PATH_MAX];
+char executable_directory[PATH_MAX];
+
+/*---------------------------------------------------------------------------------------------------------/*/
+void append_json_to_all_events_file(char const * const json_msg, size_t json_msg_len)
+{
+
+    // Construct full path to Events/all_events.json
+    snprintf(
+        all_events_path, sizeof(all_events_path), "%s/%s/all_events.json", executable_directory, events_folder_name);
+
+    // Open file in append mode
+    FILE * fp = fopen(all_events_path, "a");
+    if (!fp)
+    {
+        fprintf(stderr, "Error opening file '%s' for appending: %s\n", all_events_path, strerror(errno));
+        return;
+    }
+
+    // Write the JSON message followed by a newline
+    size_t written = fwrite(json_msg, 1, json_msg_len, fp);
+    if (written != json_msg_len)
+    {
+        fprintf(stderr, "Partial write to '%s'\n", all_events_path);
+    }
+
+    fputc('\n', fp); // Ensure each JSON entry is on a new line
+
+    fclose(fp);
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+void create_all_events_file()
+{
+    snprintf( all_events_path, sizeof(all_events_path), "%s/%s/all_events.json", executable_directory, events_folder_name);
+
+    // Create (or truncate) the file with rw-r--r-- permissions
+    int fd = open(all_events_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1)
+    {
+        fprintf(stderr, "Error creating file '%s': %s\n", all_events_path, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    printf("File created: %s\n", all_events_path);
+    close(fd);
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+void create_events_and_alerts_folders()
+{
+    ssize_t count = readlink("/proc/self/exe", executable_directory, PATH_MAX - 1);
+    if (count != -1)
+    {
+        // Null-terminate the string
+        executable_directory[count] = '\0';
+        logger(0, "Executable path: %s", executable_directory);
+
+        char * last_slash = strrchr(executable_directory, '/');
+        if (last_slash != NULL)
+        {
+            // Terminate the string at the last '/'
+            *last_slash = '\0';
+            logger(0, "Executable directory: %s", executable_directory);
+        }
+    }
+    else
+    {
+        logger(stderr, "Error getting current exe path\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Concatenate the directory path with folder names
+    char * alerts_full_path = malloc(strlen(executable_directory) + strlen(alerts_folder_name) + 2);
+    char * events_full_path = malloc(strlen(executable_directory) + strlen(events_folder_name) + 2);
+
+    sprintf(alerts_full_path, "%s/%s", executable_directory, alerts_folder_name);
+    logger(0, "Alerts Folder Path: %s", alerts_full_path);
+    sprintf(events_full_path, "%s/%s", executable_directory, events_folder_name);
+    logger(0, "Events Folder Path: %s", events_full_path);
+
+    // Create the "Alerts" folder
+    if (mkdir(alerts_full_path, 0777) == -1)
+    {
+        logger(0, "mkdir(alerts_full_path, 0777) FAILED");
+        if (errno != EEXIST)
+        {
+            logger(stderr, "Error creating folder 'Alerts': %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+    }
+    else
+    {
+        logger(0, "Alerts folder created successfully");
+    }
+
+    // Create the "Events" folder
+    if (mkdir(events_full_path, 0777) == -1)
+    {
+        logger(0, "mkdir(events_full_path, 0777) FAILED");
+        if (errno != EEXIST)
+        {
+            fprintf(stderr, "Error creating folder 'Events': %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+    }
+    else
+    {
+        logger(0, "Events folder created successfully");
+    }
+
+    create_all_events_file();
+
+    // Free allocated memory
+    free(alerts_full_path);
+    free(events_full_path);
+}
+
 // -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
 enum nDPId_l3_type
 {
@@ -2769,6 +2890,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
+    append_json_to_all_events_file(json_msg, json_msg_len);
     return;
 
     if (reader_thread->collector_sock_last_errno != 0)
@@ -6499,6 +6621,7 @@ static int nDPId_parsed_config_line(
     return 1;
 }
 
+
 #ifndef NO_MAIN
 int main(int argc, char ** argv)
 {
@@ -6590,6 +6713,8 @@ int main(int argc, char ** argv)
     {
         return 1;
     }
+
+    create_events_and_alerts_folders();
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
