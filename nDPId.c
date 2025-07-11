@@ -818,7 +818,7 @@ static void sighandler(int signum);
 static WARN_UNUSED int processing_threads_error_or_eof(void);
 static void free_workflow(struct nDPId_workflow ** const workflow);
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread);
-static void jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
+static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event);
 static void jsonize_flow_detection_event(struct nDPId_reader_thread * const reader_thread,
@@ -2501,7 +2501,7 @@ static void check_for_flow_updates(struct nDPId_reader_thread * const reader_thr
 }
 
 
-static void jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_flow_basic const * const flow_basic)
+static int jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_flow_basic const * const flow_basic)
 {
     ndpi_serializer * const serializer = &workflow->ndpi_serializer;
     char src_name[48] = {};
@@ -2519,10 +2519,12 @@ static void jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_f
             if (inet_ntop(AF_INET, &flow_basic->src.v4.ip, src_name, sizeof(src_name)) == NULL)
             {
                 logger(1, "Could not convert IPv4 source ip to string: %s", strerror(errno));
+                return -1;
             }
             if (inet_ntop(AF_INET, &flow_basic->dst.v4.ip, dst_name, sizeof(dst_name)) == NULL)
             {
                 logger(1, "Could not convert IPv4 destination ip to string: %s", strerror(errno));
+                return -1;
             }
             break;
         case L3_IP6:
@@ -2530,10 +2532,12 @@ static void jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_f
             if (inet_ntop(AF_INET6, &flow_basic->src.v6.ip[0], src_name, sizeof(src_name)) == NULL)
             {
                 logger(1, "Could not convert IPv6 source ip to string: %s", strerror(errno));
+                return -1;
             }
             if (inet_ntop(AF_INET6, &flow_basic->dst.v6.ip[0], dst_name, sizeof(dst_name)) == NULL)
             {
                 logger(1, "Could not convert IPv6 destination ip to string: %s", strerror(errno));
+                return -1;
             }
 
             /* For consistency across platforms replace :0: with :: */
@@ -3332,7 +3336,21 @@ static void jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     }
     jsonize_basic(reader_thread, 1);
     jsonize_flow(workflow, flow_ext);
-    jsonize_l3_l4(workflow, &flow_ext->flow_basic);
+    int success = jsonize_l3_l4(workflow, &flow_ext->flow_basic);
+
+    // Ashwani starts here
+    static uint64_t total_calls = 0;
+    static uint64_t early_returns = 0;
+
+    total_calls++;
+    if (success == -1)
+    {
+        early_returns++;       
+        printf("jsonize_flow_event: call #%lu, early returns: %lu\n", total_calls, early_returns);
+        return; 
+    }
+
+    // Ashwani ends here
 
     switch (event)
     {
@@ -4421,82 +4439,10 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
-#include <stdint.h>
-#include <string.h>
-#include <netinet/ip.h>    // struct ip
-#include <netinet/ip6.h>   // struct ip6_hdr
-#include <netinet/ether.h> // struct ethhdr
-#include <arpa/inet.h>     // inet_ntop
-#include <netinet/in.h>    // IN6_IS_ADDR_UNSPECIFIED (optional)
-
-int has_ip_addresses(const uint8_t * packet, uint32_t caplen)
-{
-    // Minimum size check for Ethernet
-    if (caplen < sizeof(struct ethhdr))
-        return 0;
-
-    const struct ethhdr * eth = (const struct ethhdr *)packet;
-    uint16_t eth_type = ntohs(eth->h_proto);
-
-    if (eth_type == ETHERTYPE_IP)
-    {
-        // Minimum size check for IPv4
-        if (caplen < sizeof(struct ethhdr) + sizeof(struct ip))
-            return 0;
-
-        const struct ip * ip_hdr = (const struct ip *)(packet + sizeof(struct ethhdr));
-
-        // Check if both source and destination IPs are non-zero
-        if (ip_hdr->ip_src.s_addr != 0 && ip_hdr->ip_dst.s_addr != 0)
-            return 1;
-    }
-    else if (eth_type == ETHERTYPE_IPV6)
-    {
-        // Minimum size check for IPv6
-        if (caplen < sizeof(struct ethhdr) + sizeof(struct ip6_hdr))
-            return 0;
-
-        const struct ip6_hdr * ip6_hdr = (const struct ip6_hdr *)(packet + sizeof(struct ethhdr));
-
-        // Method 1 (safe): using static zero buffer
-        static const uint8_t zero_addr[16] = {0};
-
-        if (memcmp(&ip6_hdr->ip6_src, zero_addr, 16) != 0 && memcmp(&ip6_hdr->ip6_dst, zero_addr, 16) != 0)
-            return 1;
-
-        // Optional Method 2: use macro instead (comment out the above if using this)
-        /*
-        if (!IN6_IS_ADDR_UNSPECIFIED(&ip6_hdr->ip6_src) &&
-            !IN6_IS_ADDR_UNSPECIFIED(&ip6_hdr->ip6_dst))
-            return 1;
-        */
-    }
-
-    return 0;
-}
-
-
-
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    static uint64_t total_calls = 0;
-    static uint64_t early_returns = 0;
-
-    total_calls++;
-
-    if (!has_ip_addresses(packet, header->caplen))
-    {
-        early_returns++;
-        printf("ndpi_process_packet: call #%lu, early returns: %lu\n", total_calls, early_returns);
-        return;
-    }
-
-    // Regular processing...
-
-    printf("ndpi_process_packet: call #%lu, early returns: %lu\n", total_calls, early_returns);
-
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
