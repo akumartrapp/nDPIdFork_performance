@@ -3318,7 +3318,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
 }
 
 /* I decided against ndpi_flow2json as it does not fulfill my needs. */
-static void jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
+static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
