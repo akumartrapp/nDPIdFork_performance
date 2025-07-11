@@ -2576,6 +2576,8 @@ static int jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_fl
             ndpi_serialize_string_uint32(serializer, "l4_proto", flow_basic->l4_protocol);
             break;
     }
+
+    return 1;
 }
 
 static void jsonize_basic(struct nDPId_reader_thread * const reader_thread, int serialize_thread_id)
@@ -3450,6 +3452,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     }
 
     serialize_and_send(reader_thread);
+    return 1;
 }
 
 static void jsonize_flow_detection_event(struct nDPId_reader_thread * const reader_thread,
