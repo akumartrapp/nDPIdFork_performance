@@ -4421,11 +4421,69 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
+#include <stdint.h>
+#include <netinet/ip.h>    // struct ip
+#include <netinet/ip6.h>   // struct ip6_hdr
+#include <netinet/ether.h> // struct ethhdr
+#include <arpa/inet.h>     // inet_ntop
+#include <string.h>
+
+int has_ip_addresses(const uint8_t * packet, uint32_t caplen)
+{
+    // Sanity check: minimum Ethernet frame length
+    if (caplen < sizeof(struct ethhdr))
+        return 0;
+
+    const struct ethhdr * eth = (const struct ethhdr *)packet;
+    uint16_t eth_type = ntohs(eth->h_proto);
+
+    if (eth_type == ETHERTYPE_IP)
+    {
+        // Check for minimum IP header size
+        if (caplen < sizeof(struct ethhdr) + sizeof(struct ip))
+            return 0;
+
+        const struct ip * ip_hdr = (const struct ip *)(packet + sizeof(struct ethhdr));
+        // Check that addresses are not zero
+        if (ip_hdr->ip_src.s_addr != 0 && ip_hdr->ip_dst.s_addr != 0)
+            return 1;
+    }
+    else if (eth_type == ETHERTYPE_IPV6)
+    {
+        if (caplen < sizeof(struct ethhdr) + sizeof(struct ip6_hdr))
+            return 0;
+
+        const struct ip6_hdr * ip6_hdr = (const struct ip6_hdr *)(packet + sizeof(struct ethhdr));
+        // Check if IPv6 addresses are non-zero
+        if (memcmp(&ip6_hdr->ip6_src, "\x00", 16) != 0 && memcmp(&ip6_hdr->ip6_dst, "\x00", 16) != 0)
+            return 1;
+    }
+
+    return 0;
+}
+
+
 
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
+    static uint64_t total_calls = 0;
+    static uint64_t early_returns = 0;
+
+    total_calls++;
+
+    if (!has_ip_addresses(packet, header->caplen))
+    {
+        early_returns++;
+        printf("ndpi_process_packet: call #%lu, early returns: %lu\n", total_calls, early_returns);
+        return;
+    }
+
+    // Regular processing...
+
+    printf("ndpi_process_packet: call #%lu, early returns: %lu\n", total_calls, early_returns);
+
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
