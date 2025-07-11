@@ -2604,6 +2604,10 @@ static void jsonize_basic(struct nDPId_reader_thread * const reader_thread, int 
 
 static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enum daemon_event event)
 {
+    // Ashwani Starts: We don't want to log daemon_event_name
+    return;
+    // Ashwani Ends:
+
     char const ev[] = "daemon_event_name";
     struct nDPId_workflow * const workflow = reader_thread->workflow;
 
@@ -3221,6 +3225,10 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                                  struct nDPId_flow_extended const * const flow_ext,
                                  enum packet_event event)
 {
+    // Ashwani Starts: We don't want to log packet_event_name
+    return;
+    // Ashwani Ends:
+
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "packet_event_name";
 
@@ -3687,6 +3695,10 @@ __attribute__((format(printf, 3, 4))) static void jsonize_error_eventf(struct nD
                                                                        char const * format,
                                                                        ...)
 {
+    // Ashwani Starts: We don't want to log error_event_name
+    return;
+    // Ashwani Ends:
+
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     va_list ap;
     char const ev[] = "error_event_name";
