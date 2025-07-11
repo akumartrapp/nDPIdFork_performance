@@ -3347,7 +3347,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     {
         early_returns++;       
         printf("jsonize_flow_event: call #%lu, early returns: %lu\n", total_calls, early_returns);
-        return; 
+        return -1; 
     }
 
     // Ashwani ends here
