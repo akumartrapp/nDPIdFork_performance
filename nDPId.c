@@ -4422,15 +4422,16 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 }
 
 #include <stdint.h>
+#include <string.h>
 #include <netinet/ip.h>    // struct ip
 #include <netinet/ip6.h>   // struct ip6_hdr
 #include <netinet/ether.h> // struct ethhdr
 #include <arpa/inet.h>     // inet_ntop
-#include <string.h>
+#include <netinet/in.h>    // IN6_IS_ADDR_UNSPECIFIED (optional)
 
 int has_ip_addresses(const uint8_t * packet, uint32_t caplen)
 {
-    // Sanity check: minimum Ethernet frame length
+    // Minimum size check for Ethernet
     if (caplen < sizeof(struct ethhdr))
         return 0;
 
@@ -4439,24 +4440,36 @@ int has_ip_addresses(const uint8_t * packet, uint32_t caplen)
 
     if (eth_type == ETHERTYPE_IP)
     {
-        // Check for minimum IP header size
+        // Minimum size check for IPv4
         if (caplen < sizeof(struct ethhdr) + sizeof(struct ip))
             return 0;
 
         const struct ip * ip_hdr = (const struct ip *)(packet + sizeof(struct ethhdr));
-        // Check that addresses are not zero
+
+        // Check if both source and destination IPs are non-zero
         if (ip_hdr->ip_src.s_addr != 0 && ip_hdr->ip_dst.s_addr != 0)
             return 1;
     }
     else if (eth_type == ETHERTYPE_IPV6)
     {
+        // Minimum size check for IPv6
         if (caplen < sizeof(struct ethhdr) + sizeof(struct ip6_hdr))
             return 0;
 
         const struct ip6_hdr * ip6_hdr = (const struct ip6_hdr *)(packet + sizeof(struct ethhdr));
-        // Check if IPv6 addresses are non-zero
-        if (memcmp(&ip6_hdr->ip6_src, "\x00", 16) != 0 && memcmp(&ip6_hdr->ip6_dst, "\x00", 16) != 0)
+
+        // Method 1 (safe): using static zero buffer
+        static const uint8_t zero_addr[16] = {0};
+
+        if (memcmp(&ip6_hdr->ip6_src, zero_addr, 16) != 0 && memcmp(&ip6_hdr->ip6_dst, zero_addr, 16) != 0)
             return 1;
+
+        // Optional Method 2: use macro instead (comment out the above if using this)
+        /*
+        if (!IN6_IS_ADDR_UNSPECIFIED(&ip6_hdr->ip6_src) &&
+            !IN6_IS_ADDR_UNSPECIFIED(&ip6_hdr->ip6_dst))
+            return 1;
+        */
     }
 
     return 0;
