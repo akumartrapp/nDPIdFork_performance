@@ -3471,7 +3471,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                                          enum flow_event event)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
-    char const ev[] = "flow_event_name";
+    char const ev[] = "flow_detection_event_name";
 
     ndpi_serialize_string_int32(&workflow->ndpi_serializer, "flow_event_id", event);
     if (event > FLOW_EVENT_INVALID && event < FLOW_EVENT_COUNT)
