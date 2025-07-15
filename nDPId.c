@@ -3351,7 +3351,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
 {
     if (skipEventsFromLogging(event))
     {
-        return;
+        return -1;
     }
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
