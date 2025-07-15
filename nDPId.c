@@ -266,6 +266,17 @@ void create_events_and_alerts_folders()
     free(events_full_path);
 }
 
+int skipEventsFromLogging(enum flow_event event)
+{
+    if (event == FLOW_EVENT_INVALID || event == FLOW_EVENT_NEW || event == FLOW_EVENT_IDLE ||
+        event == FLOW_EVENT_ANALYSE || event == FLOW_EVENT_GUESSED || event == FLOW_EVENT_NOT_DETECTED)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 
 // -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
 enum nDPId_l3_type
@@ -3335,6 +3346,11 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
+    if (skipEventsFromLogging(event))
+    {
+        return;
+    }
+
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_event_name";
 
@@ -3376,6 +3392,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         case FLOW_EVENT_IDLE:
         case FLOW_EVENT_UPDATE:
         case FLOW_EVENT_ANALYSE:
+       
 #ifdef ENABLE_PFRING
             if (GET_CMDARG_BOOL(nDPId_options.use_pfring) != 0)
             {
@@ -3470,6 +3487,11 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                                          struct nDPId_flow * const flow,
                                          enum flow_event event)
 {
+    if (skipEventsFromLogging(event))
+    {
+        return;
+    }
+
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_detection_event_name";
 
