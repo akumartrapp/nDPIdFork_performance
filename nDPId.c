@@ -266,16 +266,6 @@ void create_events_and_alerts_folders()
     free(events_full_path);
 }
 
-int skipEventsFromLogging(enum flow_event event)
-{
-    if (event == FLOW_EVENT_INVALID || event == FLOW_EVENT_NEW || event == FLOW_EVENT_IDLE ||
-        event == FLOW_EVENT_ANALYSE || event == FLOW_EVENT_GUESSED || event == FLOW_EVENT_NOT_DETECTED)
-    {
-        return 1;
-    }
-
-    return 0;
-}
 
 
 // -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
@@ -338,6 +328,7 @@ struct flow_key
     uint16_t src_port;
     uint16_t dst_port;
 } __attribute__((packed));
+
 
 //----------Ashwani added ends here---------------------
 
@@ -595,6 +586,18 @@ enum daemon_event
 
     DAEMON_EVENT_COUNT
 };
+
+int skipEventsFromLogging(enum flow_event event)
+{
+    if (event == FLOW_EVENT_INVALID || event == FLOW_EVENT_NEW || event == FLOW_EVENT_IDLE ||
+        event == FLOW_EVENT_ANALYSE || event == FLOW_EVENT_GUESSED || event == FLOW_EVENT_NOT_DETECTED)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 
 static char const * const flow_state_name_table[FS_COUNT] = {
     [FS_UNKNOWN] = "unknown", [FS_SKIPPED] = "skipped", [FS_FINISHED] = "finished", [FS_INFO] = "info"};
