@@ -3349,8 +3349,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                enum flow_event event)
 {
     if (skipEventsFromLogging(event))
-    {
-        printf("\nSkipping %s", flow_event_name_table[event]);
+    {       
         return -1;
     }
 
@@ -3493,8 +3492,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                                          enum flow_event event)
 {
     if (skipEventsFromLogging(event))
-    {
-        printf("\nSkipping %s", flow_event_name_table[event]);
+    {     
         return ;
     }
 
