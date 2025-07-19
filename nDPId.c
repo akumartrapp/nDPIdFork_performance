@@ -589,7 +589,7 @@ enum daemon_event
 
 int skipEventsFromLogging(enum flow_event event)
 {
-    if (event != FLOW_EVENT_IDLE || event != FLOW_EVENT_END )
+    if (event != FLOW_EVENT_IDLE && event != FLOW_EVENT_END )
     {
         return 1;
     }
