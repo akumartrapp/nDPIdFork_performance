@@ -3350,8 +3350,11 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
 {
     if (skipEventsFromLogging(event))
     {
+        printf("\nSkipping %s", flow_event_name_table[event])
         return -1;
     }
+
+    printf("\Proceeding %s", flow_event_name_table[event])
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_event_name";
@@ -3491,8 +3494,10 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
 {
     if (skipEventsFromLogging(event))
     {
-        return;
+        printf("\nSkipping %s", flow_event_name_table[event]) return -1;
     }
+
+    printf("\Proceeding %s", flow_event_name_table[event])
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_detection_event_name";
