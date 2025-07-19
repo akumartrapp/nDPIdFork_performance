@@ -3354,7 +3354,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         return -1;
     }
 
-    printf("\Proceeding %s", flow_event_name_table[event]);
+    printf("\nProceeding %s", flow_event_name_table[event]);
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_event_name";
@@ -3498,7 +3498,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
         return -1;
     }
 
-    printf("\Proceeding %s", flow_event_name_table[event]);
+    printf("\nProceeding %s", flow_event_name_table[event]);
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_detection_event_name";
