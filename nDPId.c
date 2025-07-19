@@ -3495,7 +3495,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
     if (skipEventsFromLogging(event))
     {
         printf("\nSkipping %s", flow_event_name_table[event]);
-        return -1;
+        return ;
     }
 
     printf("\nProceeding %s", flow_event_name_table[event]);
