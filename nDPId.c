@@ -2846,23 +2846,23 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 {
 
     {
-        ndpi_serialize_start_of_block((&workflow->ndpi_serializer, "flow");
+        ndpi_serialize_start_of_block(&workflow->ndpi_serializer, "flow");
         ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "id", flow_ext->flow_id);
-        dpi_serialize_end_of_block((&workflow->ndpi_serializer);       
+        dpi_serialize_end_of_block(&workflow->ndpi_serializer);       
     }
   
     {
-        ndpi_serialize_start_of_block((&workflow->ndpi_serializer, "source");
+        ndpi_serialize_start_of_block(&workflow->ndpi_serializer, "source");
         ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "bytes", flow_ext->bytes[FD_SRC2DST]);
         ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "packets", flow_ext->packets_processed[FD_SRC2DST]);
-        dpi_serialize_end_of_block((&workflow->ndpi_serializer);
+        dpi_serialize_end_of_block(&workflow->ndpi_serializer);
     }
 
     {
-        ndpi_serialize_start_of_block((&workflow->ndpi_serializer, "destination");
+        ndpi_serialize_start_of_block(&workflow->ndpi_serializer, "destination");
         ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "bytes", flow_ext->bytes[FD_DST2SRC]);
         ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "packets", flow_ext->packets_processed[FD_DST2SRC]);
-        dpi_serialize_end_of_block((&workflow->ndpi_serializer);          
+        dpi_serialize_end_of_block(&workflow->ndpi_serializer);          
     }
 
      ndpi_serialize_string_string(&workflow->ndpi_serializer,
