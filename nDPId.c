@@ -196,7 +196,7 @@ void write_to_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_filename, sizeof(current_filename), "%s/nDPId_Event_log_%s.tmp", events_full_path, timestamp);
+        snprintf(current_filename, sizeof(current_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
 
         log_fp = fopen(current_filename, "a");
         if (!log_fp)
@@ -212,7 +212,7 @@ void write_to_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, log_fp);
     if (written != json_msg_len)
     {
-        printf("ERROR: Partial write to '%s'\n", events_folder_path);
+        printf("ERROR: Partial write to '%s'\n", events_folder_full_path);
     }
 
     fwrite("\n", 1, 1, log_fp);
