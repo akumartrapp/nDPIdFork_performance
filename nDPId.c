@@ -2588,16 +2588,27 @@ static int jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_fl
         return -1;
     }
 
-    ndpi_serialize_string_string(serializer, "src_ip", src_name);
-    ndpi_serialize_string_string(serializer, "dst_ip", dst_name);
-    if (flow_basic->src_port)
+    // Ashwani starts here
     {
-        ndpi_serialize_string_uint32(serializer, "src_port", flow_basic->src_port);
+        ndpi_serialize_start_of_block(serializer, "source");
+        ndpi_serialize_string_string(serializer, "ip", src_name);       
+        if (flow_basic->src_port)
+        {
+            ndpi_serialize_string_uint32(serializer, "port", flow_basic->src_port);
+        }      
+        ndpi_serialize_end_of_block(serializer);
     }
-    if (flow_basic->dst_port)
-    {
-        ndpi_serialize_string_uint32(serializer, "dst_port", flow_basic->dst_port);
+
+     {
+        ndpi_serialize_start_of_block(serializer, "destination");
+        ndpi_serialize_string_string(serializer, "ip", dst_name);
+        if (flow_basic->dst_port)
+        {
+            ndpi_serialize_string_uint32(serializer, "port", flow_basic->dst_port);
+        }
+        ndpi_serialize_end_of_block(serializer);
     }
+    // Ashwani ends here
 
     switch (flow_basic->l4_protocol)
     {
@@ -2833,18 +2844,31 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
 
 static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_flow_extended const * const flow_ext)
 {
-    ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "flow_id", flow_ext->flow_id);
-    ndpi_serialize_string_string(&workflow->ndpi_serializer,
+
+    {
+        ndpi_serialize_start_of_block(serializer, "flow");
+        ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "id", flow_ext->flow_id);
+        dpi_serialize_end_of_block(serializer);       
+    }
+  
+    {
+        ndpi_serialize_start_of_block(serializer, "source");
+        ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "bytes", flow_ext->bytes[FD_SRC2DST]);
+        ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "packets", flow_ext->packets_processed[FD_SRC2DST]);
+        dpi_serialize_end_of_block(serializer);
+    }
+
+    {
+        ndpi_serialize_start_of_block(serializer, "destination");
+        ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "bytes", flow_ext->bytes[FD_DST2SRC]);
+        ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "packets", flow_ext->packets_processed[FD_DST2SRC]);
+        dpi_serialize_end_of_block(serializer);          
+    }
+
+     ndpi_serialize_string_string(&workflow->ndpi_serializer,
                                  "flow_state",
                                  flow_state_name_table[flow_ext->flow_basic.state]);
-    ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
-                                 "flow_src_packets_processed",
-                                 flow_ext->packets_processed[FD_SRC2DST]);
-    ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
-                                 "flow_dst_packets_processed",
-                                 flow_ext->packets_processed[FD_DST2SRC]);
-    ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "src2dst_bytes", flow_ext->bytes[FD_SRC2DST]);
-    ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "dst2src_bytes", flow_ext->bytes[FD_DST2SRC]);
+  
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "flow_first_seen", flow_ext->first_seen);
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
                                  "flow_src_last_pkt_time",
@@ -3068,7 +3092,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread)
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    // printf("%s\n", json_msg);
+    printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
