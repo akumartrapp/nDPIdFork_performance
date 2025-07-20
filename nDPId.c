@@ -136,65 +136,101 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <stdio.h>
 
 
-char * alerts_folder_name = "Alerts";
-char * events_folder_name = "Events";
-char all_events_path[PATH_MAX];
-char executable_directory[PATH_MAX];
+#define PATH_MAX_LEN 1024
+#define MAX_FILENAME_LEN 512
+#define LOG_DURATION_SECONDS 60
+
+const char * alerts_folder_name = "Alerts";
+const char * events_folder_name = "Events";
+char alerts_folder_full_path[PATH_MAX_LEN];
+char events_folder_full_path[PATH_MAX_LEN];
+char executable_directory[PATH_MAX_LEN];
+
+static FILE * log_fp = NULL;
+static char current_filename[MAX_FILENAME_LEN] = {0};
+static time_t file_start_time = 0;
 
 /*---------------------------------------------------------------------------------------------------------/*/
-void append_json_to_all_events_file(char const * const json_msg, size_t json_msg_len)
+// Function to get current UTC ISO8601 time
+void get_current_utc_iso8601(char * buffer, size_t size)
 {
+    time_t now = time(NULL);
+    struct tm tm_now;
 
-    // Construct full path to Events/all_events.json
-    snprintf(
-        all_events_path, sizeof(all_events_path), "%s/%s/all_events.json", executable_directory, events_folder_name);
+    gmtime_r(&now, &tm_now);
+    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_now);
+}
 
-    // Open file in append mode
-    FILE * fp = fopen(all_events_path, "a");
-    if (!fp)
+// Rotate log file: close, rename, reset state
+void rotate_log_file()
+{
+    if (log_fp != NULL)
     {
-        fprintf(stderr, "Error opening file '%s' for appending: %s\n", all_events_path, strerror(errno));
-        return;
+        fclose(log_fp);
+
+        // Rename .tmp to .json
+        char new_name[MAX_FILENAME_LEN];
+        snprintf( new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_filename) - 4), current_filename); // strip
+                                                                                                             // ".tmp"
+        if (rename(current_filename, new_name) != 0)
+        {
+            printf("ERROR: rename() failed");
+        }
+
+        log_fp = NULL;
+        current_filename[0] = '\0';
+        file_start_time = 0;
+    }
+}
+
+void write_to_file(const char * const json_msg, size_t json_msg_len)
+{
+    time_t now = time(NULL);
+
+    // Create new file if none open or time elapsed
+    if (log_fp == NULL || difftime(now, file_start_time) >= LOG_DURATION_SECONDS)
+    {
+        rotate_log_file();
+
+        // Create new file
+        char timestamp[32];
+        get_current_utc_iso8601(timestamp, sizeof(timestamp));
+
+        snprintf(current_filename, sizeof(current_filename), "%s/nDPId_Event_log_%s.tmp", events_full_path, timestamp);
+
+        log_fp = fopen(current_filename, "a");
+        if (!log_fp)
+        {
+            printf("ERROR: Failed to open log file: %s (%s)\n", current_filename, strerror(errno));
+            return;
+        }
+
+        file_start_time = now;
     }
 
-    // Write the JSON message followed by a newline
-    size_t written = fwrite(json_msg, 1, json_msg_len, fp);
+    // Write to current file
+    size_t written = fwrite(json_msg, 1, json_msg_len, log_fp);
     if (written != json_msg_len)
     {
-        fprintf(stderr, "Partial write to '%s'\n", all_events_path);
+        printf("ERROR: Partial write to '%s'\n", events_folder_path);
     }
 
-    fputc('\n', fp); // Ensure each JSON entry is on a new line
-
-    fclose(fp);
+    fwrite("\n", 1, 1, log_fp);
+    fflush(log_fp); // ensure data is written
 }
 
-/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
-void create_all_events_file()
-{
-    snprintf( all_events_path, sizeof(all_events_path), "%s/%s/all_events.json", executable_directory, events_folder_name);
-
-    // Create (or truncate) the file with rw-r--r-- permissions
-    int fd = open(all_events_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd == -1)
-    {
-        fprintf(stderr, "Error creating file '%s': %s\n", all_events_path, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    printf("File created: %s\n", all_events_path);
-    close(fd);
-}
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 void create_events_and_alerts_folders()
 {
-    ssize_t count = readlink("/proc/self/exe", executable_directory, PATH_MAX - 1);
+    // Get path to executable
+    ssize_t count = readlink("/proc/self/exe", executable_directory, PATH_MAX_LEN - 1);
     if (count != -1)
     {
         executable_directory[count] = '\0';
         printf("Executable path: [%s]\n", executable_directory);
 
+        // Strip the filename to get directory
         char * last_slash = strrchr(executable_directory, '/');
         if (last_slash != NULL)
         {
@@ -208,33 +244,29 @@ void create_events_and_alerts_folders()
         exit(EXIT_FAILURE);
     }
 
-    // Full paths
-    char * alerts_full_path = malloc(strlen(executable_directory) + strlen(alerts_folder_name) + 2);
-    char * events_full_path = malloc(strlen(executable_directory) + strlen(events_folder_name) + 2);
+    // Build full paths
+    snprintf(alerts_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, alerts_folder_name);
+    snprintf(events_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, events_folder_name);
 
-    sprintf(alerts_full_path, "%s/%s", executable_directory, alerts_folder_name);
-    sprintf(events_full_path, "%s/%s", executable_directory, events_folder_name);
-
-    printf("Alerts Folder Path: [%s]\n", alerts_full_path);
-    printf("Events Folder Path: [%s]\n", events_full_path);
-
+    printf("Alerts Folder Path: [%s]\n", alerts_folder_full_path);
+    printf("Events Folder Path: [%s]\n", events_folder_full_path);
     printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
 
-    // Check access to parent directory
+    // Check write/execute access to parent directory
     if (access(executable_directory, W_OK | X_OK) != 0)
     {
-        perror("access() to executable_directory failed");
+        printf("ERROR: access() to executable_directory failed");
         exit(EXIT_FAILURE);
     }
 
-    // Create "Alerts" folder
-    if (mkdir(alerts_full_path, 0777) == -1)
+    // Create Alerts folder
+    if (mkdir(alerts_folder_full_path, 0777) == -1)
     {
         if (errno == EEXIST)
             printf("Alerts folder already exists.\n");
         else
         {
-            fprintf(stderr, "mkdir('%s') failed: %s\n", alerts_full_path, strerror(errno));
+            printf(stderr, "mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -243,14 +275,14 @@ void create_events_and_alerts_folders()
         printf("Alerts folder created successfully.\n");
     }
 
-    // Create "Events" folder
-    if (mkdir(events_full_path, 0777) == -1)
+    // Create Events folder
+    if (mkdir(events_folder_full_path, 0777) == -1)
     {
         if (errno == EEXIST)
             printf("Events folder already exists.\n");
         else
         {
-            fprintf(stderr, "mkdir('%s') failed: %s\n", events_full_path, strerror(errno));
+            fprintf(stderr, "mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -258,14 +290,7 @@ void create_events_and_alerts_folders()
     {
         printf("Events folder created successfully.\n");
     }
-
-    // Continue
-    create_all_events_file();
-
-    free(alerts_full_path);
-    free(events_full_path);
 }
-
 
 
 // -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
@@ -2935,7 +2960,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
-    append_json_to_all_events_file(json_msg, json_msg_len);
+    write_to_file(json_msg, json_msg_len);
     return;
 
     if (reader_thread->collector_sock_last_errno != 0)
