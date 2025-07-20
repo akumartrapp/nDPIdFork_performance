@@ -266,7 +266,7 @@ void create_events_and_alerts_folders()
             printf("Alerts folder already exists.\n");
         else
         {
-            printf(stderr, "mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
+            printf("ERROR:mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -282,7 +282,7 @@ void create_events_and_alerts_folders()
             printf("Events folder already exists.\n");
         else
         {
-            fprintf(stderr, "mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
+            printf("ERROR: mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
