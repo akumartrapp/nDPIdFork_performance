@@ -221,7 +221,7 @@ endif()
 if(ENABLE_PFRING)
     set(NDPID_PFRING_SRCS npfring.c)
 endif()
-add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c)
+add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c ReadJsonConfiguration.c nDPIJsonDataConverter.c)
 add_executable(nDPIsrvd nDPIsrvd.c nio.c utils.c)
 add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS})
 
@@ -350,6 +350,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(NDPID_DEFS -DJSMN_STATIC=1 -DJSMN_STRICT=1 -DJSMN_PARENT_LINKS=1)
 set(NDPID_DEPS_INC "${CMAKE_SOURCE_DIR}"
                    "${CMAKE_SOURCE_DIR}/dependencies"
+                   "${CMAKE_SOURCE_DIR}/dependencies/json-c"
+                   "${CMAKE_SOURCE_DIR}/dependencies/json-c/include"
+                   "${CMAKE_SOURCE_DIR}/dependencies/json-c/include/json-c"
                    "${CMAKE_SOURCE_DIR}/dependencies/jsmn"
                    "${CMAKE_SOURCE_DIR}/dependencies/uthash/src")
 if(CMAKE_CROSSCOMPILING)
@@ -372,6 +375,15 @@ endif()
 
 if(ENABLE_SANITIZER AND ENABLE_SANITIZER_THREAD)
     message(FATAL_ERROR "ENABLE_SANITIZER and ENABLE_SANITIZER_THREAD can not be used together!")
+endif()
+
+find_library(JSON_C_LIB NAMES json-c PATHS /home/anssetup/repositories/json-c/build/ NO_DEFAULT_PATH)
+
+# Ensure the library was found
+if(NOT JSON_C_LIB)
+    message(FATAL_ERROR "Could not find libjson-c.a")
+else()
+    message(STATUS "Found libjson-c.a at ${JSON_C_LIB}")
 endif()
 
 if(BUILD_NDPI)
@@ -476,7 +488,7 @@ target_compile_definitions(nDPId PRIVATE -D_GNU_SOURCE=1 -DPKG_VERSION=\"${PKG_V
 target_include_directories(nDPId PRIVATE "${STATIC_LIBNDPI_INC}" "${DEFAULT_NDPI_INCLUDE}" ${NDPID_DEPS_INC} ${PFRING_KERNEL_INC} ${PFRING_INC})
 target_link_libraries(nDPId "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" "${pkgcfg_lib_PCAP_pcap}" "${pkgcfg_lib_NDPI_ndpi}"
                             "${pkgcfg_lib_PCRE_pcre2-8}" "${pkgcfg_lib_MAXMINDDB_maxminddb}" "${pkgcfg_lib_ZLIB_z}"
-                            "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}"
+                            "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}" "${JSON_C_LIB}"
                             "-pthread")
 
 target_compile_definitions(nDPIsrvd PRIVATE -D_GNU_SOURCE=1 -DPKG_VERSION=\"${PKG_VERSION}\" -DGIT_VERSION=\"${GIT_VERSION}\" ${NDPID_DEFS} ${EPOLL_DEFS})
@@ -612,6 +624,21 @@ install(FILES config.h
               dependencies/uthash/src/utringbuffer.h
               dependencies/uthash/src/utstack.h
               dependencies/uthash/src/utstring.h
+              dependencies/json-c/include/json-c/arraylist.h
+              dependencies/json-c/include/json-c/debug.h
+              dependencies/json-c/include/json-c/json.h
+              dependencies/json-c/include/json-c/json_c_version.h
+              dependencies/json-c/include/json-c/json_config.h
+              dependencies/json-c/include/json-c/json_inttypes.h
+              dependencies/json-c/include/json-c/json_object.h
+              dependencies/json-c/include/json-c/json_object_iterator.h
+              dependencies/json-c/include/json-c/json_pointer.h
+              dependencies/json-c/include/json-c/json_tokener.h
+              dependencies/json-c/include/json-c/json_types.h
+              dependencies/json-c/include/json-c/json_util.h
+              dependencies/json-c/include/json-c/json_visit.h
+              dependencies/json-c/include/json-c/linkhash.h
+              dependencies/json-c/include/json-c/printbuf.h
         DESTINATION include/nDPId)
 install(TARGETS nDPId DESTINATION sbin)
 install(TARGETS nDPIsrvd nDPId-test DESTINATION bin)
