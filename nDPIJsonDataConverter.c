@@ -299,7 +299,7 @@ struct NDPI_Data getnDPIStructure(const char* ndpiJson)
     struct NDPI_Data result;
     result.flow_risk = NULL;
     result.flow_risk_count = 0;
-    result.confidence.key = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.confidence.key = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.confidence.value = NULL;
     result.tls.version = NULL;
     result.tls.server_names = NULL;
@@ -313,15 +313,15 @@ struct NDPI_Data getnDPIStructure(const char* ndpiJson)
     result.proto_id = NULL;
     result.protocol = NULL;
     result.proto_by_ip = NULL;
-    result.proto_by_ip_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.encrypted = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.category_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.proto_by_ip_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.encrypted = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.category_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.category = NULL;
     result.http.request_content_type = NULL;
     result.http.content_type = NULL;
     result.http.user_agent = NULL;
     result.http.filename = NULL;
-    result.http.code = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.http.code = RANDOM_UNINITIALIZED_NUMBER_VALUE;
 
     // Parse JSON string
     json_object* root = json_tokener_parse(ndpiJson);
@@ -545,26 +545,26 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
 {
     struct Root_data result;
     result.src_ip = NULL;
-    result.src_port = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.src_packets = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.src_bytes = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.flow_src_tot_l4_payload_len = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.src_port = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.src_packets = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.src_bytes = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.flow_src_tot_l4_payload_len = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.dest_ip = NULL;
-    result.dst_port = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.des_packets = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.des_bytes = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.flow_dst_tot_l4_payload_len = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.dst_port = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.des_packets = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.des_bytes = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.flow_dst_tot_l4_payload_len = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.l3_proto = NULL;
-    result.ip = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.ip = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.l4_proto = NULL;
     result.proto = NULL;
     result.breed = NULL;
-    result.flow_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.flow_event_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    result.packet_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    result.flow_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     //result.event_start = NULL;
     //result.event_end = NULL;
-    //result.event_duration = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    //result.event_duration = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.hostname = NULL;
 
     // Parse JSON string
@@ -879,7 +879,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
         addHTTP = TRUE;
     }
 
-    if (ndpi->http.code != RANDOM_UNINTIALIZED_NUMBER_VALUE && ndpi->http.code != 0)
+    if (ndpi->http.code != RANDOM_UNINITIALIZED_NUMBER_VALUE && ndpi->http.code != 0)
     {
         json_object_object_add(httpObj, "response.status_code", json_object_new_int(ndpi->http.code));
         addHTTP = TRUE;
@@ -900,17 +900,17 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
         json_object_object_add(ndpiObj, "proto_id", json_object_new_string(ndpi->proto_id));
     }
 
-    if (ndpi->proto_by_ip_id != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (ndpi->proto_by_ip_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(ndpiObj, "proto_by_ip_id", json_object_new_int(ndpi->proto_by_ip_id));
     }
 
-    if (ndpi->encrypted != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (ndpi->encrypted != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(ndpiObj, "encrypted", json_object_new_int(ndpi->encrypted));
     }
 
-    if (ndpi->category_id != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (ndpi->category_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(ndpiObj, "category_id", json_object_new_int(ndpi->category_id));
     }
@@ -1155,25 +1155,25 @@ static void add_Root_Data(json_object ** root_object,
         addSrc = TRUE;
     }
 
-    if (rootDataStructure.src_port != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.src_port != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(src_object, "port", json_object_new_int(rootDataStructure.src_port));
         addSrc = TRUE;
     }
 
-    if (rootDataStructure.src_packets != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.src_packets != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(src_object, "packets", json_object_new_int(rootDataStructure.src_packets));
         addSrc = TRUE;
     }
 
-    if (rootDataStructure.src_bytes != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.src_bytes != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(src_object, "bytes", json_object_new_int(rootDataStructure.src_bytes));
         addSrc = TRUE;
     }
 
-    if (rootDataStructure.flow_src_tot_l4_payload_len != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.flow_src_tot_l4_payload_len != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(src_object,
                                "src2dst_goodput_bytes",
@@ -1196,25 +1196,25 @@ static void add_Root_Data(json_object ** root_object,
         addDest = TRUE;
     }
 
-    if (rootDataStructure.dst_port != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.dst_port != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(dest_object, "port", json_object_new_int(rootDataStructure.dst_port));
         addDest = TRUE;
     }
 
-    if (rootDataStructure.des_packets != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.des_packets != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(dest_object, "packets", json_object_new_int(rootDataStructure.des_packets));
         addDest = TRUE;
     }
 
-    if (rootDataStructure.des_bytes != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.des_bytes != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(dest_object, "bytes", json_object_new_int(rootDataStructure.des_bytes));
         addDest = TRUE;
     }
 
-    if (rootDataStructure.flow_dst_tot_l4_payload_len != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.flow_dst_tot_l4_payload_len != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object_object_add(dest_object,
                                "dst2src_goodput_bytes",
@@ -1306,7 +1306,7 @@ static void add_Root_Data(json_object ** root_object,
     json_object_object_add(*root_object, "event", event_object);
     
     // Flow starts here
-    if (rootDataStructure.flow_id != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.flow_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
     {
         json_object* flow_id_object = json_object_new_object();
         json_object_object_add(flow_id_object, "id", json_object_new_int(rootDataStructure.flow_id));
@@ -1330,9 +1330,9 @@ void ConvertnDPIDataFormat(char * originalJsonStr,
                            unsigned int * packet_id,
                            char * current_pcap_file)
 {
-    *flow_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    *flow_event_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
-    *packet_id = RANDOM_UNINTIALIZED_NUMBER_VALUE;
+    *flow_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    *flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    *packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
 
     struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr);
 
@@ -1344,17 +1344,17 @@ void ConvertnDPIDataFormat(char * originalJsonStr,
     if (add_nDPI_Data(&root_object, ndpiData))
     {
         rootData = getRootDataStructure(originalJsonStr);
-        if (rootData.flow_id != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+        if (rootData.flow_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
         {
             *flow_id = rootData.flow_id;
         }
 
-        if (rootData.flow_event_id != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+        if (rootData.flow_event_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
         {
             *flow_event_id = rootData.flow_event_id;
         }
 
-        if (rootData.packet_id != RANDOM_UNINTIALIZED_NUMBER_VALUE)
+        if (rootData.packet_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
         {
             *packet_id = rootData.packet_id;
         }
