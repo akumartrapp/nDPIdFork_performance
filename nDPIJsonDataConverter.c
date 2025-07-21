@@ -108,7 +108,7 @@ struct NDPI_Data
     struct NDPI_http http;
 };
 
-static char * strDuplicate(char * inputSting)
+static char * strDuplicate(const char * inputSting)
 {
 #ifdef _WIN32
     // Windows-specific code
@@ -299,7 +299,7 @@ struct NDPI_Data getnDPIStructure(const char* ndpiJson)
     struct NDPI_Data result;
     result.flow_risk = NULL;
     result.flow_risk_count = 0;
-    result.confidence.key = NULL;
+    result.confidence.key = RANDOM_UNINTIALIZED_NUMBER_VALUE;
     result.confidence.value = NULL;
     result.tls.version = NULL;
     result.tls.server_names = NULL;
