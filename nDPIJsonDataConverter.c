@@ -9,7 +9,7 @@
 #define TRUE 1
 #define FALSE 0
 #define bool int
-#define RANDOM_UNINTIALIZED_NUMBER_VALUE -84742891
+#define RANDOM_UNINITIALIZED_NUMBER_VALUE 0xFFFFFFFF // UINT_MAX (4294967295)
 
 // Define the structure for ndpiData
 struct NDPI_Risk
@@ -555,7 +555,7 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     result.des_bytes = RANDOM_UNINTIALIZED_NUMBER_VALUE;
     result.flow_dst_tot_l4_payload_len = RANDOM_UNINTIALIZED_NUMBER_VALUE;
     result.l3_proto = NULL;
-    result.ip = NULL;
+    result.ip = RANDOM_UNINTIALIZED_NUMBER_VALUE;
     result.l4_proto = NULL;
     result.proto = NULL;
     result.breed = NULL;
