@@ -1283,16 +1283,16 @@ static void add_Root_Data(json_object ** root_object,
 
     // Event starts here
 
-    char creationTimeStr[25];
-    char modificationTimeStr[25];
-    double duration_nanoseconds;
+    //char creationTimeStr[25];
+    //char modificationTimeStr[25];
+    //double duration_nanoseconds;
 
     //get_file_times(current_pcap_file, creationTimeStr, modificationTimeStr, &duration_nanoseconds);
 
     json_object * event_object = json_object_new_object();
-    json_object_object_add(event_object, "start", json_object_new_string(creationTimeStr));
-    json_object_object_add(event_object, "end", json_object_new_string(modificationTimeStr));
-    json_object_object_add(event_object, "duration", json_object_new_double(duration_nanoseconds));
+    //json_object_object_add(event_object, "start", json_object_new_string(creationTimeStr));
+    //json_object_object_add(event_object, "end", json_object_new_string(modificationTimeStr));
+    //json_object_object_add(event_object, "duration", json_object_new_double(duration_nanoseconds));
 
     if (flowRiskCount > 0)
     {
@@ -1521,7 +1521,7 @@ int CheckSRCIPField(const char * json_str)
     json_object * parsed_json_object = json_tokener_parse(json_str);
     if (parsed_json_object == NULL)
     {
-        logger(1, "Error parsing JSON string\n");
+        printf("Error: in parsing JSON string\n");
         return 0; // Parsing failed, assume src_ip is not present
     }
 
