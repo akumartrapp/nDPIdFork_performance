@@ -273,8 +273,8 @@ static const char* ndpi_risk2description(ndpi_risk_enum risk)
     case NDPI_SMB_INSECURE_VERSION:
         return("This risk indicates that the `SMB <https://en.wikipedia.org/wiki/Server_Message_Block>`_ version used is insecure (i.e. v1).");
 
-    case NDPI_TLS_SUSPICIOUS_ESNI_USAGE:
-        return("`SNI <https://en.wikipedia.org/wiki/Server_Name_Indication>`_ is a way to carry in TLS the host/domain name we're accessing. ESNI means encrypted SNI and it is a way to mask SNI (carried in clear text in the TLS header) with encryption. While this practice is legal, it could be used for hiding data or for attacks such as a suspicious `domain fronting <https://github.com/SixGenInc/Noctilucent/blob/master/docs/>`_.");
+    /*case NDPI_TLS_SUSPICIOUS_ESNI_USAGE:
+        return("`SNI <https://en.wikipedia.org/wiki/Server_Name_Indication>`_ is a way to carry in TLS the host/domain name we're accessing. ESNI means encrypted SNI and it is a way to mask SNI (carried in clear text in the TLS header) with encryption. While this practice is legal, it could be used for hiding data or for attacks such as a suspicious `domain fronting <https://github.com/SixGenInc/Noctilucent/blob/master/docs/>`_.");*/
 
     case NDPI_UNSAFE_PROTOCOL:
         return("This risk indicates that the protocol used is insecure and that a secure protocol should be used (e.g. Telnet vs SSH).");
@@ -294,8 +294,8 @@ static const char* ndpi_risk2description(ndpi_risk_enum risk)
     case NDPI_RISKY_DOMAIN:
         return("This is a placeholder for traffic exchanged with domain names that are considered risky. nDPI does not fill this risk that instead should be filled by aplications sitting on top of nDPI (e.g. ntopng).");
 
-    case NDPI_MALICIOUS_JA3:
-        return("`JA3 <https://engineering.salesforce.com/tls-fingerprinting-with-ja3-and-ja3s-247362855967>`_ is a method to fingerprint TLS traffic. This risk indicates that the JA3 of the TLS connection is considered suspicious (i.e. it has been found in known malware JA3 blacklists). nDPI does not fill this risk that instead should be filled by aplications sitting on top of nDPI (e.g. ntopng).");
+   /* case NDPI_MALICIOUS_JA3:
+        return("`JA3 <https://engineering.salesforce.com/tls-fingerprinting-with-ja3-and-ja3s-247362855967>`_ is a method to fingerprint TLS traffic. This risk indicates that the JA3 of the TLS connection is considered suspicious (i.e. it has been found in known malware JA3 blacklists). nDPI does not fill this risk that instead should be filled by aplications sitting on top of nDPI (e.g. ntopng).");*/
 
     case NDPI_MALICIOUS_SHA1_CERTIFICATE:
         return("TLS certificates are uniquely identified with a `SHA1 <https://en.wikipedia.org/wiki/SHA-1>`_ hash value. If such hash is found on a blacklist, this risk can be used. As for other risks, this is a placeholder as nDPI does not fill this risk that instead should be filled by aplications sitting on top of nDPI (e.g. ntopng).");
