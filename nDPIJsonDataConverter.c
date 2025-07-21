@@ -10,6 +10,7 @@
 #define FALSE 0
 #define bool int
 #define RANDOM_UNINITIALIZED_NUMBER_VALUE 0xFFFFFFFF // UINT_MAX (4294967295)
+#define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 
 // Define the structure for ndpiData
 struct NDPI_Risk
@@ -313,9 +314,9 @@ struct NDPI_Data getnDPIStructure(const char* ndpiJson)
     result.proto_id = NULL;
     result.protocol = NULL;
     result.proto_by_ip = NULL;
-    result.proto_by_ip_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-    result.encrypted = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-    result.category_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.proto_by_ip_id = RANDOM_UNINITIALIZED_INT_VALUE;
+    result.encrypted = RANDOM_UNINITIALIZED_INT_VALUE;
+    result.category_id = RANDOM_UNINITIALIZED_INT_VALUE;
     result.category = NULL;
     result.http.request_content_type = NULL;
     result.http.content_type = NULL;
@@ -545,21 +546,21 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
 {
     struct Root_data result;
     result.src_ip = NULL;
-    result.src_port = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.src_port = RANDOM_UNINITIALIZED_INT_VALUE;
     result.src_packets = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.src_bytes = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-    result.flow_src_tot_l4_payload_len = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.flow_src_tot_l4_payload_len = RANDOM_UNINITIALIZED_INT_VALUE;
     result.dest_ip = NULL;
-    result.dst_port = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.dst_port = RANDOM_UNINITIALIZED_INT_VALUE;
     result.des_packets = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.des_bytes = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-    result.flow_dst_tot_l4_payload_len = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.flow_dst_tot_l4_payload_len = RANDOM_UNINITIALIZED_INT_VALUE;
     result.l3_proto = NULL;
-    result.ip = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.ip = RANDOM_UNINITIALIZED_INT_VALUE;
     result.l4_proto = NULL;
     result.proto = NULL;
     result.breed = NULL;
-    result.flow_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
     result.flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     //result.event_start = NULL;
@@ -900,17 +901,17 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
         json_object_object_add(ndpiObj, "proto_id", json_object_new_string(ndpi->proto_id));
     }
 
-    if (ndpi->proto_by_ip_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (ndpi->proto_by_ip_id != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(ndpiObj, "proto_by_ip_id", json_object_new_int(ndpi->proto_by_ip_id));
     }
 
-    if (ndpi->encrypted != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (ndpi->encrypted != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(ndpiObj, "encrypted", json_object_new_int(ndpi->encrypted));
     }
 
-    if (ndpi->category_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (ndpi->category_id != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(ndpiObj, "category_id", json_object_new_int(ndpi->category_id));
     }
@@ -1143,8 +1144,7 @@ static void add_Root_Data(json_object ** root_object,
                           struct Root_data rootDataStructure,
                           int flowRiskCount,
                           char * proto_by_ip,
-                          char * protocol,
-                          char * current_pcap_file)
+                          char * protocol)
 {
     json_object* src_object = json_object_new_object();
 
@@ -1155,7 +1155,7 @@ static void add_Root_Data(json_object ** root_object,
         addSrc = TRUE;
     }
 
-    if (rootDataStructure.src_port != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.src_port != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(src_object, "port", json_object_new_int(rootDataStructure.src_port));
         addSrc = TRUE;
@@ -1173,7 +1173,7 @@ static void add_Root_Data(json_object ** root_object,
         addSrc = TRUE;
     }
 
-    if (rootDataStructure.flow_src_tot_l4_payload_len != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.flow_src_tot_l4_payload_len != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(src_object,
                                "src2dst_goodput_bytes",
@@ -1196,7 +1196,7 @@ static void add_Root_Data(json_object ** root_object,
         addDest = TRUE;
     }
 
-    if (rootDataStructure.dst_port != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.dst_port != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(dest_object, "port", json_object_new_int(rootDataStructure.dst_port));
         addDest = TRUE;
@@ -1214,7 +1214,7 @@ static void add_Root_Data(json_object ** root_object,
         addDest = TRUE;
     }
 
-    if (rootDataStructure.flow_dst_tot_l4_payload_len != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.flow_dst_tot_l4_payload_len != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object_object_add(dest_object,
                                "dst2src_goodput_bytes",
@@ -1230,7 +1230,7 @@ static void add_Root_Data(json_object ** root_object,
     json_object* network_object = json_object_new_object();
     bool addNetwork = FALSE;
 
-    if (rootDataStructure.ip != NULL)
+    if (rootDataStructure.ip != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         if (rootDataStructure.ip == 4)
         {
@@ -1306,7 +1306,7 @@ static void add_Root_Data(json_object ** root_object,
     json_object_object_add(*root_object, "event", event_object);
     
     // Flow starts here
-    if (rootDataStructure.flow_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+    if (rootDataStructure.flow_id != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object* flow_id_object = json_object_new_object();
         json_object_object_add(flow_id_object, "id", json_object_new_int(rootDataStructure.flow_id));
@@ -1327,10 +1327,9 @@ void ConvertnDPIDataFormat(char * originalJsonStr,
                            int * createAlert,
                            unsigned long long int * flow_id,
                            unsigned int * flow_event_id,
-                           unsigned int * packet_id,
-                           char * current_pcap_file)
+                           unsigned int * packet_id)
 {
-    *flow_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    *flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
     *flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     *packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
 
@@ -1344,7 +1343,7 @@ void ConvertnDPIDataFormat(char * originalJsonStr,
     if (add_nDPI_Data(&root_object, ndpiData))
     {
         rootData = getRootDataStructure(originalJsonStr);
-        if (rootData.flow_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
+        if (rootData.flow_id != RANDOM_UNINITIALIZED_INT_VALUE)
         {
             *flow_id = rootData.flow_id;
         }
@@ -1363,8 +1362,7 @@ void ConvertnDPIDataFormat(char * originalJsonStr,
                       rootData,
                       ndpiData.flow_risk_count,
                       ndpiData.proto_by_ip,
-                      ndpiData.protocol,
-                      current_pcap_file);
+                      ndpiData.protocol);
         *converted_json_str = strDuplicate(json_object_to_json_string(root_object));
     }
 
@@ -1421,7 +1419,7 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
     if (!parsed_json_object)
     {
         fprintf(stderr, "Error parsing JSON\n");
-        return NULL;
+        return ;
     }
 
 
@@ -1434,7 +1432,7 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
     {
         fprintf(stderr, "Missing 'ndpi' or 'flow_risk' field\n");
         json_object_put(parsed_json_object); // Free parsed JSON object
-        return NULL;
+        return ;
     }
 
   
@@ -1444,7 +1442,7 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
     {
         fprintf(stderr, "'flow_risk' is not an array\n");
         json_object_put(parsed_json_object); // Free parsed JSON object
-        return NULL;
+        return ;
     }
 
 
@@ -1455,7 +1453,7 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
     {
         fprintf(stderr, "Index out of bounds\n");
         json_object_put(parsed_json_object); // Free parsed JSON object
-        return NULL;
+        return ;
     }
 
 
