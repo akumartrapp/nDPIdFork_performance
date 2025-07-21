@@ -8,7 +8,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define bool int
+#define BOOL int
 #define RANDOM_UNINITIALIZED_NUMBER_VALUE 0xFFFFFFFF // UINT_MAX (4294967295)
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 
@@ -771,7 +771,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
     }
 
     // Serialize tls
-    bool addTLS = FALSE;
+    BOOL addTLS = FALSE;
     json_object* tlsObj = json_object_new_object();
     if (ndpi->tls.version != NULL)
     {
@@ -779,7 +779,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
         addTLS = TRUE;
     }
 
-    bool addClient = FALSE;
+    BOOL addClient = FALSE;
 
     json_object* client = json_object_new_object();
     if (ndpi->tls.server_names != NULL)
@@ -806,7 +806,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
     }
 
     json_object* server = json_object_new_object();
-    bool addServer = FALSE;
+    BOOL addServer = FALSE;
     if (ndpi->tls.ja3s != NULL)
     {
         json_object_object_add(server, "ja3", json_object_new_string(ndpi->tls.ja3s));        
@@ -854,7 +854,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
     }
 
     // Serialize http
-    bool addHTTP = FALSE;
+    BOOL addHTTP = FALSE;
     json_object * httpObj = json_object_new_object();
     if (ndpi->http.request_content_type != NULL && strlen(ndpi->http.request_content_type) > 0)
     {
@@ -1148,7 +1148,7 @@ static void add_Root_Data(json_object ** root_object,
 {
     json_object* src_object = json_object_new_object();
 
-    bool addSrc = FALSE;
+    BOOL addSrc = FALSE;
     if (rootDataStructure.src_ip != NULL)
     {
         json_object_object_add(src_object, "ip", json_object_new_string(rootDataStructure.src_ip));
@@ -1187,7 +1187,7 @@ static void add_Root_Data(json_object ** root_object,
     }
 
 
-    bool addDest = FALSE;
+    BOOL addDest = FALSE;
     json_object* dest_object = json_object_new_object();
 
     if (rootDataStructure.dest_ip != NULL)
@@ -1228,7 +1228,7 @@ static void add_Root_Data(json_object ** root_object,
     }
 
     json_object* network_object = json_object_new_object();
-    bool addNetwork = FALSE;
+    BOOL addNetwork = FALSE;
 
     if (rootDataStructure.ip != RANDOM_UNINITIALIZED_INT_VALUE)
     {
