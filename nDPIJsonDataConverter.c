@@ -121,15 +121,15 @@ static char * strDuplicate(const char * inputSting)
 }
 
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <linux/stat.h>
-#include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
+//#define _GNU_SOURCE
+//#include <stdio.h>
+//#include <sys/stat.h>
+//#include <sys/syscall.h>
+//#include <linux/stat.h>
+//#include <time.h>
+//#include <unistd.h>
+//#include <fcntl.h>
+//#include <string.h>
 
 static const char* ndpi_risk2description(ndpi_risk_enum risk)
 {
