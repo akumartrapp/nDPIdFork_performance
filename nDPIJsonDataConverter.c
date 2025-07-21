@@ -1673,8 +1673,8 @@ void UpdateXferIfGreater(char * existing_json_str, const char * new_json_str, ch
              {
                  if (json_object_object_get_ex(new_http_obj, "user_agent", &new_user_agent))
                  {
-                     unsigned long existing_user_agent_string = strDuplicate(json_object_get_string(existing_event_end));
-                     unsigned long new_user_agent_string = strDuplicate(json_object_get_string(new_event_end));
+                     char* existing_user_agent_string = strDuplicate(json_object_get_string(existing_event_end));
+                     char* new_user_agent_string = strDuplicate(json_object_get_string(new_event_end));
 
                      if (strcmp(new_user_agent_string, existing_user_agent_string) > 0)
                      {
