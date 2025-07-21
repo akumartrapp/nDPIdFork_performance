@@ -248,8 +248,8 @@ void create_events_and_alerts_folders()
     snprintf(alerts_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, alerts_folder_name);
     snprintf(events_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, events_folder_name);
 
-    printf("Alerts Folder Path: [%s]\n", alerts_folder_full_path);
-    printf("Events Folder Path: [%s]\n", events_folder_full_path);
+    printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
+    printf("Events Folder Path is : [%s]\n", events_folder_full_path);
     printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
 
     // Check write/execute access to parent directory
