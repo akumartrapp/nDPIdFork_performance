@@ -120,17 +120,6 @@ static char * strDuplicate(const char * inputSting)
 #endif
 }
 
-
-//#define _GNU_SOURCE
-//#include <stdio.h>
-//#include <sys/stat.h>
-//#include <sys/syscall.h>
-//#include <linux/stat.h>
-//#include <time.h>
-//#include <unistd.h>
-//#include <fcntl.h>
-//#include <string.h>
-
 static const char* ndpi_risk2description(ndpi_risk_enum risk)
 {
 
@@ -1324,15 +1313,9 @@ static void add_Root_Data(json_object ** root_object,
 
 void ConvertnDPIDataFormat(char * originalJsonStr,
                            char ** converted_json_str,
-                           int * createAlert,
-                           unsigned long long int * flow_id,
-                           unsigned int * flow_event_id,
-                           unsigned int * packet_id)
+                           int * createAlert)
 {
-    *flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
-    *flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-    *packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-
+   
     struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr);
 
     *createAlert = ndpiData.flow_risk_count;
@@ -1343,21 +1326,7 @@ void ConvertnDPIDataFormat(char * originalJsonStr,
     if (add_nDPI_Data(&root_object, ndpiData))
     {
         rootData = getRootDataStructure(originalJsonStr);
-        if (rootData.flow_id != RANDOM_UNINITIALIZED_INT_VALUE)
-        {
-            *flow_id = rootData.flow_id;
-        }
-
-        if (rootData.flow_event_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
-        {
-            *flow_event_id = rootData.flow_event_id;
-        }
-
-        if (rootData.packet_id != RANDOM_UNINITIALIZED_NUMBER_VALUE)
-        {
-            *packet_id = rootData.packet_id;
-        }
-
+       
         add_Root_Data(&root_object,
                       rootData,
                       ndpiData.flow_risk_count,

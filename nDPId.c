@@ -146,9 +146,12 @@ char alerts_folder_full_path[PATH_MAX_LEN];
 char events_folder_full_path[PATH_MAX_LEN];
 char executable_directory[PATH_MAX_LEN];
 
-static FILE * log_fp = NULL;
-static char current_filename[MAX_FILENAME_LEN] = {0};
-static time_t file_start_time = 0;
+static FILE * event_log_fp = NULL;
+static FILE * alert_log_fp = NULL;
+static char current_event_filename[MAX_FILENAME_LEN] = {0};
+static char current_alert_filename[MAX_FILENAME_LEN] = {0};
+static time_t event_file_start_time = 0;
+static time_t alert_file_start_time = 0;
 
 /*---------------------------------------------------------------------------------------------------------/*/
 // Function to get current UTC ISO8601 time
@@ -162,61 +165,149 @@ void get_current_utc_iso8601(char * buffer, size_t size)
 }
 
 // Rotate log file: close, rename, reset state
-void rotate_log_file()
+void rotate_event_log_file()
 {
-    if (log_fp != NULL)
+    if (event_log_fp != NULL)
     {
-        fclose(log_fp);
+        fclose(event_log_fp);
 
         // Rename .tmp to .json
         char new_name[MAX_FILENAME_LEN];
-        snprintf( new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_filename) - 4), current_filename); // strip
+        snprintf( new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_event_filename) - 4), current_event_filename); // strip
                                                                                                              // ".tmp"
-        if (rename(current_filename, new_name) != 0)
+        if (rename(current_event_filename, new_name) != 0)
         {
             printf("ERROR: rename() failed");
         }
 
-        log_fp = NULL;
-        current_filename[0] = '\0';
-        file_start_time = 0;
+        event_log_fp = NULL;
+        current_event_filename[0] = '\0';
+        event_file_start_time = 0;
     }
 }
 
-void write_to_file(const char * const json_msg, size_t json_msg_len)
+// Rotate log file: close, rename, reset state
+void rotate_alert_log_file()
+{
+    if (alert_log_fp != NULL)
+    {
+        fclose(alert_log_fp);
+
+        // Rename .tmp to .json
+        char new_name[MAX_FILENAME_LEN];
+        snprintf(new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_alert_filename) - 4),  current_alert_filename); // strip
+                                          // ".tmp"
+        if (rename(current_alert_filename, new_name) != 0)
+        {
+            printf("ERROR: rename() failed");
+        }
+
+        alert_log_fp = NULL;
+        current_alert_filename[0] = '\0';
+        alert_file_start_time = 0;
+    }
+}
+
+
+void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 {
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
-    if (log_fp == NULL || difftime(now, file_start_time) >= LOG_DURATION_SECONDS)
+    if (event_log_fp == NULL || difftime(now, event_file_start_time) >= LOG_DURATION_SECONDS)
     {
-        rotate_log_file();
+        rotate_event_log_file();
 
         // Create new file
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_filename, sizeof(current_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
+        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
 
-        log_fp = fopen(current_filename, "a");
-        if (!log_fp)
+        event_log_fp = fopen(current_event_filename, "a");
+        if (!event_log_fp)
         {
-            printf("ERROR: Failed to open log file: %s (%s)\n", current_filename, strerror(errno));
+            printf("ERROR: Failed to open log file: %s (%s)\n", current_event_filename, strerror(errno));
             return;
         }
 
-        file_start_time = now;
+        event_file_start_time = now;
     }
 
     // Write to current file
-    size_t written = fwrite(json_msg, 1, json_msg_len, log_fp);
+    size_t written = fwrite(json_msg, 1, json_msg_len, event_log_fp);
     if (written != json_msg_len)
     {
         printf("ERROR: Partial write to '%s'\n", events_folder_full_path);
     }
 
-    fwrite("\n", 1, 1, log_fp);
-    fflush(log_fp); // ensure data is written
+    fwrite("\n", 1, 1, event_log_fp);
+    fflush(event_log_fp); // ensure data is written
+}
+
+void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
+{
+    time_t now = time(NULL);
+
+    // Create new file if none open or time elapsed
+    if (alert_log_fp == NULL || difftime(now, alert_file_start_time) >= LOG_DURATION_SECONDS)
+    {
+        rotate_alert_log_file();
+
+        // Create new file
+        char timestamp[32];
+        get_current_utc_iso8601(timestamp, sizeof(timestamp));
+
+        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_%s.tmp", alerts_folder_full_path, timestamp);
+
+        alert_log_fp = fopen(current_alert_filename, "a");
+        if (!alert_log_fp)
+        {
+            printf("ERROR: Failed to open log file: %s (%s)\n", current_alert_filename, strerror(errno));
+            return;
+        }
+
+        alert_file_start_time = now;
+    }
+
+    // Write to current file
+    size_t written = fwrite(json_msg, 1, json_msg_len, alert_log_fp);
+    if (written != json_msg_len)
+    {
+        printf("ERROR: Partial write to '%s'\n", alerts_folder_full_path);
+    }
+
+    fwrite("\n", 1, 1, alert_log_fp);
+    fflush(alert_log_fp); // ensure data is written
+}
+
+
+void write_to_file(const char * const json_msg, size_t json_msg_len)
+{
+    char * converted_json_str = NULL;
+    int flow_risk_count = 0;
+    ConvertnDPIDataFormat(json_msg, &converted_json_str, &flow_risk_count);
+    if (converted_json_str != NULL)
+    {
+        int length = strlen(converted_json_str);
+        if (length != 0)
+        {
+            char * converted_json_str_no_risk = NULL;
+            if (flow_risk_count)
+            {
+                DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
+                write_to_alert_file(converted_json_str_no_risk);
+            }
+            else
+            {
+                write_to_event_file(converted_json_str);
+            }
+
+            free(converted_json_str_no_risk);
+        }
+    }
+
+    free(converted_json_str);
 }
 
 
