@@ -283,7 +283,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 }
 
 
-void write_to_file(const char * const json_msg, size_t json_msg_len)
+void write_to_file(const char * const json_msg)
 {
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
@@ -3053,7 +3053,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
-    write_to_file(json_msg, json_msg_len);
+    write_to_file(json_msg);
     return;
 
     if (reader_thread->collector_sock_last_errno != 0)

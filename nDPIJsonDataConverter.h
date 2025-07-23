@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 
-void ConvertnDPIDataFormat(char * json_str, char ** converted_json_str, int * create_alert);
+void ConvertnDPIDataFormat(const char * json_str, char ** converted_json_str, int * create_alert);
 void DeletenDPIRisk(char* jsonStr, char** converted_json_str);
 void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char ** converted_json_str, int flow_risk_index);
 void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, int* flow_id);

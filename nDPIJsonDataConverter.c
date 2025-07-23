@@ -1311,7 +1311,7 @@ static void add_Root_Data(json_object ** root_object,
     }   
 }
 
-void ConvertnDPIDataFormat(char * originalJsonStr,
+void ConvertnDPIDataFormat(const char * originalJsonStr,
                            char ** converted_json_str,
                            int * createAlert)
 {
