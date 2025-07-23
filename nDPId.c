@@ -296,11 +296,12 @@ void write_to_file(const char * const json_msg, size_t json_msg_len)
             if (flow_risk_count)
             {
                 DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
-                write_to_alert_file(converted_json_str_no_risk);
+                int length_converted = strlen(converted_json_str_no_risk);
+                write_to_alert_file(converted_json_str_no_risk, length_converted);
             }
             else
             {
-                write_to_event_file(converted_json_str);
+                write_to_event_file(converted_json_str, length);
             }
 
             free(converted_json_str_no_risk);
