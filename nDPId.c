@@ -134,6 +134,7 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "nDPIJsonDataConverter.h"
 
 
 #define PATH_MAX_LEN 1024
