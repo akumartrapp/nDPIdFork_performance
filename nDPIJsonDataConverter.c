@@ -120,6 +120,36 @@ static char * strDuplicate(const char * inputSting)
 #endif
 }
 
+start void convert_usec_to_utc_string(uint64_t usec_since_epoch, char * output, size_t output_len)
+{
+    time_t seconds = usec_since_epoch / 1000000;
+    suseconds_t microseconds = usec_since_epoch % 1000000;
+
+    struct tm gmtime_result;
+    gmtime_r(&seconds, &gmtime_result);
+
+    snprintf(output,
+             output_len,
+             "%04d-%02d-%02d %02d:%02d:%02d.%06ld",
+             gmtime_result.tm_year + 1900,
+             gmtime_result.tm_mon + 1,
+             gmtime_result.tm_mday,
+             gmtime_result.tm_hour,
+             gmtime_result.tm_min,
+             gmtime_result.tm_sec,
+             (long)microseconds);
+}
+
+static inline uint64_t max_u64(uint64_t a, uint64_t b)
+{
+    return (a > b) ? a : b;
+}
+
+static inline uint64_t convert_usec_to_nsec(uint64_t usec)
+{
+    return usec * 1000;
+}
+
 static const char* ndpi_risk2description(ndpi_risk_enum risk)
 {
 
@@ -552,9 +582,9 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     result.flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
     result.flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
-    //result.event_start = NULL;
-    //result.event_end = NULL;
-    //result.event_duration = RANDOM_UNINITIALIZED_NUMBER_VALUE;
+    result.event_start = NULL;
+    result.event_end = NULL;
+    result.event_duration = RANDOM_UNINITIALIZED_INT_VALUE;
     result.hostname = NULL;
 
     // Parse JSON string
@@ -692,24 +722,38 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
   
   
     // event
-    //json_object * event_start;
+    uint64_t start_time = 0;
+    uint64_t src_last_pkt_time = 0;
+    uint64_t dst_last_pkt_time = 0;
 
-    //if (json_object_object_get_ex(root, "event_start", &event_start))
-    //{       
-    //    result.event_start = strDuplicate(json_object_get_string(event_start));
-    //}
+    json_object * flow_first_seen;
+    if (json_object_object_get_ex(root, "flow_first_seen", &flow_first_seen))
+    {       
+        start_time = json_object_get_uint64(flow_first_seen);
+        char buf[64];
+        convert_usec_to_utc_string(start_time, buf, sizeof(buf));
+        result.event_start = strDuplicate(buf);
+    }
 
-    //json_object * event_end;
-    //if (json_object_object_get_ex(root, "event_end", &event_end))
-    //{       
-    //    result.event_end = strDuplicate(json_object_get_string(event_end));
-    //}
+    json_object * flow_src_last_pkt_time;
+    if (json_object_object_get_ex(root, "flow_src_last_pkt_time", &flow_src_last_pkt_time))
+    {       
+       src_last_pkt_time = json_object_get_uint64(flow_src_last_pkt_time);
+    }
 
-    //json_object * event_duration;
-    //if (json_object_object_get_ex(root, "event_duration", &event_duration))
-    //{
-    //    result.event_duration = json_object_get_double(event_duration);
-    //}
+    json_object * flow_dst_last_pkt_time;
+    if (json_object_object_get_ex(root, "flow_dst_last_pkt_time", &flow_dst_last_pkt_time))
+    {
+        dst_last_pkt_time = json_object_get_uint64(flow_dst_last_pkt_time);
+    }
+
+    if (start_time != 0)
+    {       
+        char buf[64];
+        convert_usec_to_utc_string(max_u64(src_last_pkt_time, dst_last_pkt_time), buf, sizeof(buf));
+        result.event_end = strDuplicate(buf);
+        result.event_duration = convert_usec_to_nsec(max_u64(src_last_pkt_time, dst_last_pkt_time) - start_time);
+    }
 
     json_object_put(root);
 
@@ -1083,15 +1127,15 @@ static void FreeConvertRootDataFormat(struct Root_data* rootData)
         free(rootData->breed);
     }
 
-    //if (rootData->event_start != NULL)
-    //{
-    //    free(rootData->event_start);
-    //}
+    if (rootData->event_start != NULL)
+    {
+        free(rootData->event_start);
+    }
 
-    //if (rootData->event_end != NULL)
-    //{
-    //    free(rootData->event_end);
-    //}
+    if (rootData->event_end != NULL)
+    {
+        free(rootData->event_end);
+    }
 
     //if (rootData->event_duration != NULL)
     //{

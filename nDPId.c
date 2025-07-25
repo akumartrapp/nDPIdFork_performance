@@ -707,6 +707,11 @@ enum daemon_event
 
 int skipEventsFromLogging(enum flow_event event)
 {
+    if (ENABLE_DETAILED_LOGGING)
+    {
+        return 0;
+    }
+
     if (event != FLOW_EVENT_IDLE && event != FLOW_EVENT_END )
     {
         return 1;
