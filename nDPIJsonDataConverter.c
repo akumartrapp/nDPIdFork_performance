@@ -120,7 +120,7 @@ static char * strDuplicate(const char * inputSting)
 #endif
 }
 
-start void convert_usec_to_utc_string(uint64_t usec_since_epoch, char * output, size_t output_len)
+void convert_usec_to_utc_string(uint64_t usec_since_epoch, char * output, size_t output_len)
 {
     time_t seconds = usec_since_epoch / 1000000;
     suseconds_t microseconds = usec_since_epoch % 1000000;
