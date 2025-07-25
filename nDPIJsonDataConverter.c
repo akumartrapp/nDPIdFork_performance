@@ -85,9 +85,9 @@ struct Root_data
     int flow_id;
     unsigned int flow_event_id;
     unsigned int packet_id;
-    //char* event_start;
-    //char* event_end;
-    //double event_duration;
+    char* event_start;
+    char* event_end;
+    uint64_t event_duration;
     struct Root_xfer xfer;
     char* hostname;
 };
