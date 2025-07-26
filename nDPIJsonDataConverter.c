@@ -1329,7 +1329,7 @@ static void add_Root_Data(json_object ** root_object,
 
     if (rootDataStructure.event_duration != INVALID_TIMESTAMP)
     {
-        json_object_object_add(event_object, "end", json_object_new_uint64(rootDataStructure.event_duration));
+        json_object_object_add(event_object, "duration", json_object_new_uint64(rootDataStructure.event_duration));
     }
 
     if (flowRiskCount > 0)
