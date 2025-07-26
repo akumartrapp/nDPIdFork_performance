@@ -1327,7 +1327,7 @@ static void add_Root_Data(json_object ** root_object,
         json_object_object_add(event_object, "end", json_object_new_string(rootDataStructure.event_end));
     }
 
-    if (rootDataStructure.event_duration != RANDOM_UNINITIALIZED_INT_VALUE)
+    if (rootDataStructure.event_duration != INVALID_TIMESTAMP)
     {
         json_object_object_add(event_object, "end", json_object_new_uint64(rootDataStructure.event_duration));
     }
