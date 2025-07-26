@@ -2652,6 +2652,9 @@ static int jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_fl
     {
         case L3_IP:
             ndpi_serialize_string_string(serializer, "l3_proto", "ip4");
+            // Ashwani START
+            ndpi_serialize_string_uint32(serializer, "ip", 4);
+            // Ashwani END
             if (inet_ntop(AF_INET, &flow_basic->src.v4.ip, src_name, sizeof(src_name)) == NULL)
             {
                 logger(1, "Could not convert IPv4 source ip to string: %s", strerror(errno));
@@ -2665,6 +2668,9 @@ static int jsonize_l3_l4(struct nDPId_workflow * const workflow, struct nDPId_fl
             break;
         case L3_IP6:
             ndpi_serialize_string_string(serializer, "l3_proto", "ip6");
+            // Ashwani START
+            ndpi_serialize_string_uint32(serializer, "ip", 6);
+            // Ashwani END
             if (inet_ntop(AF_INET6, &flow_basic->src.v6.ip[0], src_name, sizeof(src_name)) == NULL)
             {
                 logger(1, "Could not convert IPv6 source ip to string: %s", strerror(errno));
