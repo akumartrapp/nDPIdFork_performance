@@ -11,6 +11,7 @@
 #define BOOL int
 #define RANDOM_UNINITIALIZED_NUMBER_VALUE 0xFFFFFFFF // UINT_MAX (4294967295)
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
+#define INVALID_TIMESTAMP UINT64_MAX
 
 // Define the structure for ndpiData
 struct NDPI_Risk
@@ -584,7 +585,7 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     result.packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.event_start = NULL;
     result.event_end = NULL;
-    result.event_duration = RANDOM_UNINITIALIZED_INT_VALUE;
+    result.event_duration = INVALID_TIMESTAMP;
     result.hostname = NULL;
 
     // Parse JSON string
