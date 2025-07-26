@@ -1315,17 +1315,21 @@ static void add_Root_Data(json_object ** root_object,
     }
 
     // Event starts here
-
-    //char creationTimeStr[25];
-    //char modificationTimeStr[25];
-    //double duration_nanoseconds;
-
-    //get_file_times(current_pcap_file, creationTimeStr, modificationTimeStr, &duration_nanoseconds);
-
     json_object * event_object = json_object_new_object();
-    //json_object_object_add(event_object, "start", json_object_new_string(creationTimeStr));
-    //json_object_object_add(event_object, "end", json_object_new_string(modificationTimeStr));
-    //json_object_object_add(event_object, "duration", json_object_new_double(duration_nanoseconds));
+    if (rootDataStructure.event_start != NULL)
+    {
+        json_object_object_add(event_object, "start", json_object_new_string(rootDataStructure.event_start));
+    }
+
+    if (rootDataStructure.event_end != NULL)
+    {
+        json_object_object_add(event_object, "end", json_object_new_string(rootDataStructure.event_end));
+    }
+
+    if (rootDataStructure.event_duration != RANDOM_UNINITIALIZED_INT_VALUE)
+    {
+        json_object_object_add(event_object, "end", json_object_new_uint64(rootDataStructure.event_duration));
+    }
 
     if (flowRiskCount > 0)
     {
