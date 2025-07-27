@@ -285,31 +285,33 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_file(const char * const json_msg)
 {
-    char * converted_json_str = NULL;
-    int flow_risk_count = 0;
-    ConvertnDPIDataFormat(json_msg, &converted_json_str, &flow_risk_count);
-    if (converted_json_str != NULL)
-    {
-        int length = strlen(converted_json_str);
-        if (length != 0)
-        {                     
-            if (flow_risk_count)
-            {
-                write_to_alert_file(converted_json_str, length);
-                char * converted_json_str_no_risk = NULL;
-                DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
-                int length_converted = strlen(converted_json_str_no_risk);
-                write_to_event_file(converted_json_str_no_risk, length_converted);
-                free(converted_json_str_no_risk);
-            } 
-            else
-            {
-                write_to_event_file(converted_json_str, length);
-            }
-        }
-    }
+    int length = strlen(json_msg);
+    write_to_event_file(json_msg, length); 
+    //char * converted_json_str = NULL;
+    //int flow_risk_count = 0;
+    //ConvertnDPIDataFormat(json_msg, &converted_json_str, &flow_risk_count);
+    //if (converted_json_str != NULL)
+    //{
+    //    int length = strlen(converted_json_str);
+    //    if (length != 0)
+    //    {                     
+    //        if (flow_risk_count)
+    //        {
+    //            write_to_alert_file(converted_json_str, length);
+    //            char * converted_json_str_no_risk = NULL;
+    //            DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
+    //            int length_converted = strlen(converted_json_str_no_risk);
+    //            write_to_event_file(converted_json_str_no_risk, length_converted);
+    //            free(converted_json_str_no_risk);
+    //        } 
+    //        else
+    //        {
+    //            write_to_event_file(converted_json_str, length);
+    //        }
+    //    }
+    //}
 
-    free(converted_json_str);
+    //free(converted_json_str);
 }
 
 
