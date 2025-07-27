@@ -223,7 +223,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
+        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_a_%s.tmp", events_folder_full_path, timestamp);
 
         event_log_fp = fopen(current_event_filename, "a");
         if (!event_log_fp)
@@ -259,7 +259,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_%s.tmp", alerts_folder_full_path, timestamp);
+        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_b_%s.tmp", alerts_folder_full_path, timestamp);
 
         alert_log_fp = fopen(current_alert_filename, "a");
         if (!alert_log_fp)
