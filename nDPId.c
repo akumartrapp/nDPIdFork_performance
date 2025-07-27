@@ -163,6 +163,14 @@ void get_current_utc_iso8601(char * buffer, size_t size)
 
     gmtime_r(&now, &tm_now);
     strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_now);
+
+    for (char * p = buffer; *p != '\0'; ++p)
+    {
+        if (*p == ':')
+        {
+            *p = '_';
+        }
+    }
 }
 
 // Rotate log file: close, rename, reset state
