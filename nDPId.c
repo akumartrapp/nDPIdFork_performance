@@ -303,19 +303,17 @@ void write_to_file(const char * const json_msg, const char * const json_string_w
         {
             if (flow_risk_count)
             {
-                {
-                    write_to_alert_file(converted_json_str, length);
-                    char * converted_json_str_no_risk = NULL;
-                    DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
-                    int length_converted = strlen(converted_json_str_no_risk);
-                    write_to_event_file(converted_json_str_no_risk, length_converted);
-                    free(converted_json_str_no_risk);
-                }
-                else
-                {
-                    write_to_event_file(converted_json_str, length);
-                }
+                write_to_alert_file(converted_json_str, length);
+                char * converted_json_str_no_risk = NULL;
+                DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
+                int length_converted = strlen(converted_json_str_no_risk);
+                write_to_event_file(converted_json_str_no_risk, length_converted);
+                free(converted_json_str_no_risk);
             }
+            else
+            {
+                write_to_event_file(converted_json_str, length);
+            }            
         }
 
         free(converted_json_str);
@@ -789,10 +787,9 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->size++;
 }
 
-static char * get_json_string_from_map(flow_map_t * map, char const * const json_msg)
+static char * get_json_string_from_map(flow_map_t * map, unsigned long long int flow_id, char const * const json_msg)
 {
     char * json_string = NULL;
-    unsigned long long int flow_id = GetFlowId(json_msg);
     for (size_t i = 0; i < map->size; ++i)
     {
         if (map->entries[i].flow_id == flow_id)
@@ -3163,14 +3160,15 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     char * json_string_with_http_or_tls_info = NULL;
+    unsigned long long int flow_id = GetFlowId(json_msg);
     if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
     {
-        add_or_update_flow_entry(json_msg);
+        add_or_update_flow_entry(flow_map, flow_id, json_msg);
         return; 
     }
     else 
     {
-        json_string_with_http_or_tls_info = get_json_string_from_map(flow_map, json_msg);
+        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id, json_msg);
     }
 
     // Ashwani 
