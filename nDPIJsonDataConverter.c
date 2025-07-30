@@ -45,7 +45,7 @@ struct NDPI_tls
 {
     char* version;
     char* server_names;
-    char* ja3;
+    char* ja4;
     char* ja3s;
     char* cipher;
     char* issuerDN;
@@ -324,7 +324,7 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson, const char * const json
     result.confidence.value = NULL;
     result.tls.version = NULL;
     result.tls.server_names = NULL;
-    result.tls.ja3 = NULL;
+    result.tls.ja4 = NULL;
     result.tls.ja3s = NULL;
     result.tls.cipher = NULL;
     result.tls.issuerDN = NULL;
@@ -536,9 +536,9 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson, const char * const json
                     }
 
                     json_object * ja3_object;
-                    if (json_object_object_get_ex(tlsObject, "ja3", &ja3_object))
+                    if (json_object_object_get_ex(tlsObject, "ja4", &ja3_object))
                     {
-                        result.tls.ja3 = strDuplicate(json_object_get_string(ja3_object));
+                        result.tls.ja4 = strDuplicate(json_object_get_string(ja3_object));
                     }
 
                     json_object * ja3s_object;
@@ -859,9 +859,9 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
         
     }
 
-    if (ndpi->tls.ja3 != NULL)
+    if (ndpi->tls.ja4 != NULL)
     {
-        json_object_object_add(client, "ja3", json_object_new_string(ndpi->tls.ja3));
+        json_object_object_add(client, "ja4", json_object_new_string(ndpi->tls.ja4));
         addClient = TRUE;     
     }
 
@@ -879,7 +879,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
     BOOL addServer = FALSE;
     if (ndpi->tls.ja3s != NULL)
     {
-        json_object_object_add(server, "ja3", json_object_new_string(ndpi->tls.ja3s));        
+        json_object_object_add(server, "ja4", json_object_new_string(ndpi->tls.ja3s));        
         addServer = TRUE;
     }
 
@@ -1044,9 +1044,9 @@ static void FreeConvertnDPIDataFormat(struct NDPI_Data* ndpiData)
         free(ndpiData->tls.server_names);
     }
 
-    if (ndpiData->tls.ja3 != NULL)
+    if (ndpiData->tls.ja4 != NULL)
     {
-        free(ndpiData->tls.ja3);
+        free(ndpiData->tls.ja4);
     }
 
     if (ndpiData->tls.ja3s != NULL)
