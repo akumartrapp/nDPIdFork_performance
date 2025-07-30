@@ -291,35 +291,35 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 }
 
 
-void write_to_file(const char * const json_msg)
+void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
-    int length = strlen(json_msg);
-    write_to_event_file(json_msg, length); 
-    //char * converted_json_str = NULL;
-    //int flow_risk_count = 0;
-    //ConvertnDPIDataFormat(json_msg, &converted_json_str, &flow_risk_count);
-    //if (converted_json_str != NULL)
-    //{
-    //    int length = strlen(converted_json_str);
-    //    if (length != 0)
-    //    {                     
-    //        if (flow_risk_count)
-    //        {
-    //            write_to_alert_file(converted_json_str, length);
-    //            char * converted_json_str_no_risk = NULL;
-    //            DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
-    //            int length_converted = strlen(converted_json_str_no_risk);
-    //            write_to_event_file(converted_json_str_no_risk, length_converted);
-    //            free(converted_json_str_no_risk);
-    //        } 
-    //        else
-    //        {
-    //            write_to_event_file(converted_json_str, length);
-    //        }
-    //    }
-    //}
+    char * converted_json_str = NULL;
+    int flow_risk_count = 0;
+    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, &converted_json_str, &flow_risk_count);
+    if (converted_json_str != NULL)
+    {
+        int length = strlen(converted_json_str);
+        if (length != 0)
+        {
+            if (flow_risk_count)
+            {
+                {
+                    write_to_alert_file(converted_json_str, length);
+                    char * converted_json_str_no_risk = NULL;
+                    DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
+                    int length_converted = strlen(converted_json_str_no_risk);
+                    write_to_event_file(converted_json_str_no_risk, length_converted);
+                    free(converted_json_str_no_risk);
+                }
+                else
+                {
+                    write_to_event_file(converted_json_str, length);
+                }
+            }
+        }
 
-    //free(converted_json_str);
+        free(converted_json_str);
+    }
 }
 
 
@@ -715,6 +715,97 @@ enum daemon_event
     DAEMON_EVENT_COUNT
 };
 
+// Define a structure to hold the flow id and JSON string
+typedef struct
+{
+    unsigned long long int flow_id;
+    char * json_str;
+} flow_entry_t;
+
+// Define a structure to manage the dynamic array of FlowEntry
+typedef struct
+{
+    flow_entry_t * entries;
+    size_t size;
+    size_t capacity;
+} flow_map_t;
+
+
+flow_map_t flow_map;
+
+// Initialize the FlowMap
+void init_flow_map(flow_map_t * map, size_t initial_capacity)
+{
+    map->entries = malloc(initial_capacity * sizeof(flow_entry_t));
+    map->size = 0;
+    map->capacity = initial_capacity;
+}
+
+// Free the FlowMap
+void free_flow_map(flow_map_t * map)
+{
+    for (size_t i = 0; i < map->size; ++i)
+    {
+        free(map->entries[i].json_str);
+    }
+    free(map->entries);
+}
+
+// Ensure capacity of the FlowMap
+void ensure_capacity(flow_map_t * map)
+{
+    if (map->size >= map->capacity)
+    {
+        map->capacity *= 2;
+        map->entries = realloc(map->entries, map->capacity * sizeof(flow_entry_t));
+    }
+}
+
+// Add or update an entry in the FlowMap
+void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, const char * json_str)
+{
+    if (map == NULL || json_str == NULL)
+    {
+        return;
+    }
+
+    ensure_capacity(map);
+
+    for (size_t i = 0; i < map->size; ++i)
+    {
+        if (map->entries[i].flow_id == flow_id)
+        {
+            // Update existing entry
+            free(map->entries[i].json_str);
+            map->entries[i].json_str = NULL;
+            map->entries[i].json_str = strdup(json_str);
+            return;           
+        }
+    }
+
+    // Add new entry
+    map->entries[map->size].flow_id = flow_id;
+    map->entries[map->size].json_str = strdup(json_str);
+    map->size++;
+}
+
+static char * get_json_string_from_map(flow_map_t * map, char const * const json_msg)
+{
+    char * json_string = NULL;
+    unsigned long long int flow_id = GetFlowId(json_msg);
+    for (size_t i = 0; i < map->size; ++i)
+    {
+        if (map->entries[i].flow_id == flow_id)
+        {
+           json_string = strdup(map->entries[i].json_str);     
+           free(map->entries[i].json_str);
+        }
+    }
+
+    return json_string;
+}
+
+
 int skipEventsFromLogging(enum flow_event event)
 {
     if (ENABLE_DETAILED_LOGGING)
@@ -722,7 +813,7 @@ int skipEventsFromLogging(enum flow_event event)
         return 0;
     }
 
-    if (event != FLOW_EVENT_IDLE && event != FLOW_EVENT_END )
+    if (event != FLOW_EVENT_IDLE && event != FLOW_EVENT_END && event != FLOW_EVENT_DETECTED && event != FLOW_EVENT_DETECTION_UPDATE)
     {
         return 1;
     }
@@ -963,7 +1054,7 @@ struct confopt tuning_config_map[] = {
 static void sighandler(int signum);
 static WARN_UNUSED int processing_threads_error_or_eof(void);
 static void free_workflow(struct nDPId_workflow ** const workflow);
-static void serialize_and_send(struct nDPId_reader_thread * const reader_thread);
+static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event);
 static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event);
@@ -2942,7 +3033,7 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
             break;
     }
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "global_ts_usec", workflow->last_global_time);
-    serialize_and_send(reader_thread);
+    serialize_and_send(reader_thread, event);
 }
 
 static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_flow_extended const * const flow_ext)
@@ -3036,9 +3127,8 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
     return 0;
 }
 
-static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
-                              char const * const json_msg,
-                              size_t json_msg_len)
+
+static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
@@ -3072,11 +3162,25 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         return;
     }
 
+    char * json_string_with_http_or_tls_info = NULL;
+    if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
+    {
+        add_or_update_flow_entry(json_msg);
+        return; 
+    }
+    else 
+    {
+        json_string_with_http_or_tls_info = get_json_string_from_map(flow_map, json_msg);
+    }
+
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
-    write_to_file(json_msg);
+    write_to_file(json_msg, json_string_with_http_or_tls_info);
+    free(json_string_with_http_or_tls_info);
+
     return;
 
+    //--------------------------------------------- Not Used-----------------------------------
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
@@ -3174,7 +3278,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     }
 }
 
-static void serialize_and_send(struct nDPId_reader_thread * const reader_thread)
+static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
 {
     char * json_msg;
     uint32_t json_msg_len;
@@ -3194,7 +3298,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread)
     else
     {
         reader_thread->workflow->total_events_serialized++;
-        send_to_collector(reader_thread, json_msg, json_msg_len);
+        send_to_collector(reader_thread, json_msg, json_msg_len, event);
     }
     ndpi_reset_serializer(&reader_thread->workflow->ndpi_serializer);
 }
@@ -3479,7 +3583,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                reader_thread->workflow->packets_captured,
                reader_thread->array_index);
     }
-    serialize_and_send(reader_thread);
+    serialize_and_send(reader_thread, event);
 }
 
 /* I decided against ndpi_flow2json as it does not fulfill my needs. */
@@ -3620,7 +3724,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
             break;
     }
 
-    serialize_and_send(reader_thread);
+    serialize_and_send(reader_thread, event);
     return 1;
 }
 
@@ -3695,7 +3799,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
             break;
     }
 
-    serialize_and_send(reader_thread);
+    serialize_and_send(reader_thread, event);
 }
 
 static void internal_format_error(ndpi_serializer * const serializer, char const * const format, uint32_t format_index)
@@ -3905,7 +4009,7 @@ __attribute__((format(printf, 3, 4))) static void jsonize_error_eventf(struct nD
     }
 
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "global_ts_usec", workflow->last_global_time);
-    serialize_and_send(reader_thread);
+    serialize_and_send(reader_thread, event);
 }
 
 /* See: https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3 */
@@ -6933,6 +7037,7 @@ int main(int argc, char ** argv)
     }
 
     create_events_and_alerts_folders();
+    init_flow_map(&flow_map, 10000);
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
@@ -6957,6 +7062,7 @@ int main(int argc, char ** argv)
 
     daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
     logger(0, "%s", "Bye.");
+    free_flow_map(flow_map);
     shutdown_logging();
 
     return 0;

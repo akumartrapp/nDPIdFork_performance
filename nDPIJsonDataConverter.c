@@ -315,7 +315,7 @@ static const char* ndpi_risk2description(ndpi_risk_enum risk)
 /*--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 // Function to convert ndpi field to the desired structure
-struct NDPI_Data getnDPIStructure(const char* ndpiJson)
+struct NDPI_Data getnDPIStructure(const char * ndpiJson, const char * const json_string_with_http_or_tls_info )
 {
     struct NDPI_Data result;
     result.flow_risk = NULL;
@@ -429,54 +429,6 @@ struct NDPI_Data getnDPIStructure(const char* ndpiJson)
             result.confidence.value = strDuplicate(json_object_get_string(value));
         }
 
-        // Extract tls object
-        json_object* tlsObject;
-        if (json_object_object_get_ex(ndpiObject, "tls", &tlsObject) && json_object_is_type(tlsObject, json_type_object))
-        {
-            json_object* version_object;
-            if (json_object_object_get_ex(tlsObject, "version", &version_object))
-            {
-                result.tls.version = strDuplicate(json_object_get_string(version_object));
-            }
-
-            json_object* server_names_object;
-            if (json_object_object_get_ex(tlsObject, "server_names", &server_names_object))
-            {
-                result.tls.server_names = strDuplicate(json_object_get_string(server_names_object));
-            }
-
-            json_object* ja3_object;
-            if (json_object_object_get_ex(tlsObject, "ja3", &ja3_object))
-            {
-                result.tls.ja3 = strDuplicate(json_object_get_string(ja3_object));
-            }
-
-            json_object* ja3s_object;
-            if (json_object_object_get_ex(tlsObject, "ja3s", &ja3s_object))
-            {
-                result.tls.ja3s = strDuplicate(json_object_get_string(ja3s_object));
-            }
-
-            json_object* cipher_object;
-            if (json_object_object_get_ex(tlsObject, "cipher", &cipher_object))
-            {
-                result.tls.cipher = strDuplicate(json_object_get_string(cipher_object));
-            }
-
-            json_object* issuerDN_object;
-            if (json_object_object_get_ex(tlsObject, "issuerDN", &issuerDN_object))
-            {
-                result.tls.issuerDN = strDuplicate(json_object_get_string(issuerDN_object));
-            }
-
-            json_object* subjectDN_object;
-            if (json_object_object_get_ex(tlsObject, "subjectDN", &subjectDN_object))
-            {
-                result.tls.subjectDN = strDuplicate(json_object_get_string(subjectDN_object));
-            }
-           
-        }
-
         // Extract rest of ndpi data
         json_object* proto_id;
         if (json_object_object_get_ex(ndpiObject, "proto_id", &proto_id))
@@ -520,46 +472,130 @@ struct NDPI_Data getnDPIStructure(const char* ndpiJson)
             result.category = strDuplicate(json_object_get_string(category));
         }
 
-        // Extract http object
-        json_object * httpObject;
-        if (json_object_object_get_ex(ndpiObject, "http", &httpObject) &&
-            json_object_is_type(httpObject, json_type_object))
+      
+        // Extrat http and tls object from json_string_with_http_or_tls_info
+        if (json_string_with_http_or_tls_info != NULL)
         {
-            json_object * request_content_type_object;
-            if (json_object_object_get_ex(httpObject, "request_content_type", &request_content_type_object))
-            {
-                result.http.request_content_type = strDuplicate(json_object_get_string(request_content_type_object));
+            json_object * root_http_tls = json_tokener_parse(json_string_with_http_or_tls_info);
+            if (root_http_tls != NULL)
+            {              
+                json_object * ndpiObject_http_tls;
+                if (json_object_object_get_ex(root_http_tls, "ndpi", &ndpiObject_http_tls))
+                {
+                    // Extract http object
+                    json_object * httpObject;
+                    if (json_object_object_get_ex(ndpiObject_http_tls, "http", &httpObject) &&  json_object_is_type(httpObject, json_type_object))
+                    {
+                        json_object * request_content_type_object;
+                        if (json_object_object_get_ex(httpObject, "request_content_type", &request_content_type_object))
+                        {
+                            result.http.request_content_type =
+                                strDuplicate(json_object_get_string(request_content_type_object));
+                        }
+
+                        json_object * content_type_object;
+                        if (json_object_object_get_ex(httpObject, "content_type", &content_type_object))
+                        {
+                            result.http.content_type = strDuplicate(json_object_get_string(content_type_object));
+                        }
+
+                        json_object * user_agent_object;
+                        if (json_object_object_get_ex(httpObject, "user_agent", &user_agent_object))
+                        {
+                            result.http.user_agent = strDuplicate(json_object_get_string(user_agent_object));
+                        }
+
+                        json_object * filename_object;
+                        if (json_object_object_get_ex(httpObject, "filename", &filename_object))
+                        {
+                            result.http.filename = strDuplicate(json_object_get_string(filename_object));
+                        }
+
+                        json_object * code_object;
+                        if (json_object_object_get_ex(httpObject, "code", &code_object))
+                        {
+                            result.http.code = json_object_get_int(code_object);
+                        }
+                    }
+                }
+
+                // Extract tls object
+                json_object * tlsObject;
+                if (json_object_object_get_ex(ndpiObject_http_tls, "tls", &tlsObject) &&  json_object_is_type(tlsObject, json_type_object))
+                {
+                    json_object * version_object;
+                    if (json_object_object_get_ex(tlsObject, "version", &version_object))
+                    {
+                        result.tls.version = strDuplicate(json_object_get_string(version_object));
+                    }
+
+                    json_object * server_names_object;
+                    if (json_object_object_get_ex(tlsObject, "server_names", &server_names_object))
+                    {
+                        result.tls.server_names = strDuplicate(json_object_get_string(server_names_object));
+                    }
+
+                    json_object * ja3_object;
+                    if (json_object_object_get_ex(tlsObject, "ja3", &ja3_object))
+                    {
+                        result.tls.ja3 = strDuplicate(json_object_get_string(ja3_object));
+                    }
+
+                    json_object * ja3s_object;
+                    if (json_object_object_get_ex(tlsObject, "ja3s", &ja3s_object))
+                    {
+                        result.tls.ja3s = strDuplicate(json_object_get_string(ja3s_object));
+                    }
+
+                    json_object * cipher_object;
+                    if (json_object_object_get_ex(tlsObject, "cipher", &cipher_object))
+                    {
+                        result.tls.cipher = strDuplicate(json_object_get_string(cipher_object));
+                    }
+
+                    json_object * issuerDN_object;
+                    if (json_object_object_get_ex(tlsObject, "issuerDN", &issuerDN_object))
+                    {
+                        result.tls.issuerDN = strDuplicate(json_object_get_string(issuerDN_object));
+                    }
+
+                    json_object * subjectDN_object;
+                    if (json_object_object_get_ex(tlsObject, "subjectDN", &subjectDN_object))
+                    {
+                        result.tls.subjectDN = strDuplicate(json_object_get_string(subjectDN_object));
+                    }
+                }
             }
 
-            json_object * content_type_object;
-            if (json_object_object_get_ex(httpObject, "content_type", &content_type_object))
-            {
-                result.http.content_type = strDuplicate(json_object_get_string(content_type_object));
-            }
-            
-            json_object * user_agent_object;
-            if (json_object_object_get_ex(httpObject, "user_agent", &user_agent_object))
-            {
-                result.http.user_agent = strDuplicate(json_object_get_string(user_agent_object));
-            }
-            
-            json_object * filename_object;
-            if (json_object_object_get_ex(httpObject, "filename", &filename_object))
-            {
-                result.http.filename = strDuplicate(json_object_get_string(filename_object));
-            }
-
-            json_object * code_object;
-            if (json_object_object_get_ex(httpObject, "code", &code_object))
-            {
-                result.http.code = json_object_get_int(code_object);
-            }
+            json_object_put(root_http_tls);
         }
     }
 
     json_object_put(root);
 
     return result;
+}
+
+unsigned long long int GetFlowId(const char* json_str)
+{
+    long long int flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
+    json_object * root = json_tokener_parse(json_str);
+    if (root == NULL)
+    {
+        fprintf(stderr, "Error parsing JSON\n");
+        return RANDOM_UNINITIALIZED_INT_VALUE;
+    }
+
+    json_object * flow_id_object;
+    if (json_object_object_get_ex(root, "flow_id", &flow_id_object))
+    {
+        flow_id = json_object_get_int(flow_id_object);
+    }
+
+    json_object_put(root);
+
+
+    return flow_id;
 }
 
 static struct Root_data getRootDataStructure(const char* originalJsonStr)
@@ -1361,11 +1397,12 @@ static void add_Root_Data(json_object ** root_object,
 }
 
 void ConvertnDPIDataFormat(const char * originalJsonStr,
+                           const char * const json_string_with_http_or_tls_info,
                            char ** converted_json_str,
                            int * createAlert)
 {
    
-    struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr);
+    struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr, json_string_with_http_or_tls_info);
 
     *createAlert = ndpiData.flow_risk_count;
 
