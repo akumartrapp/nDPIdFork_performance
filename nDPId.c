@@ -143,16 +143,21 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
+const char * master_folder_name = "Master";
 char alerts_folder_full_path[PATH_MAX_LEN];
 char events_folder_full_path[PATH_MAX_LEN];
+char master_folder_full_path[PATH_MAX_LEN];
 char executable_directory[PATH_MAX_LEN];
 
 static FILE * event_log_fp = NULL;
 static FILE * alert_log_fp = NULL;
+static FILE * master_log_fp = NULL;
 static char current_event_filename[MAX_FILENAME_LEN] = {0};
 static char current_alert_filename[MAX_FILENAME_LEN] = {0};
+static char current_master_filename[MAX_FILENAME_LEN] = {0};
 static time_t event_file_start_time = 0;
 static time_t alert_file_start_time = 0;
+static time_t master_file_start_time = 0;
 
 /*---------------------------------------------------------------------------------------------------------/*/
 // Function to get current UTC ISO8601 time
@@ -217,6 +222,49 @@ void rotate_alert_log_file()
     }
 }
 
+void write_to_master_file(const char * const json_msg, size_t json_msg_len)
+{
+    time_t now = time(NULL);
+
+    // Create new file if none open or time elapsed
+    int master_file_log_duration_in_seconds = DURATION_OF_RUN_IN_MINUTES_TO_GENERATE_MASTER_LOG * 60;
+    if (master_log_fp == NULL || difftime(now, master_file_start_time) >= master_file_log_duration_in_seconds)
+    {
+        if (master_log_fp)
+        {
+            exit(0);
+        }
+
+        // Create new file
+        char timestamp[32];
+        get_current_utc_iso8601(timestamp, sizeof(timestamp));
+
+        snprintf(current_master_filename,
+                 sizeof(current_master_filename),
+                 "%s/nDPId_MASTER_log_%s.tmp",
+                 master_folder_full_path,
+                 timestamp);
+
+        master_log_fp = fopen(current_master_filename, "a");
+        if (!master_log_fp)
+        {
+            printf("ERROR: Failed to open log file: %s (%s)\n", current_master_filename, strerror(errno));
+            return;
+        }
+
+        master_file_start_time = now;
+    }
+
+    // Write to current file
+    size_t written = fwrite(json_msg, 1, json_msg_len, master_log_fp);
+    if (written != json_msg_len)
+    {
+        printf("ERROR: Partial write to '%s'\n", master_folder_full_path);
+    }
+
+    fwrite("\n", 1, 1, master_log_fp);
+    fflush(master_log_fp); // ensure data is written
+}
 
 void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 {
@@ -231,7 +279,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_a_%s.tmp", events_folder_full_path, timestamp);
+        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
 
         event_log_fp = fopen(current_event_filename, "a");
         if (!event_log_fp)
@@ -267,7 +315,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_b_%s.tmp", alerts_folder_full_path, timestamp);
+        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_%s.tmp", alerts_folder_full_path, timestamp);
 
         alert_log_fp = fopen(current_alert_filename, "a");
         if (!alert_log_fp)
@@ -295,6 +343,7 @@ void write_to_file(const char * const json_msg, const char * const json_string_w
 {
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
+
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, &converted_json_str, &flow_risk_count);
     if (converted_json_str != NULL)
     {
@@ -348,9 +397,18 @@ void create_events_and_alerts_folders()
     // Build full paths
     snprintf(alerts_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, alerts_folder_name);
     snprintf(events_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, events_folder_name);
+    if (GENERATE_MASTER_LOG_FILE)
+    {
+        snprintf(master_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, master_folder_name);
+    }
 
     printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
     printf("Events Folder Path is : [%s]\n", events_folder_full_path);
+    if (GENERATE_MASTER_LOG_FILE)
+    {
+        printf("Master Folder Path is : [%s]\n", master_folder_full_path);
+    }
+  
     printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
 
     // Check write/execute access to parent directory
@@ -390,6 +448,25 @@ void create_events_and_alerts_folders()
     else
     {
         printf("Events folder created successfully.\n");
+    }
+
+     // Create Master folder
+    if (GENERATE_MASTER_LOG_FILE)
+    {
+        if (mkdir(master_folder_full_path, 0777) == -1)
+        {
+            if (errno == EEXIST)
+                printf("Master folder already exists.\n");
+            else
+            {
+                printf("ERROR: mkdir('%s') failed: %s\n", master_folder_full_path, strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+        }
+        else
+        {
+            printf("Master folder created successfully.\n");
+        }
     }
 }
 
@@ -3157,6 +3234,11 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                    newline_json_msg);
         }
         return;
+    }
+
+    if (GENERATE_MASTER_LOG_FILE)
+    {
+        write_to_master_file(json_msg, json_msg_len);
     }
 
     char * json_string_with_http_or_tls_info = NULL;
