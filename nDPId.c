@@ -787,7 +787,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->size++;
 }
 
-static char * get_json_string_from_map(flow_map_t * map, unsigned long long int flow_id, char const * const json_msg)
+static char * get_json_string_from_map(flow_map_t * map, unsigned long long int flow_id)
 {
     char * json_string = NULL;
     for (size_t i = 0; i < map->size; ++i)
@@ -3030,7 +3030,7 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
             break;
     }
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "global_ts_usec", workflow->last_global_time);
-    serialize_and_send(reader_thread, event);
+    serialize_and_send(reader_thread, FLOW_EVENT_INVALID);
 }
 
 static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_flow_extended const * const flow_ext)
@@ -3168,7 +3168,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
     else 
     {
-        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id, json_msg);
+        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
     }
 
     // Ashwani 
@@ -3581,7 +3581,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                reader_thread->workflow->packets_captured,
                reader_thread->array_index);
     }
-    serialize_and_send(reader_thread, event);
+    serialize_and_send(reader_thread, FLOW_EVENT_INVALID);
 }
 
 /* I decided against ndpi_flow2json as it does not fulfill my needs. */
@@ -4007,7 +4007,7 @@ __attribute__((format(printf, 3, 4))) static void jsonize_error_eventf(struct nD
     }
 
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "global_ts_usec", workflow->last_global_time);
-    serialize_and_send(reader_thread, event);
+    serialize_and_send(reader_thread, FLOW_EVENT_INVALID);
 }
 
 /* See: https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3 */
