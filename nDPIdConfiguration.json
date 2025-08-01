@@ -4,8 +4,8 @@
     "logFilesLengthInMB": 5,
 
     "debugLogs": {
-      "detailedLog": true,  
-	  "generateMasterLogFile": true,
+      "detailedLog": false,  
+	  "generateMasterLogFile": false,
       "masterLogFileDurationInMinutes": 10	  
     }    
   }
