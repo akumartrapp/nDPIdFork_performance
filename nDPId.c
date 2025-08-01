@@ -136,7 +136,7 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <stdio.h>
 #include <stdbool.h>
 #include "nDPIJsonDataConverter.h"
-
+#include "../json-c/include/json-c/json.h"
 
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN 512
@@ -535,7 +535,14 @@ void read_ndpid_config(const char * filename)
         return;
     }
 
-    fread(file_contents, 1, file_size, fp);
+    size_t read_bytes = fread(file_contents, 1, file_size, fp);
+    if (read_bytes != file_size)
+    {
+        printf("ERROR: fread failed or incomplete (expected %ld bytes, got %zu)\n", file_size, read_bytes);
+        free(file_contents);
+        return;
+    }
+
     file_contents[file_size] = '\0';
     fclose(fp);
 
@@ -7237,7 +7244,7 @@ int main(int argc, char ** argv)
     read_ndpid_config("nDPIdConfiguration.json");
 
     // MM.DD.YYYY
-    printf("nDPID program version is 07.31.2025.01\n")
+    printf("nDPID program version is 07.31.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
