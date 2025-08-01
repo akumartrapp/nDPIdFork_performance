@@ -976,22 +976,16 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
         return;
     }
 
-    printf("1\n");
     ensure_capacity(map);
-    printf("2\n");
 
     for (size_t i = 0; i < map->size; ++i)
     {
         if (map->entries[i].flow_id == flow_id)
         {
             // Update existing entry
-            printf("3\n");
             free(map->entries[i].json_str);
-            printf("4\n");
             map->entries[i].json_str = NULL;
-            printf("5\n");
             map->entries[i].json_str = strdup(json_str);
-            printf("6\n");
 
             if (!map->entries[i].json_str)
             {
@@ -1005,18 +999,14 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
 
     // Add new entry
     map->entries[map->size].flow_id = flow_id;
-    printf("7\n");
     map->entries[map->size].json_str = strdup(json_str);
-    printf("8\n");
     if (!map->entries[map->size].json_str)
     {
         printf("strdup failed in add_or_update_flow_entry 2\n");
         exit(EXIT_FAILURE);
     }
 
-    printf("9\n");
     map->size++;
-    printf("10\n");
 }
 
 static char * get_json_string_from_map(flow_map_t * map, unsigned long long int flow_id)
@@ -3394,16 +3384,14 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     if (master_log_file_enabled)
     {
-        //write_to_master_file(json_msg, json_msg_len);
+        write_to_master_file(json_msg, json_msg_len);
     }
 
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
     if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
     {
-        printf("add_or_update_flow_entry before\n");
         add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        printf("add_or_update_flow_entry after\n");
         return; 
     }
     else 
@@ -3413,13 +3401,10 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
-   
-    printf("write_to_file before\n");
+
     write_to_file(json_msg, json_string_with_http_or_tls_info);
-    printf("write_to_file after\n");
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
-    printf("return\n");
     return;
 
     //--------------------------------------------- Not Used-----------------------------------
