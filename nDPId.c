@@ -1028,6 +1028,7 @@ static char * get_json_string_from_map(flow_map_t * map, unsigned long long int 
         {
            json_string = strdup(map->entries[i].json_str);     
            free(map->entries[i].json_str);
+           map->entries[i].json_str = NULL;
         }
     }
 
