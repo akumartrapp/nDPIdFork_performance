@@ -7239,9 +7239,9 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    create_events_and_alerts_folders();
-    init_flow_map(&flow_map, 10000);
     read_ndpid_config("nDPIdConfiguration.json");
+    create_events_and_alerts_folders();
+    init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
     printf("nDPID program version is 07.31.2025.01\n");
