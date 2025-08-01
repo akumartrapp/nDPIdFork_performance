@@ -536,7 +536,7 @@ void read_ndpid_config(const char * filename)
     }
 
     size_t read_bytes = fread(file_contents, 1, file_size, fp);
-    if (read_bytes != file_size)
+    if (read_bytes != (size_t)file_size)
     {
         printf("ERROR: fread failed or incomplete (expected %ld bytes, got %zu)\n", file_size, read_bytes);
         free(file_contents);
