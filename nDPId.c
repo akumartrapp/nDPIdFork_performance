@@ -945,6 +945,7 @@ void free_flow_map(flow_map_t * map)
     for (size_t i = 0; i < map->size; ++i)
     {
         free(map->entries[i].json_str);
+        map->entries[i].json_str = NULL;
     }
     free(map->entries);
 }
@@ -975,20 +976,24 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
         return;
     }
 
+    printf("1\n");
     ensure_capacity(map);
+    printf("2\n");
 
     for (size_t i = 0; i < map->size; ++i)
     {
         if (map->entries[i].flow_id == flow_id)
         {
             // Update existing entry
+            printf("3\n");
             free(map->entries[i].json_str);
+            printf("4\n");
             map->entries[i].json_str = NULL;
             map->entries[i].json_str = strdup(json_str);
 
             if (!map->entries[i].json_str)
             {
-                fprintf(stderr, "strdup failed in add_or_update_flow_entry 1\n");
+                printf("strdup failed in add_or_update_flow_entry 1\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -998,10 +1003,12 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
 
     // Add new entry
     map->entries[map->size].flow_id = flow_id;
+    printf("5\n");
     map->entries[map->size].json_str = strdup(json_str);
+    printf("6\n");
     if (!map->entries[map->size].json_str)
     {
-        fprintf(stderr, "strdup failed in add_or_update_flow_entry 2\n");
+        printf("strdup failed in add_or_update_flow_entry 2\n");
         exit(EXIT_FAILURE);
     }
 
