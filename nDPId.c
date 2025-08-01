@@ -988,7 +988,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
             map->entries[i].json_str = strdup(json_str);
             if (!map->entries[i].json_str)
             {
-                fprintf(stderr, "strdup failed in add_or_update_flow_entry\n");
+                fprintf(stderr, "strdup failed in add_or_update_flow_entry 1\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -998,10 +998,10 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
 
     // Add new entry
     map->entries[map->size].flow_id = flow_id;
-    map->entries[i].json_str = strdup(json_str);
-    if (!map->entries[i].json_str)
+    map->entries[map->size].json_str = strdup(json_str);
+    if (!map->entries[map->size].json_str)
     {
-        fprintf(stderr, "strdup failed in add_or_update_flow_entry\n");
+        fprintf(stderr, "strdup failed in add_or_update_flow_entry 2\n");
         exit(EXIT_FAILURE);
     }
 
