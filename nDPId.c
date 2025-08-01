@@ -134,12 +134,12 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "nDPIJsonDataConverter.h"
 
 
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN 512
-#define LOG_DURATION_SECONDS 60
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
@@ -159,7 +159,50 @@ static time_t event_file_start_time = 0;
 static time_t alert_file_start_time = 0;
 static time_t master_file_start_time = 0;
 
-/*---------------------------------------------------------------------------------------------------------/*/
+// Variables to hold config values
+static int log_file_duration_in_seconds = 60; 
+static int log_file_size_in_mb = 5;
+static bool detailed_log_enabled = false;
+static bool master_log_file_enabled = false;
+static int master_log_file_duration_in_minutes = 10;
+
+/*---------------------------------------------------------------------------------------------------------*/
+
+bool is_file_larger_than_threshold(FILE * fp)
+{
+    if (fp == NULL)
+    {
+        return false;
+    }
+
+    // Save current file position
+    long current_pos = ftell(fp);
+    if (current_pos == -1L)
+    {
+        return false;
+    }
+
+    // Seek to end to get file size
+    if (fseek(fp, 0, SEEK_END) != 0)
+    {
+        return false;
+    }
+
+    long file_size_bytes = ftell(fp); // Get file size in bytes
+    if (file_size_bytes == -1L)
+    {
+        return false;
+    }
+
+    // Restore original position
+    fseek(fp, current_pos, SEEK_SET);
+
+    // Convert threshold to bytes
+    long threshold_bytes = (long)log_file_size_in_mb * 1024 * 1024;
+
+    return file_size_bytes > threshold_bytes;
+}
+
 // Function to get current UTC ISO8601 time
 void get_current_utc_iso8601(char * buffer, size_t size)
 {
@@ -227,7 +270,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
-    int master_file_log_duration_in_seconds = DURATION_OF_RUN_IN_MINUTES_TO_GENERATE_MASTER_LOG * 60;
+    int master_file_log_duration_in_seconds = master_log_file_duration_in_minutes * 60;
     if (master_log_fp == NULL || difftime(now, master_file_start_time) >= master_file_log_duration_in_seconds)
     {
         if (master_log_fp)
@@ -271,7 +314,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
-    if (event_log_fp == NULL || difftime(now, event_file_start_time) >= LOG_DURATION_SECONDS)
+    if (event_log_fp == NULL || difftime(now, event_file_start_time) >= log_file_duration_in_seconds || is_file_larger_than_threshold(event_log_fp))
     {
         rotate_event_log_file();
 
@@ -307,7 +350,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
-    if (alert_log_fp == NULL || difftime(now, alert_file_start_time) >= LOG_DURATION_SECONDS)
+    if (alert_log_fp == NULL || difftime(now, alert_file_start_time) >= log_file_duration_in_seconds || is_file_larger_than_threshold(alert_log_fp))
     {
         rotate_alert_log_file();
 
@@ -397,14 +440,14 @@ void create_events_and_alerts_folders()
     // Build full paths
     snprintf(alerts_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, alerts_folder_name);
     snprintf(events_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, events_folder_name);
-    if (GENERATE_MASTER_LOG_FILE)
+    if (master_log_file_enabled)
     {
         snprintf(master_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
     printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
     printf("Events Folder Path is : [%s]\n", events_folder_full_path);
-    if (GENERATE_MASTER_LOG_FILE)
+    if (master_log_file_enabled)
     {
         printf("Master Folder Path is : [%s]\n", master_folder_full_path);
     }
@@ -451,7 +494,7 @@ void create_events_and_alerts_folders()
     }
 
      // Create Master folder
-    if (GENERATE_MASTER_LOG_FILE)
+    if (master_log_file_enabled)
     {
         if (mkdir(master_folder_full_path, 0777) == -1)
         {
@@ -468,6 +511,79 @@ void create_events_and_alerts_folders()
             printf("Master folder created successfully.\n");
         }
     }
+}
+
+// Function to read and parse the JSON config
+void read_ndpid_config(const char * filename)
+{
+    FILE * fp = fopen(filename, "r");
+    if (!fp)
+    {
+        printf("ERROR: opening JSON config file\n");
+        return;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    rewind(fp);
+
+    char * file_contents = malloc(file_size + 1);
+    if (!file_contents)
+    {
+        printf("ERROR: Memory allocation failed\n");
+        fclose(fp);
+        return;
+    }
+
+    fread(file_contents, 1, file_size, fp);
+    file_contents[file_size] = '\0';
+    fclose(fp);
+
+    struct json_object * parsed_json = json_tokener_parse(file_contents);
+    free(file_contents);
+
+    if (!parsed_json)
+    {
+        printf("ERROR: Failed to parse JSON\n");
+        return;
+    }
+
+    struct json_object * ndpid_obj = NULL;
+    if (json_object_object_get_ex(parsed_json, "nDPId", &ndpid_obj))
+    {
+        struct json_object * val;
+
+        if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInSeconds", &val))
+        {
+            log_file_duration_in_seconds = json_object_get_int(val);
+        }
+
+        if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
+        {
+            log_file_size_in_mb = json_object_get_int(val);
+        }
+
+        struct json_object * debug_logs_obj;
+        if (json_object_object_get_ex(ndpid_obj, "debugLogs", &debug_logs_obj))
+        {
+            if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
+            {
+                detailed_log_enabled = json_object_get_boolean(val);
+            }
+
+            if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
+            {
+                master_log_file_enabled = json_object_get_boolean(val);
+            }
+
+            if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
+            {
+                master_log_file_duration_in_minutes = json_object_get_int(val);
+            }
+        }
+    }
+
+    json_object_put(parsed_json); // Free memory used by json-c
 }
 
 
@@ -882,7 +998,7 @@ static char * get_json_string_from_map(flow_map_t * map, unsigned long long int 
 
 int skipEventsFromLogging(enum flow_event event)
 {
-    if (ENABLE_DETAILED_LOGGING)
+    if (detailed_log_enabled)
     {
         return 0;
     }
@@ -3236,7 +3352,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         return;
     }
 
-    if (GENERATE_MASTER_LOG_FILE)
+    if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
     }
@@ -7118,6 +7234,10 @@ int main(int argc, char ** argv)
 
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);
+    read_ndpid_config("nDPIdConfiguration.json");
+
+    // MM.DD.YYYY
+    printf("nDPID program version is 07.31.2025.01\n")
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);

@@ -1,0 +1,12 @@
+{
+  "nDPId": {
+    "logFilesLengthInSeconds": 60,
+    "logFilesLengthInMB": 5,
+
+    "debugLogs": {
+      "detailedLog": true,  
+	  "generateMasterLogFile": false,
+      "masterLogFileDurationInMinutes: 10	  
+    }    
+  }
+}
