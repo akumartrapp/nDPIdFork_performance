@@ -3361,7 +3361,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     if (master_log_file_enabled)
     {
-        write_to_master_file(json_msg, json_msg_len);
+        //write_to_master_file(json_msg, json_msg_len);
     }
 
     char * json_string_with_http_or_tls_info = NULL;
