@@ -3368,7 +3368,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     unsigned long long int flow_id = GetFlowId(json_msg);
     if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
     {
-        add_or_update_flow_entry(&flow_map, flow_id, json_msg);
+        // add_or_update_flow_entry(&flow_map, flow_id, json_msg);
         return; 
     }
     else 
