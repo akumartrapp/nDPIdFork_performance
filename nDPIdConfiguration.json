@@ -5,8 +5,8 @@
 
     "debugLogs": {
       "detailedLog": true,  
-	  "generateMasterLogFile": false,
-      "masterLogFileDurationInMinutes: 10	  
+	  "generateMasterLogFile": true,
+      "masterLogFileDurationInMinutes": 10	  
     }    
   }
 }
