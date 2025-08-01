@@ -1027,8 +1027,8 @@ static char * get_json_string_from_map(flow_map_t * map, unsigned long long int 
         if (map->entries[i].flow_id == flow_id)
         {
            json_string = strdup(map->entries[i].json_str);     
-           free(map->entries[i].json_str);
-           map->entries[i].json_str = NULL;
+          /* free(map->entries[i].json_str);
+           map->entries[i].json_str = NULL;*/
         }
     }
 
