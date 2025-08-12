@@ -13,6 +13,19 @@
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 #define INVALID_TIMESTAMP UINT64_MAX
 
+// Array to store SkipParameters
+struct SkipParameters * paramsVector = NULL;
+int vectorSize = 0;
+static bool hasAlreadyReadLogFile = false;
+
+// Define a structure to represent skipParameters
+struct SkipParameters
+{
+    char * sourceIP;
+    char * destinationIP;
+    int destinationPort; // Use -1 if not present
+};
+
 // Define the structure for ndpiData
 struct NDPI_Risk
 {
@@ -1785,6 +1798,147 @@ void UpdateXferIfGreater(char * existing_json_str, const char * new_json_str, ch
   
     json_object_put(existing_json_object);
     json_object_put(new_json_object);
+}
+
+/*--------------------------------------------------------------------------------------------------------------------------*/
+// Function to traverse JSON and create an array of SkipParameters
+static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** paramsVector, int * vectorSize)
+{
+    json_object_object_foreach(jsonObj, key, val)
+    {
+        enum json_type type = json_object_get_type(val);
+
+        if (type == json_type_object)
+        {
+            traverseJsonObject(val, paramsVector, vectorSize);
+        }
+        else if (type == json_type_array)
+        {
+            int arrayLength = json_object_array_length(val);
+            int i = 0;
+            for (i = 0; i < arrayLength; ++i)
+            {
+                *vectorSize += 1;
+                *paramsVector = realloc(*paramsVector, (*vectorSize) * sizeof(struct SkipParameters));
+                (*paramsVector)[*vectorSize - 1].sourceIP = _strdup("NOT_SET");
+                (*paramsVector)[*vectorSize - 1].destinationIP = _strdup("NOT_SET");
+                (*paramsVector)[*vectorSize - 1].destinationPort = -1;
+
+                json_object * arrayElement = json_object_array_get_idx(val, i);
+                traverseJsonObject(arrayElement, paramsVector, vectorSize);
+            }
+        }
+        else
+        {
+            if (type == json_type_string)
+            {
+                // Assume string key, add your own logic if it's different
+                const char * keyStr = key;
+                const char * valueStr = json_object_get_string(val);
+
+                // Check if key is one of the desired parameters
+                if (strcmp(keyStr, "sourceIP") == 0)
+                {
+                    char * sourceIP = _strdup(valueStr);
+                    (*paramsVector)[*vectorSize - 1].sourceIP = sourceIP;
+                }
+
+                // Check if key is one of the desired parameters
+                if (strcmp(keyStr, "destinationIP") == 0)
+                {
+                    char * destinationIP = _strdup(valueStr);
+                    (*paramsVector)[*vectorSize - 1].destinationIP = destinationIP;
+                }
+            }
+            else if (type == json_type_int)
+            {
+                // Assume string key, add your own logic if it's different
+                const char * keyStr = key;
+                int destinationPort = json_object_get_int(val);
+
+                (*paramsVector)[*vectorSize - 1].destinationPort = destinationPort;
+            }
+        }
+    }
+}
+
+/*--------------------------------------------------------------------------------------------------------------------------*/
+static void printParamsVector(const struct SkipParameters * paramsVector, int vectorSize)
+{
+    printf("Params Vector:\n");
+
+    int i = 0;
+    for (i = 0; i < vectorSize; ++i)
+    {
+        printf("Entry %d:\n", i + 1);
+        printf("  Source IP: %s\n", paramsVector[i].sourceIP);
+        printf("  Destination IP: %s\n", paramsVector[i].destinationIP);
+
+        if (paramsVector[i].destinationPort != -1)
+        {
+            printf("  Destination Port: %d\n", paramsVector[i].destinationPort);
+        }
+        else
+        {
+            printf("  Destination Port: Not present\n");
+        }
+
+        printf("\n");
+    }
+}
+
+/*--------------------------------------------------------------------------------------------------------------------------*/
+void ReadNdpidConfigurationFilterFile(const char * filename)
+{
+    if (!asAlreadyReadLogFile)
+    {
+        FILE * fp = fopen(filename, "r");
+        if (!fp)
+        {
+            printf("ERROR: opening JSON config file\n");
+            return;
+        }
+
+        fseek(fp, 0, SEEK_END);
+        long file_size = ftell(fp);
+        rewind(fp);
+
+        char * file_contents = malloc(file_size + 1);
+        if (!file_contents)
+        {
+            printf("ERROR: Memory allocation failed\n");
+            fclose(fp);
+            return;
+        }
+
+        size_t read_bytes = fread(file_contents, 1, file_size, fp);
+        if (read_bytes != (size_t)file_size)
+        {
+            printf("ERROR: fread failed or incomplete (expected %ld bytes, got %zu)\n", file_size, read_bytes);
+            free(file_contents);
+            return;
+        }
+
+        file_contents[file_size] = '\0';
+        fclose(fp);
+
+        struct json_object * parsed_json = json_tokener_parse(file_contents);
+        free(file_contents);
+
+        if (!parsed_json)
+        {
+            printf("ERROR: Failed to parse JSON\n");
+            return;
+        }
+
+        traverseJsonObject(parsed_json, &paramsVector, &vectorSize);
+        printParamsVector(paramsVector, vectorSize);
+
+        // Free the JSON object
+        json_object_put(root);
+        hasAlreadyReadLogFile = true;
+     
+    }
 }
 
 

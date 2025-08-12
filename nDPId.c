@@ -593,7 +593,6 @@ void read_ndpid_config(const char * filename)
     json_object_put(parsed_json); // Free memory used by json-c
 }
 
-
 // -----------------------------Ashwani added code Ends here--------------------------------------------------------------------
 enum nDPId_l3_type
 {
@@ -7264,6 +7263,8 @@ int main(int argc, char ** argv)
     }
 
     read_ndpid_config("nDPIdConfiguration.json");
+    ReadNdpidConfigurationFilterFile("nDPIdConfiguration_filter.json");
+
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   
 
