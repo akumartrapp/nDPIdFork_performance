@@ -1890,7 +1890,7 @@ static void printParamsVector(const struct SkipParameters * paramsVector, int ve
 /*--------------------------------------------------------------------------------------------------------------------------*/
 void ReadNdpidConfigurationFilterFile(const char * filename)
 {
-    if (!asAlreadyReadLogFile)
+    if (!hasAlreadyReadLogFile)
     {
         FILE * fp = fopen(filename, "r");
         if (!fp)
