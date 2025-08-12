@@ -13,7 +13,10 @@
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 #define INVALID_TIMESTAMP UINT64_MAX
 
-// Array to store SkipParameters
+
+static bool matchEntryInParamsVector(const char * srcIP, const char * destIP, int destPort);
+
+    // Array to store SkipParameters
 struct SkipParameters * paramsVector = NULL;
 int vectorSize = 0;
 static bool hasAlreadyReadLogFile = false;
@@ -1421,17 +1424,19 @@ void ConvertnDPIDataFormat(const char * originalJsonStr,
 
     json_object* root_object = json_object_new_object();
     struct Root_data rootData;
-
     if (add_nDPI_Data(&root_object, ndpiData))
     {
         rootData = getRootDataStructure(originalJsonStr);
-       
-        add_Root_Data(&root_object,
-                      rootData,
-                      ndpiData.flow_risk_count,
-                      ndpiData.proto_by_ip,
-                      ndpiData.protocol);
-        *converted_json_str = strDuplicate(json_object_to_json_string(root_object));
+        bool filterd = matchEntryInParamsVector(rootData.src_ip, rootData.dest_ip, rootData.dst_port);
+        if (!filterd)
+        {
+            add_Root_Data(&root_object, rootData, ndpiData.flow_risk_count, ndpiData.proto_by_ip, ndpiData.protocol);
+            *converted_json_str = strDuplicate(json_object_to_json_string(root_object));
+        }
+        else
+        {
+            printf("Flow Filtered: src_ip = %s, dest_ip = %s, destination_port = %d", rootData.src_ip, rootData.dest_ip, rootData.dst_port);
+        }
     }
 
     FreeConvertnDPIDataFormat(&ndpiData);
@@ -1879,12 +1884,45 @@ static void printParamsVector(const struct SkipParameters * paramsVector, int ve
         }
         else
         {
-            printf("  Destination Port: Not present\n");
+            printf("  Destination Port: NOT_SET\n");
         }
 
         printf("\n");
     }
 }
+
+/*--------------------------------------------------------------------------------------------------------------------------*/
+static bool matchEntryInParamsVector(const char* srcIP, const char* destIP, int destPort) 
+{
+    int i = 0;
+    for (i = 0; i < vectorSize; ++i) 
+    {
+        // Check if sourceIP matches
+        if (strcmp(paramsVector[i].sourceIP, "NOT_SET") != 0 && strcmp(paramsVector[i].sourceIP, srcIP) != 0) 
+        {
+            continue;
+        }
+
+        // Check if destinationIP matches
+        if (strcmp(paramsVector[i].destinationIP, "NOT_SET") != 0 && strcmp(paramsVector[i].destinationIP, destIP) != 0) 
+        {
+            continue;
+        }
+
+        // Check if destinationPort matches (if present)
+        if (paramsVector[i].destinationPort != -1 && paramsVector[i].destinationPort != destPort) 
+        {
+            continue;
+        }
+
+        // All criteria match, return true
+        return true;
+    }
+
+    // No matching entry found
+    return false;
+}
+
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
 void ReadNdpidConfigurationFilterFile(const char * filename)
