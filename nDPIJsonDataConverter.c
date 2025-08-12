@@ -1935,7 +1935,7 @@ void ReadNdpidConfigurationFilterFile(const char * filename)
         printParamsVector(paramsVector, vectorSize);
 
         // Free the JSON object
-        json_object_put(root);
+        json_object_put(parsed_json);
         hasAlreadyReadLogFile = true;
      
     }
