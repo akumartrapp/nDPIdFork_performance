@@ -1839,21 +1839,20 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
                 // Check if key is one of the desired parameters
                 if (strcmp(keyStr, "sourceIP") == 0)
                 {
-                    char * sourceIP = _strdup(valueStr);
+                    char * sourceIP = strdup(valueStr);
                     (*paramsVector)[*vectorSize - 1].sourceIP = sourceIP;
                 }
 
                 // Check if key is one of the desired parameters
                 if (strcmp(keyStr, "destinationIP") == 0)
                 {
-                    char * destinationIP = _strdup(valueStr);
+                    char * destinationIP = strdup(valueStr);
                     (*paramsVector)[*vectorSize - 1].destinationIP = destinationIP;
                 }
             }
             else if (type == json_type_int)
             {
                 // Assume string key, add your own logic if it's different
-                const char * keyStr = key;
                 int destinationPort = json_object_get_int(val);
 
                 (*paramsVector)[*vectorSize - 1].destinationPort = destinationPort;
