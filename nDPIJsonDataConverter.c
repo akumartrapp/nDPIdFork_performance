@@ -1820,8 +1820,8 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
             {
                 *vectorSize += 1;
                 *paramsVector = realloc(*paramsVector, (*vectorSize) * sizeof(struct SkipParameters));
-                (*paramsVector)[*vectorSize - 1].sourceIP = _strdup("NOT_SET");
-                (*paramsVector)[*vectorSize - 1].destinationIP = _strdup("NOT_SET");
+                (*paramsVector)[*vectorSize - 1].sourceIP = strdup("NOT_SET");
+                (*paramsVector)[*vectorSize - 1].destinationIP = strdup("NOT_SET");
                 (*paramsVector)[*vectorSize - 1].destinationPort = -1;
 
                 json_object * arrayElement = json_object_array_get_idx(val, i);
