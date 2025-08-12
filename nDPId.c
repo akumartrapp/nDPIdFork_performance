@@ -7269,7 +7269,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    printf("nDPID program version is 07.31.2025.01\n");
+    printf("nDPID program version is 08.12.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
