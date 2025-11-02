@@ -3349,7 +3349,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
 {
-    printf("send to collector\n")
+    printf("send to collector\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     int s_ret;
@@ -3442,13 +3442,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         }
     }
 
-    printf("before writing to collector\n")
+    printf("before writing to collector\n");
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
     {
-        printf("After writing to collector\n")
+        printf("After writing to collector\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
