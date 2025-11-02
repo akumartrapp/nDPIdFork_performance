@@ -4,7 +4,7 @@
 /* macros shared across multiple executables */
 #define DEFAULT_CHUSER "nobody"
 //#define COLLECTOR_UNIX_SOCKET "/home/anssetup/repositories/nDPIdFork_performance/socket/listen.sock"
-#define COLLECTOR_UNIX_SOCKET "/home/anssetup/repositories/nDPIdFork_performance/socket/ndpid-collector.sock"
+#define COLLECTOR_UNIX_SOCKET "/tmp/ndpid-collector.sock"
 #define DISTRIBUTOR_UNIX_SOCKET "/home/anssetup/repositories/nDPIdFork_performance/socket/ndpid-distributor.sock"
 #define DISTRIBUTOR_HOST "127.0.0.1"
 #define DISTRIBUTOR_PORT 7000u
