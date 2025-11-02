@@ -3503,6 +3503,10 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
             set_collector_nonblock(reader_thread);
         }
     }
+    else
+    {
+        printf("Written to socket\n");
+    }
 }
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
