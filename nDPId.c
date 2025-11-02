@@ -3303,11 +3303,13 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {
+    printf("connect_to_collector called\n");
     if (reader_thread->collector_sockfd >= 0)
     {
         close(reader_thread->collector_sockfd);
     }
 
+    printf("connect_to_collector 1\n");
     int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
     reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
     if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
@@ -3316,16 +3318,22 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 1;
     }
 
+    printf("connect_to_collector 2\n");
+
     int opt = NETWORK_BUFFER_MAX_SIZE;
     if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
     {
         return 1;
     }
 
+   printf("connect_to_collector 3\n");
+
     if (set_collector_nonblock(reader_thread) != 0)
     {
         return 1;
     }
+
+    printf("connect_to_collector 4\n");
 
     if (connect(reader_thread->collector_sockfd,
                 &nDPId_options.parsed_collector_address.raw,
@@ -3335,12 +3343,15 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 1;
     }
 
+    printf("connect_to_collector 5\n");
+
     if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
     {
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
 
+   printf("connect_to_collector 6\n");
     reader_thread->collector_sock_last_errno = 0;
 
     return 0;
