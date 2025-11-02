@@ -3404,7 +3404,8 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     write_to_file(json_msg, json_string_with_http_or_tls_info);
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
-    return;
+    //
+    // return;
 
     //--------------------------------------------- Not Used-----------------------------------
     if (reader_thread->collector_sock_last_errno != 0)
