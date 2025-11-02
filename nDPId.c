@@ -6232,7 +6232,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     if (connect_to_collector(reader_thread) != 0)
     {
         printf("connect_to_collector : Error\n");
-        logger(0,
+        printf
                "Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
                reader_thread->array_index,
                GET_CMDARG_STR(nDPId_options.collector_address),
