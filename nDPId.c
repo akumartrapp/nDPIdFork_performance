@@ -3349,6 +3349,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
 {
+    printf("send to collector\n")
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     int s_ret;
@@ -3441,11 +3442,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         }
     }
 
+    printf("before writing to collector\n")
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
     {
+        printf("After writing to collector\n")
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
@@ -7274,7 +7277,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    printf("nDPID program version is 08.12.2025.01\n");
+    printf("nDPID program version is 11.01.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
