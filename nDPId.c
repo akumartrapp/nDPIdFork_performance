@@ -3402,7 +3402,9 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
 
+    printf("before writing to file\n");
     write_to_file(json_msg, json_string_with_http_or_tls_info);
+    printf("after writing to file\n");
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
     //
