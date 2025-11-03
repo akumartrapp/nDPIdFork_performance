@@ -3358,7 +3358,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
     return 0;
 }
 
-static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
+static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
                             int length)
 {
@@ -3440,6 +3440,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_string_with_http_or_tls_info)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
+    int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
     {
         printf("before connecting to connector\n");
@@ -3487,16 +3488,16 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
         {
             if (flow_risk_count)
             {
-                write_to_socket(reader_thread, converted_json_str, length);
+                write_to_socket_2(reader_thread, converted_json_str, length);
                 char * converted_json_str_no_risk = NULL;
                 DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
                 int length_converted = strlen(converted_json_str_no_risk);
-                write_to_socket(reader_thread, converted_json_str_no_risk, length_converted);
+                write_write_to_socket_2to_socket(reader_thread, converted_json_str_no_risk, length_converted);
                 free(converted_json_str_no_risk);
             }
             else
             {
-                write_to_socket(reader_thread, converted_json_str, length);
+                write_to_socket_2(reader_thread, converted_json_str, length);
             }
         }
 
