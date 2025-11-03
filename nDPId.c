@@ -3567,7 +3567,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     else
     {
 
-        write_to_socket(json_msg, json_string_with_http_or_tls_info);
+        write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
     }
 
     free(json_string_with_http_or_tls_info);
