@@ -166,6 +166,8 @@ static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static int master_log_file_duration_in_minutes = 10;
 
+static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
+
 /*---------------------------------------------------------------------------------------------------------*/
 
 bool is_file_larger_than_threshold(FILE * fp)
@@ -1228,7 +1230,7 @@ static char const * const daemon_event_name_table[DAEMON_EVENT_COUNT] = {
 };
 
 static struct ndpi_global_context * global_context = NULL;
-static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
+//static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
 static MT_VALUE(nDPId_main_thread_shutdown, int) = MT_INIT(0);
 static MT_VALUE(global_flow_id, uint64_t) = MT_INIT(1);
 
