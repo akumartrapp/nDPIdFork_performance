@@ -3512,7 +3512,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
  
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
-    s_ret = snprintf(newline_json_msg,
+    int s_ret = snprintf(newline_json_msg,
                      sizeof(newline_json_msg),
                      "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
                      json_msg_len + 1,
