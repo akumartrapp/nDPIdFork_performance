@@ -3365,11 +3365,10 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     printf("before writing to collector\n");
-    int s_ret;
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
-        (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
+        (written = write(reader_thread->collector_sockfd, newline_json_msg, length)) != length)
     {
         printf("After writing to collector\n");
         saved_errno = errno;
@@ -3397,8 +3396,8 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
         {
             size_t pos = (written < 0 ? 0 : written);
             set_collector_block(reader_thread);
-            while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
-                   s_ret - pos)
+            while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos)) !=
+                   length - pos)
             {
                 saved_errno = errno;
                 if (saved_errno == EPIPE || written == 0)
@@ -3437,7 +3436,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 
 static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_msg,
-                     const char * const json_string_with_http_or_tls_info)
+                            const char * const json_string_with_http_or_tls_info)
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
@@ -3510,7 +3509,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     //printf("send to collector\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
-    int s_ret;
+ 
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
     s_ret = snprintf(newline_json_msg,
