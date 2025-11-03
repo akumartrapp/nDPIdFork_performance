@@ -3362,6 +3362,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
                             int length)
 {
+    struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     printf("before writing to collector\n");
     int s_ret;
@@ -3438,6 +3439,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_msg,
                      const char * const json_string_with_http_or_tls_info)
 {
+    struct nDPId_workflow * const workflow = reader_thread->workflow;
     if (reader_thread->collector_sock_last_errno != 0)
     {
         printf("before connecting to connector\n");
