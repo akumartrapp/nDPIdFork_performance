@@ -3492,7 +3492,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                 char * converted_json_str_no_risk = NULL;
                 DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
                 int length_converted = strlen(converted_json_str_no_risk);
-                write_write_to_socket_2to_socket(reader_thread, converted_json_str_no_risk, length_converted);
+                write_to_socket_2(reader_thread, converted_json_str_no_risk, length_converted);
                 free(converted_json_str_no_risk);
             }
             else
