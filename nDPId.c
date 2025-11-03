@@ -3362,6 +3362,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
                             int length)
 {
+    int saved_errno;
     printf("before writing to collector\n");
     int s_ret;
     errno = 0;
