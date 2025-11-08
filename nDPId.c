@@ -7454,7 +7454,7 @@ int main(int argc, char ** argv)
     read_ndpid_config("setup/Settings/nDPIdConfiguration.json");
     ReadNdpidConfigurationFilterFile("setup/Settings/nDPIdConfiguration_filter.json");
 
-    nDPId_options.collector_address = CMDARG_STR(collector_unix_socket_location);
+    nDPId_options.collector_address.string.default_value = collector_unix_socket_location;
 
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   
