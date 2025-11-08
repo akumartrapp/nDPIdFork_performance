@@ -521,7 +521,7 @@ void read_ndpid_config(const char * filename)
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
-        printf("ERROR: opening JSON config file %s\n", filename);
+        printf("ERROR: opening JSON config file %s: %s\n", filename, strerror(errno));
         return;
     }
 
