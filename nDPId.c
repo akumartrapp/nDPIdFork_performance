@@ -7451,8 +7451,8 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    read_ndpid_config("setup/Settings/nDPIdConfiguration.json");
-    ReadNdpidConfigurationFilterFile("setup/Settings/nDPIdConfiguration_filter.json");
+    read_ndpid_config("Settings/nDPIdConfiguration.json");
+    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
 
     nDPId_options.collector_address.string.value = collector_unix_socket_location;
 
