@@ -165,6 +165,7 @@ static int log_file_size_in_mb = 5;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static int master_log_file_duration_in_minutes = 10;
+static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 
 /*---------------------------------------------------------------------------------------------------------*/
 
@@ -520,7 +521,7 @@ void read_ndpid_config(const char * filename)
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
-        printf("ERROR: opening JSON config file\n");
+        printf("ERROR: opening JSON config file %s\n", filename);
         return;
     }
 
@@ -587,6 +588,15 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
             {
                 master_log_file_duration_in_minutes = json_object_get_int(val);
+            }
+        }
+
+        struct json_object * sockets_obj;
+        if (json_object_object_get_ex(ndpid_obj, "sockets", &sockets_obj))
+        {
+            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_UNIX_SOCKET", &val))
+            {
+                collector_unix_socket_location = json_object_get_string(val);
             }
         }
     }
@@ -7441,8 +7451,10 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    read_ndpid_config("nDPIdConfiguration.json");
-    ReadNdpidConfigurationFilterFile("nDPIdConfiguration_filter.json");
+    read_ndpid_config("setup/Settings/nDPIdConfiguration.json");
+    ReadNdpidConfigurationFilterFile("setup/Settings/nDPIdConfiguration_filter.json");
+
+    nDPId_options.collector_address = collector_unix_socket_location;
 
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   

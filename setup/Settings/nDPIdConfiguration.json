@@ -1,0 +1,16 @@
+{
+    "nDPId": {
+        "logFilesLengthInSeconds": 60,
+        "logFilesLengthInMB": 5,
+
+        "debugLogs": {
+            "detailedLog": false,
+            "generateMasterLogFile": false,
+            "masterLogFileDurationInMinutes": 10
+        },
+
+        "sockets": {
+            "COLLECTOR_UNIX_SOCKET": "/tmp/ndpid-collector_unix.sock"
+        }
+    }
+}
