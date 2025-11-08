@@ -165,7 +165,7 @@ static int log_file_size_in_mb = 5;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static int master_log_file_duration_in_minutes = 10;
-static const char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
+static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 
 /*---------------------------------------------------------------------------------------------------------*/
 
