@@ -7374,10 +7374,16 @@ int main(int argc, char ** argv)
 
     init_logging("nDPId");
 
+    read_ndpid_config("Settings/nDPIdConfiguration.json");
+    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
+
+    set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
+   
     if (nDPId_parse_options(argc, argv) != 0)
     {
         return 1;
     }
+
     set_config_defaults(&general_config_map[0], nDPIsrvd_ARRAY_LENGTH(general_config_map));
     set_config_defaults(&tuning_config_map[0], nDPIsrvd_ARRAY_LENGTH(tuning_config_map));
     {
@@ -7450,12 +7456,6 @@ int main(int argc, char ** argv)
     {
         return 1;
     }
-
-    read_ndpid_config("Settings/nDPIdConfiguration.json");
-    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
-
-    nDPId_options.collector_address.string.value = collector_unix_socket_location;
-
 
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   
