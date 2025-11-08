@@ -1182,7 +1182,7 @@ static struct
                    .custom_categories_file = CMDARG_STR(NULL),
                    .custom_ja4_file = CMDARG_STR(NULL),
                    .custom_sha1_file = CMDARG_STR(NULL),
-                   .collector_address = CMDARG_STR(COLLECTOR_UNIX_SOCKET),
+                   .collector_address = collector_unix_socket_location,
                    .instance_alias = CMDARG_STR(NULL),
                    .instance_uuid = CMDARG_STR(NULL),
                    .process_internal_initial_direction = CMDARG_BOOL(0),
@@ -7453,8 +7453,6 @@ int main(int argc, char ** argv)
 
     read_ndpid_config("setup/Settings/nDPIdConfiguration.json");
     ReadNdpidConfigurationFilterFile("setup/Settings/nDPIdConfiguration_filter.json");
-
-    nDPId_options.collector_address = collector_unix_socket_location;
 
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   
