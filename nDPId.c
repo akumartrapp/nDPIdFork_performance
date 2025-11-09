@@ -7476,6 +7476,8 @@ int main(int argc, char ** argv)
     global_context = NULL;
 
     daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
+    rotate_event_log_file();
+    rotate_alert_log_file();
     logger(0, "%s", "Bye.");
     free_flow_map(&flow_map);
     shutdown_logging();
