@@ -164,6 +164,8 @@ static int log_file_duration_in_seconds = 60;
 static int log_file_size_in_mb = 5;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
+static bool output_send_to_socket = true;
+static bool output_send_to_file = true; 
 static int master_log_file_duration_in_minutes = 10;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 
@@ -1303,6 +1305,20 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
             {
                 master_log_file_duration_in_minutes = json_object_get_int(val);
+            }
+        }
+
+        struct json_object * ouput_obj;
+        if (json_object_object_get_ex(ndpid_obj, "output", &ouput_obj))
+        {
+            if (json_object_object_get_ex(ouput_obj, "sendToSocket", &val))
+            {
+                output_send_to_socket = json_object_get_boolean(val);
+            }
+
+            if (json_object_object_get_ex(ouput_obj, "writeToJsonFiles", &val))
+            {
+                output_send_to_file = json_object_get_boolean(val);
             }
         }
 
@@ -3319,13 +3335,11 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {
-    printf("connect_to_collector called\n");
     if (reader_thread->collector_sockfd >= 0)
     {
         close(reader_thread->collector_sockfd);
     }
 
-    printf("connect_to_collector 1\n");
     int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
     reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
     if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
@@ -3334,22 +3348,16 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 1;
     }
 
-    printf("connect_to_collector 2\n");
-
     int opt = NETWORK_BUFFER_MAX_SIZE;
     if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
     {
         return 1;
     }
 
-   printf("connect_to_collector 3\n");
-
     if (set_collector_nonblock(reader_thread) != 0)
     {
         return 1;
     }
-
-    printf("connect_to_collector 4\n");
 
     if (connect(reader_thread->collector_sockfd,
                 &nDPId_options.parsed_collector_address.raw,
@@ -3359,15 +3367,12 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 1;
     }
 
-    printf("connect_to_collector 5\n");
-
     if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
     {
         reader_thread->collector_sock_last_errno = errno;
         return 1;
     }
 
-   printf("connect_to_collector 6\n");
     reader_thread->collector_sock_last_errno = 0;
 
     return 0;
@@ -3578,14 +3583,16 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
 
-    if (workflow->is_pcap_file)
+    if (workflow->is_pcap_file && output_send_to_file)
     {
         write_to_file(json_msg, json_string_with_http_or_tls_info);
     }
 
-    write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
+    if (output_send_to_socket)
+    {
+        write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
+    }
     
-
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
 
@@ -6402,7 +6409,6 @@ static void * processing_thread(void * const ndpi_thread_arg)
 
     if (connect_to_collector(reader_thread) != 0)
     {
-        printf("connect_to_collector : Error\n");
         printf ("Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s\n",
                reader_thread->array_index,
                GET_CMDARG_STR(nDPId_options.collector_address),
@@ -6411,7 +6417,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        printf("connect_to_collector : Siccess\n");
+        printf("connect_to_collector : Success\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 

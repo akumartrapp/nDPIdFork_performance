@@ -11,6 +11,11 @@
 
         "sockets": {
             "COLLECTOR_UNIX_SOCKET": "/tmp/ndpid-collector_unix.sock"
+        },
+
+        "output": {
+            "sendToSocket":true,
+            "writeToJsonFiles": true
         }
     }
 }
