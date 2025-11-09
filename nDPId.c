@@ -3563,7 +3563,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         write_to_master_file(json_msg, json_msg_len);
     }
 
-     printf("send to collector 2\n");
+    printf("send to collector 2\n");
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
     //if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
@@ -3712,7 +3712,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    printf("%s\n", json_msg);
+    //printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
