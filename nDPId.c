@@ -597,6 +597,10 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_UNIX_SOCKET", &val))
             {
                 collector_unix_socket_location = (char*)json_object_get_string(val);
+                if (strlen(collector_unix_socket_location) != 0)
+                {                 
+                    set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
+                }
             }
         }
     }
@@ -3516,7 +3520,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
 {
-    //printf("send to collector\n");
+    printf("send to collector\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
  
@@ -3699,7 +3703,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    // printf("%s\n", json_msg);
+     printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
@@ -5141,6 +5145,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
+    printf("In ndpi_process_packet\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -7376,8 +7381,6 @@ int main(int argc, char ** argv)
 
     read_ndpid_config("Settings/nDPIdConfiguration.json");
     ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
-
-    set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
    
     if (nDPId_parse_options(argc, argv) != 0)
     {
