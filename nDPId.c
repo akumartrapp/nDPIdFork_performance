@@ -1322,6 +1322,99 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
     return 0;
 }
 
+// Function to read and parse the JSON config
+void read_ndpid_config(const char * filename)
+{
+    FILE * fp = fopen(filename, "r");
+    if (!fp)
+    {
+        printf("ERROR: opening JSON config file %s: %s\n", filename, strerror(errno));
+        return;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    rewind(fp);
+
+    char * file_contents = malloc(file_size + 1);
+    if (!file_contents)
+    {
+        printf("ERROR: Memory allocation failed\n");
+        fclose(fp);
+        return;
+    }
+
+    size_t read_bytes = fread(file_contents, 1, file_size, fp);
+    if (read_bytes != (size_t)file_size)
+    {
+        printf("ERROR: fread failed or incomplete (expected %ld bytes, got %zu)\n", file_size, read_bytes);
+        free(file_contents);
+        return;
+    }
+
+    file_contents[file_size] = '\0';
+    fclose(fp);
+
+    struct json_object * parsed_json = json_tokener_parse(file_contents);
+    free(file_contents);
+
+    if (!parsed_json)
+    {
+        printf("ERROR: Failed to parse JSON\n");
+        return;
+    }
+
+    struct json_object * ndpid_obj = NULL;
+    if (json_object_object_get_ex(parsed_json, "nDPId", &ndpid_obj))
+    {
+        struct json_object * val;
+
+        if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInSeconds", &val))
+        {
+            log_file_duration_in_seconds = json_object_get_int(val);
+        }
+
+        if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
+        {
+            log_file_size_in_mb = json_object_get_int(val);
+        }
+
+        struct json_object * debug_logs_obj;
+        if (json_object_object_get_ex(ndpid_obj, "debugLogs", &debug_logs_obj))
+        {
+            if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
+            {
+                detailed_log_enabled = json_object_get_boolean(val);
+            }
+
+            if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
+            {
+                master_log_file_enabled = json_object_get_boolean(val);
+            }
+
+            if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
+            {
+                master_log_file_duration_in_minutes = json_object_get_int(val);
+            }
+        }
+
+        struct json_object * sockets_obj;
+        if (json_object_object_get_ex(ndpid_obj, "sockets", &sockets_obj))
+        {
+            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_UNIX_SOCKET", &val))
+            {
+                collector_unix_socket_location = (char *)json_object_get_string(val);
+                if (strlen(collector_unix_socket_location) != 0)
+                {
+                    set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
+                }
+            }
+        }
+    }
+
+    json_object_put(parsed_json); // Free memory used by json-c
+}
+
 static int set_collector_block(struct nDPId_reader_thread * const reader_thread)
 {
     int current_flags = fcntl(reader_thread->collector_sockfd, F_GETFL, 0);
