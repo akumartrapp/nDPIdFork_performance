@@ -3453,6 +3453,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
 {
+    printf("write to socket\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
@@ -3704,7 +3705,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-     printf("%s\n", json_msg);
+    printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
@@ -5146,7 +5147,6 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    printf("In ndpi_process_packet\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
