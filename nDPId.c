@@ -3447,23 +3447,17 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
             }
             set_collector_nonblock(reader_thread);
         }
-    }
-    else
-    {
-        printf("Written to socket\n");
-    }
+    }    
 }
 
 static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
 {
-    printf("write to socket\n");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
     {
-        printf("before connecting to connector\n");
         saved_errno = reader_thread->collector_sock_last_errno;
 
         if (connect_to_collector(reader_thread) == 0)
@@ -3493,8 +3487,6 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
             }
             return;
         }
-
-        printf("after connecting to connector\n");
     }
 
     char * converted_json_str = NULL;
@@ -3510,11 +3502,9 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
             {
                 write_to_socket_2(reader_thread, converted_json_str, length);
                 char * converted_json_str_no_risk = NULL;
-                printf("\n%s\n", converted_json_str);
                 DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
                 int length_converted = strlen(converted_json_str_no_risk);
                 write_to_socket_2(reader_thread, converted_json_str_no_risk, length_converted);
-                printf("\n%s\n", converted_json_str_no_risk);
                 free(converted_json_str_no_risk);
             }
             else
@@ -3566,7 +3556,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         write_to_master_file(json_msg, json_msg_len);
     }
 
-    printf("send to collector 2\n");
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
  
@@ -3602,7 +3591,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     //--------------------------------------------- Not Used-----------------------------------
     if (reader_thread->collector_sock_last_errno != 0)
     {
-        printf("before connecting to connector\n");
         saved_errno = reader_thread->collector_sock_last_errno;
 
         if (connect_to_collector(reader_thread) == 0)
@@ -3632,17 +3620,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
             }
             return;
         }
-
-         printf("after connecting to connector\n");
     }
 
-    printf("before writing to collector\n");
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
     {
-        printf("After writing to collector\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
@@ -3699,10 +3683,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
             }
             set_collector_nonblock(reader_thread);
         }
-    }
-    else
-    {
-        printf("Written to socket\n");
     }
 }
 
@@ -6402,7 +6382,6 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf("processing_thread\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6417,7 +6396,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        printf("connect_to_collector : Success\n");
+        logger(0, "connect_to_collector : Success\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
@@ -7473,7 +7452,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    printf("nDPID program version is 11.01.2025.01\n");
+    logger(0, "nDPID program version is 11.01.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
