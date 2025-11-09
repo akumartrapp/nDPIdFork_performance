@@ -3564,17 +3564,17 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
      printf("send to collector 2\n");
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
-    if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
-    {
-        printf("send to collector 3\n");
-        add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        return; 
-    }
-    else 
-    {
-        printf("send to collector 4\n");
-        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
-    }
+    //if (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE) 
+    //{
+    //    printf("send to collector 3\n");
+    //    add_or_update_flow_entry(&flow_map, flow_id, json_msg);
+    //    return; 
+    //}
+    //else 
+    //{
+    //    printf("send to collector 4\n");
+    //    json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
+    //}
 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
