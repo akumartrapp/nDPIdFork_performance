@@ -7753,9 +7753,9 @@ int main(int argc, char ** argv)
         init_flow_map(&flow_map, 10000);
 
 
-        signal(SIGINT, sighandler);
-        signal(SIGTERM, sighandler);
-        signal(SIGPIPE, SIG_IGN);
+        //signal(SIGINT, sighandler);
+        //signal(SIGTERM, sighandler);
+        //signal(SIGPIPE, SIG_IGN);
 
         while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
         {
