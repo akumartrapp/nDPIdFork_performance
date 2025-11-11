@@ -7764,8 +7764,8 @@ int main(int argc, char ** argv)
         global_context = NULL;
 
         daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
-        rotate_event_log_file();
-        rotate_alert_log_file();
+        //rotate_event_log_file();
+        //rotate_alert_log_file();
         logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
         //remove(pcap_files[currentFileIndex]);
         //free(pcap_files[currentFileIndex]);
