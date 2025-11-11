@@ -653,6 +653,7 @@ install(FILES config.h
               dependencies/json-c/include/json-c/printbuf.h
         DESTINATION include/nDPId)
 install(TARGETS nDPId DESTINATION sbin)
+install(TARGETS nDPId_pcap DESTINATION sbin)
 install(TARGETS nDPIsrvd nDPId-test DESTINATION bin)
 if(BUILD_EXAMPLES)
     install(FILES dependencies/nDPIsrvd.py examples/py-flow-dashboard/plotly_dash.py
