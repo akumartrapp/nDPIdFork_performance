@@ -7619,7 +7619,7 @@ int main(int argc, char ** argv)
     // MM.DD.YYYY
     logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
 
-    fetch_files_to_process_and_set_default_options(argv[1]);
+    fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
