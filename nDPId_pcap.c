@@ -7357,7 +7357,6 @@ static void fetch_files_to_process(const char * pcap_files_folder_path)
     int index = 0;
     for (index = 0; index < number_of_valid_files_found; index++)
     {
-        free(pcap_files);
         free(generated_tmp_json_files_events[index]);
         free(generated_tmp_json_files_alerts[index]);
         free(generated_json_files_events[index]);
