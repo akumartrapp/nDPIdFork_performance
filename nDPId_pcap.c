@@ -6143,7 +6143,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
-    printf("run_capture_loop 1\n")
+    printf("run_capture_loop 1\n");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
