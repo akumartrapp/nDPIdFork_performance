@@ -2431,6 +2431,8 @@ static int setup_reader_threads(void)
         return 1;
     }
 
+    printf("1\n");
+
     if (IS_CMDARG_SET(nDPId_options.pcap_file_or_interface) == 0)
     {
         char * const pcapdev = get_default_pcapdev(pcap_error_buffer);
@@ -2445,6 +2447,8 @@ static int setup_reader_threads(void)
                      "Capturing packets from default device: %s",
                      GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
     }
+
+     printf("2\n");
 
     errno = 0;
     if (access(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface), R_OK) != 0 && errno == ENOENT)
@@ -2469,8 +2473,13 @@ static int setup_reader_threads(void)
         }
     }
 
+     printf("3\n");
+
+
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
+        printf("4\n");
+
         reader_threads[i].workflow = init_workflow(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
         if (reader_threads[i].workflow == NULL)
@@ -7664,11 +7673,13 @@ int main(int argc, char ** argv)
             return 1;
         }
 
+        printf("after setup_reader_threads");
         if (start_reader_threads() != 0)
         {
             return 1;
         }
 
+        printf("after start_reader_threads");
      
         init_flow_map(&flow_map, 10000);
 
