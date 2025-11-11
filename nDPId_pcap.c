@@ -7741,10 +7741,17 @@ int main(int argc, char ** argv)
          
 
         printf("after setup_reader_threads\n");
+        char cwd[512];
+        getcwd(cwd, sizeof(cwd));
+        printf("Before threads: running as UID=%d, GID=%d, CWD=%s\n", getuid(), getgid(), cwd);
+
         if (start_reader_threads() != 0)
         {
             return 1;
         }
+
+        getcwd(cwd, sizeof(cwd));
+        printf("After threads: running as UID=%d, GID=%d, CWD=%s\n", getuid(), getgid(), cwd);
 
         continue;
 
