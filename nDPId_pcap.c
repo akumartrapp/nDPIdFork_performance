@@ -154,8 +154,7 @@ char executable_directory[PATH_MAX_LEN];
 static FILE * event_log_fp = NULL;
 static FILE * alert_log_fp = NULL;
 static FILE * master_log_fp = NULL;
-static char current_event_filename[MAX_FILENAME_LEN] = {0};
-static char current_alert_filename[MAX_FILENAME_LEN] = {0};
+
 static char current_master_filename[MAX_FILENAME_LEN] = {0};
 static time_t master_file_start_time = 0;
 
@@ -220,7 +219,7 @@ bool is_file_larger_than_threshold(FILE * fp)
     return file_size_bytes > threshold_bytes;
 }
 
- Function to get current UTC ISO8601 time
+//Function to get current UTC ISO8601 time
 void get_current_utc_iso8601(char * buffer, size_t size)
 {
     time_t now = time(NULL);
