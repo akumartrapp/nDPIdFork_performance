@@ -2369,6 +2369,7 @@ static void ndpi_flow_info_free(void * const node)
 
 static void free_workflow(struct nDPId_workflow ** const workflow)
 {
+    printf("free_workflow \n");
     struct nDPId_workflow * const w = *workflow;
 
     if (w == NULL)
@@ -2385,6 +2386,7 @@ static void free_workflow(struct nDPId_workflow ** const workflow)
 
     if (w->pcap_handle != NULL)
     {
+        printf("freeing 1");
         pcap_close(w->pcap_handle);
         w->pcap_handle = NULL;
     }
@@ -6690,6 +6692,7 @@ static int stop_reader_threads(void)
 
 static void free_reader_threads(void)
 {
+    printf("free_reader_threads\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -7700,6 +7703,9 @@ int main(int argc, char ** argv)
         {
             return 1;
         }
+
+         printf("after start_reader_threads\n");
+
         free_reader_threads();
 
         if (global_context != NULL)
