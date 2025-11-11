@@ -7704,7 +7704,7 @@ int main(int argc, char ** argv)
             return 1;
         }
 
-         printf("after start_reader_threads\n");
+         printf("after stop_reader_threads\n");
 
         free_reader_threads();
 
