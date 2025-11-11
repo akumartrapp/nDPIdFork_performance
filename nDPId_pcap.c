@@ -6395,7 +6395,7 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf("processing_thread 1\n")
+    printf("processing_thread 1\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
