@@ -141,8 +141,6 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include <dirent.h>
 #define NO_MAIN 1
 #include "utils.c"
-#include "nio.c"
-#include "nDPIsrvd.c"
 
 
 #define PATH_MAX_LEN 1024
