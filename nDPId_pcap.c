@@ -7528,6 +7528,7 @@ static void fetch_files_to_process_and_set_default_options(const char * pcap_fil
 #ifndef NO_MAIN
 int main(int argc, char ** argv)
 {
+    curruptFilesCount = 0;
     if (argc == 0 || stdout == NULL || stderr == NULL)
     {
         return 1;
@@ -7614,7 +7615,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID program version is 11.01.2025.01\n");
+    logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
 
     fetch_files_to_process_and_set_default_options(argv[1]);
 
@@ -7706,6 +7707,11 @@ int main(int argc, char ** argv)
         free_flow_map(&flow_map);
         logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
     }
+
+    logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
+    logger(0, "Number of corrupt files %d", curruptFilesCount);
+    logger(0, "Total number of files %d", number_of_valid_files_found);
+
     shutdown_logging();
 
     return 0;
