@@ -7683,7 +7683,7 @@ int main(int argc, char ** argv)
         pcap_close(handle);
     }
 
-    return;
+    return 0;
 
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
