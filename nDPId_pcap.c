@@ -7644,6 +7644,51 @@ int main(int argc, char ** argv)
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
     {
         set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
+        logger(0,
+               "%d. processing of %s file started------------------------------------------------",
+               currentFileIndex + 1,
+               pcap_files[currentFileIndex]);
+
+        char pcap_error_buffer[PCAP_ERRBUF_SIZE];
+        pcap_t * handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex],
+                                                                  PCAP_TSTAMP_PRECISION_NANO,
+                                                                  pcap_error_buffer);
+
+        if (handle == NULL)
+        {
+            corrupt_files_count++;
+            logger(1, "Error opening file: %s\n", pcap_error_buffer);
+            remove(pcap_files[currentFileIndex]);
+            continue;
+        }
+        else
+        {
+            switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
+            {
+                case PCAP_ERROR:
+                    logger(1, "Error while reading pcap file");
+                    corrupt_files_count++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                case PCAP_ERROR_BREAK:
+                    corrupt_files_count++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                default:;
+            }
+        }
+
+        pcap_close(handle);
+    }
+
+    return;
+
+    currentFileIndex = 0;
+    for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
+    {
+        set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
         logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
 
         char pcap_error_buffer[PCAP_ERRBUF_SIZE];
