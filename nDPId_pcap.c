@@ -138,6 +138,8 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include "nDPIJsonDataConverter.h"
 #include "../json-c/include/json-c/json.h"
 
+#include <dirent.h>
+
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN 512
 
@@ -155,8 +157,6 @@ static FILE * master_log_fp = NULL;
 static char current_event_filename[MAX_FILENAME_LEN] = {0};
 static char current_alert_filename[MAX_FILENAME_LEN] = {0};
 static char current_master_filename[MAX_FILENAME_LEN] = {0};
-static time_t event_file_start_time = 0;
-static time_t alert_file_start_time = 0;
 static time_t master_file_start_time = 0;
 
 // Variables to hold config values
@@ -182,7 +182,6 @@ char * generated_json_files_alerts[MAX_NUMBER_OF_FILES];
 int number_of_valid_files_found = 0;
 int currentFileIndex = -1;
 
-char executable_directory[PATH_MAX];
 
 /*---------------------------------------------------------------------------------------------------------*/
 
@@ -221,23 +220,23 @@ bool is_file_larger_than_threshold(FILE * fp)
     return file_size_bytes > threshold_bytes;
 }
 
-// Function to get current UTC ISO8601 time
-//void get_current_utc_iso8601(char * buffer, size_t size)
-//{
-//    time_t now = time(NULL);
-//    struct tm tm_now;
-//
-//    gmtime_r(&now, &tm_now);
-//    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_now);
-//
-//    for (char * p = buffer; *p != '\0'; ++p)
-//    {
-//        if (*p == ':')
-//        {
-//            *p = '_';
-//        }
-//    }
-//}
+ Function to get current UTC ISO8601 time
+void get_current_utc_iso8601(char * buffer, size_t size)
+{
+    time_t now = time(NULL);
+    struct tm tm_now;
+
+    gmtime_r(&now, &tm_now);
+    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_now);
+
+    for (char * p = buffer; *p != '\0'; ++p)
+    {
+        if (*p == ':')
+        {
+            *p = '_';
+        }
+    }
+}
 
 // Rotate log file: close, rename, reset state
 void rotate_event_log_file()
@@ -334,8 +333,6 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 {
-    time_t now = time(NULL);
-
     // Create new file if none open or time elapsed
     if (event_log_fp == NULL)
     {
@@ -362,8 +359,6 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 {
-    time_t now = time(NULL);
-
     // Create new file if none open or time elapsed
     if (alert_log_fp == NULL )
     {
