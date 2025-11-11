@@ -7757,11 +7757,11 @@ int main(int argc, char ** argv)
 
         free_reader_threads();
 
-        if (global_context != NULL)
-        {
-            ndpi_global_deinit(global_context);
-        }
-        global_context = NULL;
+        //if (global_context != NULL)
+        //{
+        //    ndpi_global_deinit(global_context);
+        //}
+        //global_context = NULL;
 
         daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
         //rotate_event_log_file();
@@ -7778,6 +7778,13 @@ int main(int argc, char ** argv)
         logger(0, "%s", "Bye.");
         free_flow_map(&flow_map);        
     }
+
+    
+         if (global_context != NULL)
+    {
+         ndpi_global_deinit(global_context);
+     }
+     global_context = NULL;
 
     logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
     logger(0, "Number of corrupt files %d", corrupt_files_count);
