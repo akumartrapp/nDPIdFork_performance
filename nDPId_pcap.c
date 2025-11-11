@@ -7673,13 +7673,13 @@ int main(int argc, char ** argv)
             return 1;
         }
 
-        printf("after setup_reader_threads");
+        printf("after setup_reader_threads\n");
         if (start_reader_threads() != 0)
         {
             return 1;
         }
 
-        printf("after start_reader_threads");
+        printf("after start_reader_threads\n");
      
         init_flow_map(&flow_map, 10000);
 
