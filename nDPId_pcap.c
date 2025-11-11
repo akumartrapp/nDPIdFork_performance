@@ -7524,6 +7524,11 @@ static void fetch_files_to_process_and_set_default_options(const char * pcap_fil
     }
 }
 
+static void dummy_packet_handler(u_char * user, const struct pcap_pkthdr * header, const u_char * packet)
+{
+    // logger(0, "dummy_packet_handler called");
+}
+
 int main(int argc, char ** argv)
 {
     corrupt_files_count = 0;
