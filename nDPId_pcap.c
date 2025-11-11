@@ -169,6 +169,21 @@ static bool output_send_to_file = true;
 static int master_log_file_duration_in_minutes = 10;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 
+// variable for p cap files
+/*---------------------------------------------------------------------------------------------------------/*/
+#define MAX_NUMBER_OF_FILES 5000 // Maximum number of files to handle
+
+char * pcap_files[MAX_NUMBER_OF_FILES];
+static int curruptFilesCount = 0;
+char * generated_tmp_json_files_events[MAX_NUMBER_OF_FILES];
+char * generated_tmp_json_files_alerts[MAX_NUMBER_OF_FILES];
+char * generated_json_files_events[MAX_NUMBER_OF_FILES];
+char * generated_json_files_alerts[MAX_NUMBER_OF_FILES];
+int number_of_valid_files_found = 0;
+int currentFileIndex = -1;
+
+char executable_directory[PATH_MAX];
+
 /*---------------------------------------------------------------------------------------------------------*/
 
 bool is_file_larger_than_threshold(FILE * fp)
@@ -207,22 +222,22 @@ bool is_file_larger_than_threshold(FILE * fp)
 }
 
 // Function to get current UTC ISO8601 time
-void get_current_utc_iso8601(char * buffer, size_t size)
-{
-    time_t now = time(NULL);
-    struct tm tm_now;
-
-    gmtime_r(&now, &tm_now);
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_now);
-
-    for (char * p = buffer; *p != '\0'; ++p)
-    {
-        if (*p == ':')
-        {
-            *p = '_';
-        }
-    }
-}
+//void get_current_utc_iso8601(char * buffer, size_t size)
+//{
+//    time_t now = time(NULL);
+//    struct tm tm_now;
+//
+//    gmtime_r(&now, &tm_now);
+//    strftime(buffer, size, "%Y-%m-%dT%H:%M:%SZ", &tm_now);
+//
+//    for (char * p = buffer; *p != '\0'; ++p)
+//    {
+//        if (*p == ':')
+//        {
+//            *p = '_';
+//        }
+//    }
+//}
 
 // Rotate log file: close, rename, reset state
 void rotate_event_log_file()
@@ -232,17 +247,20 @@ void rotate_event_log_file()
         fclose(event_log_fp);
 
         // Rename .tmp to .json
-        char new_name[MAX_FILENAME_LEN];
-        snprintf( new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_event_filename) - 4), current_event_filename); // strip
-                                                                                                             // ".tmp"
-        if (rename(current_event_filename, new_name) != 0)
+                                                                                                         // ".tmp"
+        if (rename(generated_tmp_json_files_events[currentFileIndex], generated_json_files_events[currentFileIndex]) !=  0)
         {
-            printf("ERROR: rename() failed");
+            logger(1, "Error renaming - %s file\n", generated_tmp_json_files_events[currentFileIndex]);
+            remove(generated_json_files_events[currentFileIndex]);
+            logger(1, "deleted existing file - %s \n", generated_json_files_events[currentFileIndex]);
+
+            if (rename(generated_tmp_json_files_events[currentFileIndex], generated_json_files_events[currentFileIndex]) != 0)
+            {
+                logger(1, "Error renaming - %s file\n", generated_tmp_json_files_events[currentFileIndex]);
+            }
         }
 
         event_log_fp = NULL;
-        current_event_filename[0] = '\0';
-        event_file_start_time = 0;
     }
 }
 
@@ -253,18 +271,20 @@ void rotate_alert_log_file()
     {
         fclose(alert_log_fp);
 
-        // Rename .tmp to .json
-        char new_name[MAX_FILENAME_LEN];
-        snprintf(new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_alert_filename) - 4),  current_alert_filename); // strip
-                                          // ".tmp"
-        if (rename(current_alert_filename, new_name) != 0)
+         if (rename(generated_tmp_json_files_alerts[currentFileIndex], generated_json_files_alerts[currentFileIndex]) !=  0)
         {
-            printf("ERROR: rename() failed");
+            logger(1, "Error renaming - %s file\n", generated_tmp_json_files_alerts[currentFileIndex]);
+            remove(generated_json_files_alerts[currentFileIndex]);
+            logger(1, "deleted existing file - %s \n", generated_json_files_alerts[currentFileIndex]);
+
+            if (rename(generated_tmp_json_files_alerts[currentFileIndex], generated_json_files_alerts[currentFileIndex]) != 0)
+            {
+                logger(1, "Error renaming - %s file\n", generated_tmp_json_files_alerts[currentFileIndex]);
+            }
         }
 
         alert_log_fp = NULL;
-        current_alert_filename[0] = '\0';
-        alert_file_start_time = 0;
+        
     }
 }
 
@@ -317,24 +337,16 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
-    if (event_log_fp == NULL || difftime(now, event_file_start_time) >= log_file_duration_in_seconds || is_file_larger_than_threshold(event_log_fp))
+    if (event_log_fp == NULL)
     {
         rotate_event_log_file();
 
-        // Create new file
-        char timestamp[32];
-        get_current_utc_iso8601(timestamp, sizeof(timestamp));
-
-        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
-
-        event_log_fp = fopen(current_event_filename, "a");
+        event_log_fp = fopen(generated_tmp_json_files_events[currentFileIndex], "a");
         if (!event_log_fp)
         {
-            printf("ERROR: Failed to open log file: %s (%s)\n", current_event_filename, strerror(errno));
+            printf("ERROR: Failed to open log file: %s (%s)\n", generated_tmp_json_files_events[currentFileIndex], strerror(errno));
             return;
         }
-
-        event_file_start_time = now;
     }
 
     // Write to current file
@@ -353,24 +365,16 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
-    if (alert_log_fp == NULL || difftime(now, alert_file_start_time) >= log_file_duration_in_seconds || is_file_larger_than_threshold(alert_log_fp))
+    if (alert_log_fp == NULL )
     {
         rotate_alert_log_file();
 
-        // Create new file
-        char timestamp[32];
-        get_current_utc_iso8601(timestamp, sizeof(timestamp));
-
-        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_%s.tmp", alerts_folder_full_path, timestamp);
-
-        alert_log_fp = fopen(current_alert_filename, "a");
+        alert_log_fp = fopen(generated_tmp_json_files_alerts[currentFileIndex], "a");
         if (!alert_log_fp)
         {
-            printf("ERROR: Failed to open log file: %s (%s)\n", current_alert_filename, strerror(errno));
+            printf("ERROR: Failed to open log file: %s (%s)\n", generated_tmp_json_files_alerts[currentFileIndex],  strerror(errno));
             return;
         }
-
-        alert_file_start_time = now;
     }
 
     // Write to current file
@@ -383,7 +387,6 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     fwrite("\n", 1, 1, alert_log_fp);
     fflush(alert_log_fp); // ensure data is written
 }
-
 
 void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
@@ -7351,6 +7354,182 @@ static int nDPId_parsed_config_line(
     return 1;
 }
 
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+static void fetch_files_to_process(const char * pcap_files_folder_path)
+{
+    DIR * dir = NULL;
+    struct dirent * entry;
+
+    int index = 0;
+    for (index = 0; index < number_of_valid_files_found; index++)
+    {
+        free(pcap_files);
+        free(generated_tmp_json_files_events[index]);
+        free(generated_tmp_json_files_alerts[index]);
+        free(generated_json_files_events[index]);
+        free(generated_json_files_alerts[index]);
+    }
+
+    number_of_valid_files_found = 0;
+
+    // Open the directory
+    if ((dir = opendir(pcap_files_folder_path)) == NULL)
+    {
+        logger(1, "Error opening directory: %s", pcap_files_folder_path);
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        logger(0, "pcap folder directory opened successfully");
+    }
+
+    // Read directory entries
+    int counter = 0;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (entry->d_type == DT_REG)
+        {
+            counter++;
+            char * filename = entry->d_name;
+            if (strstr(filename, ".pcap") != NULL || strstr(filename, ".pcapng") != NULL)
+            {
+
+                logger(0, "%d. found a pcap/pcapng file %s", counter, filename);
+                // Allocate and construct the complete path of pcap file
+                char * complete_path_of_pcap = malloc(strlen(pcap_files_folder_path) + strlen(filename) + 2);
+                if (complete_path_of_pcap == NULL)
+                {
+                    logger(1, "Memory allocation failed");
+                    closedir(dir);
+                    exit(EXIT_FAILURE);
+                }
+
+                snprintf(complete_path_of_pcap,
+                         strlen(pcap_files_folder_path) + strlen(filename) + 2,
+                         "%s%s",
+                         pcap_files_folder_path,
+                         filename);
+
+                pcap_files[number_of_valid_files_found] = complete_path_of_pcap;
+
+                // Remove the file extension
+                char * dot = strrchr(filename, '.');
+                if (dot != NULL)
+                {
+                    *dot = '\0'; // Replace the dot with the null terminator
+                }
+
+                // Allocate and construct alert and event file paths
+                char * alert_file_path =
+                    malloc(strlen(executable_directory) + strlen(alerts_folder_name) + strlen(filename) + 8);
+                char * event_file_path =
+                    malloc(strlen(executable_directory) + strlen(events_folder_name) + strlen(filename) + 8);
+                if (alert_file_path == NULL || event_file_path == NULL)
+                {
+                    logger(1, "Memory allocation failed");
+                    free(complete_path_of_pcap);
+                    free(alert_file_path);
+                    free(event_file_path);
+                    closedir(dir);
+                    exit(EXIT_FAILURE);
+                }
+
+                snprintf(alert_file_path,
+                         strlen(executable_directory) + strlen(alerts_folder_name) + strlen(filename) + 8,
+                         "%s/%s/%s.json",
+                         executable_directory,
+                         alerts_folder_name,
+                         filename);
+                snprintf(event_file_path,
+                         strlen(executable_directory) + strlen(events_folder_name) + strlen(filename) + 8,
+                         "%s/%s/%s.json",
+                         executable_directory,
+                         events_folder_name,
+                         filename);
+
+                generated_json_files_alerts[number_of_valid_files_found] = alert_file_path;
+                generated_json_files_events[number_of_valid_files_found] = event_file_path;
+
+                // Allocate and construct temporary alert and event file paths
+                char * tmp_alert_file_path = malloc(strlen(alert_file_path) + 5);
+                char * tmp_event_file_path = malloc(strlen(event_file_path) + 5);
+                if (tmp_alert_file_path == NULL || tmp_event_file_path == NULL)
+                {
+                    logger(1, "Memory allocation failed");
+                    free(complete_path_of_pcap);
+                    free(alert_file_path);
+                    free(event_file_path);
+                    free(tmp_alert_file_path);
+                    free(tmp_event_file_path);
+                    closedir(dir);
+                    exit(EXIT_FAILURE);
+                }
+
+                snprintf(tmp_alert_file_path, strlen(alert_file_path) + 5, "%s.tmp", alert_file_path);
+                snprintf(tmp_event_file_path, strlen(event_file_path) + 5, "%s.tmp", event_file_path);
+
+                generated_tmp_json_files_alerts[number_of_valid_files_found] = tmp_alert_file_path;
+                generated_tmp_json_files_events[number_of_valid_files_found] = tmp_event_file_path;
+
+                number_of_valid_files_found++;
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+/*-----------------------------------------------------------------------------------------------------*/
+// Ashwani:
+// This gets all the valid pcap and pcapng files and also set options like where data should be recorded.
+//
+static void fetch_files_to_process_and_set_default_options(const char * pcap_files_folder_path)
+{
+    do
+    {
+        fetch_files_to_process(pcap_files_folder_path);
+        if (number_of_valid_files_found == 0)
+        {
+            logger(0, "No file to process. Sleeping for 15 secondss");
+            sleep(15);
+        }
+    } while (number_of_valid_files_found == 0);
+
+    // Print the full paths of the .pcap files
+    logger(0, "Total number of pcap/pcapng files found = %d", number_of_valid_files_found);
+
+    int length_of_longest_file = 0;
+    int index = 0;
+    for (index = 0; index < number_of_valid_files_found; index++)
+    {
+        int length = strlen(pcap_files[index]);
+        if (length > length_of_longest_file)
+        {
+            length_of_longest_file = length;
+        }
+    }
+
+    index = 0;
+    int distance = length_of_longest_file + 5;
+    int distance_plus_10 = distance + 10;
+    for (index = 0; index < number_of_valid_files_found; index++)
+    {
+        logger(0,
+               "%3d.  %-*s| %-*s| %-*s| %-*s| %-*s\n",
+               index + 1,
+               distance,
+               pcap_files[index],
+               length_of_longest_file,
+               generated_json_files_events[index],
+               distance_plus_10,
+               generated_tmp_json_files_events[index],
+               distance_plus_10,
+               generated_json_files_alerts[index],
+               distance_plus_10,
+               generated_tmp_json_files_alerts[index]);
+    }
+}
+
 
 #ifndef NO_MAIN
 int main(int argc, char ** argv)
@@ -7438,48 +7617,101 @@ int main(int argc, char ** argv)
         logger_early(1, "Could not initialize libnDPI global context.");
     }
 
-    if (setup_reader_threads() != 0)
-    {
-        return 1;
-    }
-
-    if (start_reader_threads() != 0)
-    {
-        return 1;
-    }
-
     create_events_and_alerts_folders();
-    init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
     logger(0, "nDPID program version is 11.01.2025.01\n");
 
-    signal(SIGINT, sighandler);
-    signal(SIGTERM, sighandler);
-    signal(SIGPIPE, SIG_IGN);
+    fetch_files_to_process_and_set_default_options(argv[1]);
 
-    while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
+    currentFileIndex = 0;
+    for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
     {
-        sleep(1);
-    }
+        set_cmdarg(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
+        logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
 
-    if (stop_reader_threads() != 0)
-    {
-        return 1;
-    }
-    free_reader_threads();
+        char pcap_error_buffer[PCAP_ERRBUF_SIZE];
+        pcap_t *handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex], PCAP_TSTAMP_PRECISION_NANO, pcap_error_buffer);
 
-    if (global_context != NULL)
-    {
-        ndpi_global_deinit(global_context);
-    }
-    global_context = NULL;
+        if (handle == NULL) 
+        {
+            curruptFilesCount++;
+            logger(1, "Error opening file: %s\n", pcap_error_buffer);
+            remove(pcap_files[currentFileIndex]);
+            continue;
+        }
+        else
+        {
+            switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
+            {
+                case PCAP_ERROR:
+                    logger(1, "Error while reading pcap file");
+                    curruptFilesCount++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                case PCAP_ERROR_BREAK:
+                    curruptFilesCount++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                default:
+                    ;
+            }
+        }
 
-    daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
-    rotate_event_log_file();
-    rotate_alert_log_file();
-    logger(0, "%s", "Bye.");
-    free_flow_map(&flow_map);
+        pcap_close(handle);
+
+        if (setup_reader_threads() != 0)
+        {
+            return 1;
+        }
+
+        if (start_reader_threads() != 0)
+        {
+            return 1;
+        }
+
+     
+        init_flow_map(&flow_map, 10000);
+
+
+        signal(SIGINT, sighandler);
+        signal(SIGTERM, sighandler);
+        signal(SIGPIPE, SIG_IGN);
+
+        while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
+        {
+            sleep(1);
+        }
+
+        if (stop_reader_threads() != 0)
+        {
+            return 1;
+        }
+        free_reader_threads();
+
+        if (global_context != NULL)
+        {
+            ndpi_global_deinit(global_context);
+        }
+        global_context = NULL;
+
+        daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
+        rotate_event_log_file();
+        rotate_alert_log_file();
+        remove(pcap_files[currentFileIndex]);
+        free(pcap_files[currentFileIndex]);
+        pcap_files[currentFileIndex] = NULL;
+        free(generated_tmp_json_files_events[currentFileIndex]);
+        free(generated_tmp_json_files_alerts[currentFileIndex]);
+        free(generated_json_files_events[currentFileIndex]);
+        free(generated_json_files_alerts[currentFileIndex]);
+
+        logger(0, "%s", "Bye.");
+        free_flow_map(&flow_map);
+        logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
+    }
     shutdown_logging();
 
     return 0;
