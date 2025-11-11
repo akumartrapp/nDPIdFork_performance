@@ -2436,7 +2436,7 @@ static int setup_reader_threads(void)
         return 1;
     }
 
-    printf("1\n");
+    printf("setup_reader_threads 1\n");
 
     if (IS_CMDARG_SET(nDPId_options.pcap_file_or_interface) == 0)
     {
@@ -2453,7 +2453,7 @@ static int setup_reader_threads(void)
                      GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
     }
 
-     printf("2\n");
+     printf("setup_reader_threads 2\n");
 
     errno = 0;
     if (access(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface), R_OK) != 0 && errno == ENOENT)
@@ -2478,16 +2478,15 @@ static int setup_reader_threads(void)
         }
     }
 
-     printf("3\n");
-
+    printf("setup_reader_threads 3\n");
 
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
-        printf("4\n");
+        printf("setup_reader_threads 4\n");
 
         reader_threads[i].workflow = init_workflow(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
-         printf("5\n");
+        printf("setup_reader_threads 5\n");
         if (reader_threads[i].workflow == NULL)
         {
             return 1;
