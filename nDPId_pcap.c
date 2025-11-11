@@ -7731,12 +7731,14 @@ int main(int argc, char ** argv)
 
          pcap_close(handle);
 
-         continue;
+       
 
         if (setup_reader_threads() != 0)
         {
             return 1;
         }
+
+          continue;
 
         printf("after setup_reader_threads\n");
         if (start_reader_threads() != 0)
