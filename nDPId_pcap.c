@@ -2482,6 +2482,7 @@ static int setup_reader_threads(void)
 
         reader_threads[i].workflow = init_workflow(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
+         printf("5\n");
         if (reader_threads[i].workflow == NULL)
         {
             return 1;
