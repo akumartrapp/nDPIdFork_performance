@@ -2022,6 +2022,7 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
+    printf("Entry %s\n", file_or_device);
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2076,6 +2077,7 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         }
         else
         {
+            printf("Entry Else %s\n", file_or_device);
             workflow->pcap_handle =
                 pcap_open_offline_with_tstamp_precision(file_or_device, PCAP_TSTAMP_PRECISION_MICRO, pcap_error_buffer);
             workflow->is_pcap_file = 1;
