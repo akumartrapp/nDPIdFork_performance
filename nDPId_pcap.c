@@ -173,7 +173,7 @@ static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 #define MAX_NUMBER_OF_FILES 5000 // Maximum number of files to handle
 
 char * pcap_files[MAX_NUMBER_OF_FILES];
-static int curruptFilesCount = 0;
+static int corrupt_files_count = 0;
 char * generated_tmp_json_files_events[MAX_NUMBER_OF_FILES];
 char * generated_tmp_json_files_alerts[MAX_NUMBER_OF_FILES];
 char * generated_json_files_events[MAX_NUMBER_OF_FILES];
@@ -7524,11 +7524,9 @@ static void fetch_files_to_process_and_set_default_options(const char * pcap_fil
     }
 }
 
-
-#ifndef NO_MAIN
 int main(int argc, char ** argv)
 {
-    curruptFilesCount = 0;
+    corrupt_files_count = 0;
     if (argc == 0 || stdout == NULL || stderr == NULL)
     {
         return 1;
@@ -7630,7 +7628,7 @@ int main(int argc, char ** argv)
 
         if (handle == NULL) 
         {
-            curruptFilesCount++;
+            corrupt_files_count++;
             logger(1, "Error opening file: %s\n", pcap_error_buffer);
             remove(pcap_files[currentFileIndex]);
             continue;
@@ -7641,12 +7639,12 @@ int main(int argc, char ** argv)
             {
                 case PCAP_ERROR:
                     logger(1, "Error while reading pcap file");
-                    curruptFilesCount++;
+                    corrupt_files_count++;
                     pcap_close(handle);
                     remove(pcap_files[currentFileIndex]);
                     continue;
                 case PCAP_ERROR_BREAK:
-                    curruptFilesCount++;
+                    corrupt_files_count++;
                     pcap_close(handle);
                     remove(pcap_files[currentFileIndex]);
                     continue;
@@ -7709,11 +7707,11 @@ int main(int argc, char ** argv)
     }
 
     logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
-    logger(0, "Number of corrupt files %d", curruptFilesCount);
+    logger(0, "Number of corrupt files %d", corrupt_files_count);
     logger(0, "Total number of files %d", number_of_valid_files_found);
 
     shutdown_logging();
 
     return 0;
 }
-#endif
+
