@@ -2374,6 +2374,7 @@ static void free_workflow(struct nDPId_workflow ** const workflow)
 
     if (w == NULL)
     {
+        printf("free_workflow early return \n");
         return;
     }
 
