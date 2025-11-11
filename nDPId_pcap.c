@@ -7722,8 +7722,8 @@ int main(int argc, char ** argv)
         rotate_event_log_file();
         rotate_alert_log_file();
         logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
-        remove(pcap_files[currentFileIndex]);
-        free(pcap_files[currentFileIndex]);
+        //remove(pcap_files[currentFileIndex]);
+        //free(pcap_files[currentFileIndex]);
         pcap_files[currentFileIndex] = NULL;
         free(generated_tmp_json_files_events[currentFileIndex]);
         free(generated_tmp_json_files_alerts[currentFileIndex]);
