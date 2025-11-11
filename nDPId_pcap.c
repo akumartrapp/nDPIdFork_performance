@@ -2387,7 +2387,7 @@ static void free_workflow(struct nDPId_workflow ** const workflow)
 
     if (w->pcap_handle != NULL)
     {
-        printf("freeing 1");
+        printf("freeing 1\n");
         pcap_close(w->pcap_handle);
         w->pcap_handle = NULL;
     }
@@ -6143,6 +6143,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
+    printf("run_capture_loop 1\n")
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6394,6 +6395,7 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
+    printf("processing_thread 1\n")
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6468,6 +6470,7 @@ static int start_reader_threads(void)
         return 1;
     }
 
+    printf("start_reader_threads 1\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         reader_threads[i].array_index = i;
@@ -6478,6 +6481,7 @@ static int start_reader_threads(void)
             break;
         }
 
+        printf("start_reader_threads 2\n");
         if (pthread_create(&reader_threads[i].thread, NULL, processing_thread, &reader_threads[i]) != 0)
         {
             logger(1, "pthread_create: %s", strerror(errno));
@@ -7705,7 +7709,7 @@ int main(int argc, char ** argv)
             return 1;
         }
 
-         printf("after stop_reader_threads\n");
+        printf("after stop_reader_threads\n");
 
         free_reader_threads();
 
