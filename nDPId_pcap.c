@@ -7731,6 +7731,8 @@ int main(int argc, char ** argv)
 
          pcap_close(handle);
 
+         continue;
+
         if (setup_reader_threads() != 0)
         {
             return 1;
