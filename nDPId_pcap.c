@@ -7688,6 +7688,14 @@ int main(int argc, char ** argv)
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
     {
+
+        global_context = ndpi_global_init();
+        if (global_context == NULL)
+        {
+            logger_early(1, "Could not initialize libnDPI global context.");
+        }
+
+
         set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
         logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
 
@@ -7757,7 +7765,7 @@ int main(int argc, char ** argv)
 
         free_reader_threads();
 
-        continue;
+
 
         if (global_context != NULL)
         {
