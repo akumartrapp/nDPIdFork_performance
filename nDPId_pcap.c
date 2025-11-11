@@ -7636,7 +7636,7 @@ int main(int argc, char ** argv)
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
     {
-        set_cmdarg(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
+        set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
         logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
 
         //char pcap_error_buffer[PCAP_ERRBUF_SIZE];
