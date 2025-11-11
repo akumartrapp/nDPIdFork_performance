@@ -7697,6 +7697,7 @@ int main(int argc, char ** argv)
         daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
         rotate_event_log_file();
         rotate_alert_log_file();
+        logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
         remove(pcap_files[currentFileIndex]);
         free(pcap_files[currentFileIndex]);
         pcap_files[currentFileIndex] = NULL;
@@ -7706,8 +7707,7 @@ int main(int argc, char ** argv)
         free(generated_json_files_alerts[currentFileIndex]);
 
         logger(0, "%s", "Bye.");
-        free_flow_map(&flow_map);
-        logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
+        free_flow_map(&flow_map);        
     }
 
     logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
