@@ -7724,11 +7724,11 @@ int main(int argc, char ** argv)
         logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
         //remove(pcap_files[currentFileIndex]);
         //free(pcap_files[currentFileIndex]);
-        pcap_files[currentFileIndex] = NULL;
-        free(generated_tmp_json_files_events[currentFileIndex]);
-        free(generated_tmp_json_files_alerts[currentFileIndex]);
-        free(generated_json_files_events[currentFileIndex]);
-        free(generated_json_files_alerts[currentFileIndex]);
+        //pcap_files[currentFileIndex] = NULL;
+        //free(generated_tmp_json_files_events[currentFileIndex]);
+        //free(generated_tmp_json_files_alerts[currentFileIndex]);
+        //free(generated_json_files_events[currentFileIndex]);
+        //free(generated_json_files_alerts[currentFileIndex]);
 
         logger(0, "%s", "Bye.");
         free_flow_map(&flow_map);        
