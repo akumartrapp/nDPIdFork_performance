@@ -161,6 +161,7 @@ static time_t master_file_start_time = 0;
 // Variables to hold config values
 static int log_file_duration_in_seconds = 60; 
 static int log_file_size_in_mb = 5;
+static bool detailed_console_ouput_enabled = false;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
@@ -183,6 +184,22 @@ int currentFileIndex = -1;
 
 
 /*---------------------------------------------------------------------------------------------------------*/
+
+void write_to_console(int error, const char * fmt, ...)
+{
+    if (!detailed_console_output_enabled)
+    {
+        return;
+    }
+
+    char buffer[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    logger(level, "%s", buffer);
+}
 
 bool is_file_larger_than_threshold(FILE * fp)
 {
@@ -1286,6 +1303,16 @@ void read_ndpid_config(const char * filename)
             log_file_size_in_mb = json_object_get_int(val);
         }
 
+        struct json_object * consoleOutput_obj;
+        if (json_object_object_get_ex(ndpid_obj, "consoleOutput", &consoleOutput_obj))
+        {
+            if (json_object_object_get_ex(consoleOutput_obj, "detailed", &val))
+            {
+                detailed_console_ouput_enabled = json_object_get_boolean(val);
+            }
+
+        }
+
         struct json_object * debug_logs_obj;
         if (json_object_object_get_ex(ndpid_obj, "debugLogs", &debug_logs_obj))
         {
@@ -1304,6 +1331,7 @@ void read_ndpid_config(const char * filename)
                 master_log_file_duration_in_minutes = json_object_get_int(val);
             }
         }
+
 
         struct json_object * ouput_obj;
         if (json_object_object_get_ex(ndpid_obj, "output", &ouput_obj))
@@ -5135,6 +5163,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
+    write_to_console("ndpi_process_packet called \n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -7621,7 +7650,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
+    logger(0, "nDPID_pcap program version is 11.12.2025.01\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 

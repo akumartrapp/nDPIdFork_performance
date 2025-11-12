@@ -9,6 +9,10 @@
             "masterLogFileDurationInMinutes": 10
         },
 
+        "consoleOutput": {
+            "detailed": true
+        },
+
         "sockets": {
             "COLLECTOR_UNIX_SOCKET": "/tmp/ndpid-collector_unix.sock"
         },
