@@ -198,7 +198,7 @@ void write_to_console(int error, const char * fmt, ...)
     vsnprintf(buffer, sizeof(buffer), fmt, args);
     va_end(args);
 
-    logger(level, "%s", buffer);
+    logger(error, "%s", buffer);
 }
 
 bool is_file_larger_than_threshold(FILE * fp)
