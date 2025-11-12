@@ -2427,7 +2427,8 @@ static int setup_reader_threads(void)
 {
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
-    printf("Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    // Ashwani
+    //printf("Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
         return 1;
@@ -7508,22 +7509,22 @@ static void fetch_files_to_process_and_set_default_options(const char * pcap_fil
     index = 0;
     int distance = length_of_longest_file + 5;
     int distance_plus_10 = distance + 10;
-    for (index = 0; index < number_of_valid_files_found; index++)
-    {
-        logger(0,
-               "%3d.  %-*s| %-*s| %-*s| %-*s| %-*s\n",
-               index + 1,
-               distance,
-               pcap_files[index],
-               length_of_longest_file,
-               generated_json_files_events[index],
-               distance_plus_10,
-               generated_tmp_json_files_events[index],
-               distance_plus_10,
-               generated_json_files_alerts[index],
-               distance_plus_10,
-               generated_tmp_json_files_alerts[index]);
-    }
+    //for (index = 0; index < number_of_valid_files_found; index++)
+    //{
+    //    logger(0,
+    //           "%3d.  %-*s| %-*s| %-*s| %-*s| %-*s\n",
+    //           index + 1,
+    //           distance,
+    //           pcap_files[index],
+    //           length_of_longest_file,
+    //           generated_json_files_events[index],
+    //           distance_plus_10,
+    //           generated_tmp_json_files_events[index],
+    //           distance_plus_10,
+    //           generated_json_files_alerts[index],
+    //           distance_plus_10,
+    //           generated_tmp_json_files_alerts[index]);
+    //}
 }
 
 static void dummy_packet_handler(u_char * user, const struct pcap_pkthdr * header, const u_char * packet)
