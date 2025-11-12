@@ -6129,7 +6129,6 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
-    printf("run_capture_loop 1\n");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6608,7 +6607,7 @@ static int stop_reader_threads(void)
         break_pcap_loop(&reader_threads[i]);
     }
 
-    printf("------------------------------------ Stopping reader threads\n");
+    //printf("------------------------------------ Stopping reader threads\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -6622,10 +6621,12 @@ static int stop_reader_threads(void)
         }
     }
 
-    printf("------------------------------------ Processing remaining flows\n");
+   // printf("------------------------------------ Processing remaining flows\n");
     process_remaining_flows();
 
-    printf("------------------------------------ Results\n");
+    //printf("------------------------------------ Results\n");
+    // Ashwani
+    return;
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
