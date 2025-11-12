@@ -5163,7 +5163,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    write_to_console("ndpi_process_packet called \n");
+    write_to_console(0, "ndpi_process_packet called \n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
