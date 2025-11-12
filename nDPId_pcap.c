@@ -7753,7 +7753,7 @@ int main(int argc, char ** argv)
         getcwd(cwd, sizeof(cwd));
         printf("After threads: running as UID=%d, GID=%d, CWD=%s\n", getuid(), getgid(), cwd);
 
-        continue;
+        //continue;
 
         printf("after start_reader_threads\n");
      
