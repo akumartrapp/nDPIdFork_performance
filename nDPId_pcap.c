@@ -6444,30 +6444,30 @@ static int start_reader_threads(void)
         return 1;
     }
 
-    if (daemonize_with_pidfile(GET_CMDARG_STR(nDPId_options.pidfile)) != 0)
-    {
-        return 1;
-    }
+    //if (daemonize_with_pidfile(GET_CMDARG_STR(nDPId_options.pidfile)) != 0)
+    //{
+    //    return 1;
+    //}
 
-    int ret = change_user_group(GET_CMDARG_STR(nDPId_options.user),
-                                GET_CMDARG_STR(nDPId_options.group),
-                                GET_CMDARG_STR(nDPId_options.pidfile));
-    if (ret != 0 && ret != -EPERM)
-    {
-        if (GET_CMDARG_STR(nDPId_options.group) != NULL)
-        {
-            logger(1,
-                   "Change user/group to %s/%s failed: %s",
-                   GET_CMDARG_STR(nDPId_options.user),
-                   GET_CMDARG_STR(nDPId_options.group),
-                   strerror(-ret));
-        }
-        else
-        {
-            logger(1, "Change user to %s failed: %s", GET_CMDARG_STR(nDPId_options.user), strerror(-ret));
-        }
-        return 1;
-    }
+    //int ret = change_user_group(GET_CMDARG_STR(nDPId_options.user),
+    //                            GET_CMDARG_STR(nDPId_options.group),
+    //                            GET_CMDARG_STR(nDPId_options.pidfile));
+    //if (ret != 0 && ret != -EPERM)
+    //{
+    //    if (GET_CMDARG_STR(nDPId_options.group) != NULL)
+    //    {
+    //        logger(1,
+    //               "Change user/group to %s/%s failed: %s",
+    //               GET_CMDARG_STR(nDPId_options.user),
+    //               GET_CMDARG_STR(nDPId_options.group),
+    //               strerror(-ret));
+    //    }
+    //    else
+    //    {
+    //        logger(1, "Change user to %s failed: %s", GET_CMDARG_STR(nDPId_options.user), strerror(-ret));
+    //    }
+    //    return 1;
+    //}
 
     printf("start_reader_threads 1\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
