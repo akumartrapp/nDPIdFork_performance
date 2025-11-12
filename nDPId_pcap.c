@@ -1799,6 +1799,8 @@ static void ndpi_free_wrapper(void * const freeable)
 #ifdef ENABLE_MEMORY_PROFILING
 static void log_memory_usage(struct nDPId_reader_thread const * const reader_thread)
 {
+    // Ashwani
+    return;
     if (reader_thread->array_index == 0)
     {
         uint64_t alloc_count = MT_GET_AND_ADD(ndpi_memory_alloc_count, 0);
@@ -2367,12 +2369,10 @@ static void ndpi_flow_info_free(void * const node)
 
 static void free_workflow(struct nDPId_workflow ** const workflow)
 {
-    printf("free_workflow \n");
     struct nDPId_workflow * const w = *workflow;
 
     if (w == NULL)
     {
-        printf("free_workflow early return \n");
         return;
     }
 
@@ -2385,7 +2385,6 @@ static void free_workflow(struct nDPId_workflow ** const workflow)
 
     if (w->pcap_handle != NULL)
     {
-        printf("freeing 1\n");
         pcap_close(w->pcap_handle);
         w->pcap_handle = NULL;
     }
@@ -6382,7 +6381,6 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    printf("processing_thread 1\n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6682,7 +6680,6 @@ static int stop_reader_threads(void)
 
 static void free_reader_threads(void)
 {
-    printf("free_reader_threads\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
