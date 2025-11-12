@@ -2022,7 +2022,6 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
-    printf("Entry %s\n", file_or_device);
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2077,7 +2076,6 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         }
         else
         {
-            printf("Entry Else %s\n", file_or_device);
             workflow->pcap_handle =
                 pcap_open_offline_with_tstamp_precision(file_or_device, PCAP_TSTAMP_PRECISION_MICRO, pcap_error_buffer);
             workflow->is_pcap_file = 1;
@@ -2436,8 +2434,6 @@ static int setup_reader_threads(void)
         return 1;
     }
 
-    printf("setup_reader_threads 1\n");
-
     if (IS_CMDARG_SET(nDPId_options.pcap_file_or_interface) == 0)
     {
         char * const pcapdev = get_default_pcapdev(pcap_error_buffer);
@@ -2453,7 +2449,6 @@ static int setup_reader_threads(void)
                      GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
     }
 
-     printf("setup_reader_threads 2\n");
 
     errno = 0;
     if (access(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface), R_OK) != 0 && errno == ENOENT)
@@ -2478,15 +2473,10 @@ static int setup_reader_threads(void)
         }
     }
 
-    printf("setup_reader_threads 3\n");
-
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
-        printf("setup_reader_threads 4\n");
-
         reader_threads[i].workflow = init_workflow(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
-        printf("setup_reader_threads 5\n");
         if (reader_threads[i].workflow == NULL)
         {
             return 1;
@@ -3395,13 +3385,11 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 {
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
-    printf("before writing to collector\n");
     errno = 0;
     ssize_t written;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, length)) != length)
     {
-        printf("After writing to collector\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
@@ -6469,7 +6457,6 @@ static int start_reader_threads(void)
     //    return 1;
     //}
 
-    printf("start_reader_threads 1\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         reader_threads[i].array_index = i;
@@ -6480,7 +6467,6 @@ static int start_reader_threads(void)
             break;
         }
 
-        printf("start_reader_threads 2\n");
         if (pthread_create(&reader_threads[i].thread, NULL, processing_thread, &reader_threads[i]) != 0)
         {
             logger(1, "pthread_create: %s", strerror(errno));
@@ -7640,50 +7626,7 @@ int main(int argc, char ** argv)
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
-    //currentFileIndex = 0;
-    //for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
-    //{
-    //    set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
-    //    logger(0,
-    //           "%d. processing of %s file started------------------------------------------------",
-    //           currentFileIndex + 1,
-    //           pcap_files[currentFileIndex]);
 
-    //    char pcap_error_buffer[PCAP_ERRBUF_SIZE];
-    //    pcap_t * handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex],
-    //                                                              PCAP_TSTAMP_PRECISION_NANO,
-    //                                                              pcap_error_buffer);
-
-    //    if (handle == NULL)
-    //    {
-    //        corrupt_files_count++;
-    //        logger(1, "Error opening file: %s\n", pcap_error_buffer);
-    //        remove(pcap_files[currentFileIndex]);
-    //        continue;
-    //    }
-    //    else
-    //    {
-    //        switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
-    //        {
-    //            case PCAP_ERROR:
-    //                logger(1, "Error while reading pcap file");
-    //                corrupt_files_count++;
-    //                pcap_close(handle);
-    //                remove(pcap_files[currentFileIndex]);
-    //                continue;
-    //            case PCAP_ERROR_BREAK:
-    //                corrupt_files_count++;
-    //                pcap_close(handle);
-    //                remove(pcap_files[currentFileIndex]);
-    //                continue;
-    //            default:;
-    //        }
-    //    }
-
-    //    pcap_close(handle);
-    //}
-
-    //return 0;
 
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
@@ -7699,63 +7642,47 @@ int main(int argc, char ** argv)
         set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
         logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
 
-        //char pcap_error_buffer[PCAP_ERRBUF_SIZE];
-        //pcap_t *handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex], PCAP_TSTAMP_PRECISION_NANO, pcap_error_buffer);
+        char pcap_error_buffer[PCAP_ERRBUF_SIZE];
+        pcap_t *handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex], PCAP_TSTAMP_PRECISION_NANO, pcap_error_buffer);
 
-        //if (handle == NULL) 
-        //{
-        //    corrupt_files_count++;
-        //    logger(1, "Error opening file: %s\n", pcap_error_buffer);
-        //    remove(pcap_files[currentFileIndex]);
-        //    continue;
-        //}
-        //else
-        //{
-        //    switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
-        //    {
-        //        case PCAP_ERROR:
-        //            logger(1, "Error while reading pcap file");
-        //            corrupt_files_count++;
-        //            pcap_close(handle);
-        //            remove(pcap_files[currentFileIndex]);
-        //            continue;
-        //        case PCAP_ERROR_BREAK:
-        //            corrupt_files_count++;
-        //            pcap_close(handle);
-        //            remove(pcap_files[currentFileIndex]);
-        //            continue;
-        //        default:
-        //            ;
-        //    }
-        //}
+        if (handle == NULL) 
+        {
+            corrupt_files_count++;
+            logger(1, "Error opening file: %s\n", pcap_error_buffer);
+            remove(pcap_files[currentFileIndex]);
+            continue;
+        }
+        else
+        {
+            switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
+            {
+                case PCAP_ERROR:
+                    logger(1, "Error while reading pcap file");
+                    corrupt_files_count++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                case PCAP_ERROR_BREAK:
+                    corrupt_files_count++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                default:
+                    ;
+            }
+        }
 
-        // pcap_close(handle);
-
-       
+        pcap_close(handle);
 
         if (setup_reader_threads() != 0)
         {
             return 1;
         }
 
-         
-
-        printf("after setup_reader_threads\n");
-        char cwd[512];
-        getcwd(cwd, sizeof(cwd));
-        printf("Before threads: running as UID=%d, GID=%d, CWD=%s\n", getuid(), getgid(), cwd);
-
         if (start_reader_threads() != 0)
         {
             return 1;
         }
-
-        getcwd(cwd, sizeof(cwd));
-        printf("After threads: running as UID=%d, GID=%d, CWD=%s\n", getuid(), getgid(), cwd);
-
-        //continue;
-
-        printf("after start_reader_threads\n");
      
         init_flow_map(&flow_map, 10000);
 
@@ -7774,11 +7701,7 @@ int main(int argc, char ** argv)
             return 1;
         }
 
-        printf("after stop_reader_threads\n");
-
         free_reader_threads();
-
-
 
         if (global_context != NULL)
         {
@@ -7797,15 +7720,10 @@ int main(int argc, char ** argv)
         free(generated_tmp_json_files_alerts[currentFileIndex]);
         free(generated_json_files_events[currentFileIndex]);
         free(generated_json_files_alerts[currentFileIndex]);
-
-        logger(0, "%s", "Bye.");
         free_flow_map(&flow_map);        
     }
 
-    
-
-
-    logger(0, "nDPID_pcap program version is 11.10.2025.01\n");
+    logger(0, "nDPID_pcap program version is 11.11.2025.01\n");
     logger(0, "Number of corrupt files %d", corrupt_files_count);
     logger(0, "Total number of files %d", number_of_valid_files_found);
 
