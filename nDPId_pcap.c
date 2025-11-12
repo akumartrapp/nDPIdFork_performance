@@ -7699,37 +7699,37 @@ int main(int argc, char ** argv)
         set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
         logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
 
-        char pcap_error_buffer[PCAP_ERRBUF_SIZE];
-        pcap_t *handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex], PCAP_TSTAMP_PRECISION_NANO, pcap_error_buffer);
+        //char pcap_error_buffer[PCAP_ERRBUF_SIZE];
+        //pcap_t *handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex], PCAP_TSTAMP_PRECISION_NANO, pcap_error_buffer);
 
-        if (handle == NULL) 
-        {
-            corrupt_files_count++;
-            logger(1, "Error opening file: %s\n", pcap_error_buffer);
-            remove(pcap_files[currentFileIndex]);
-            continue;
-        }
-        else
-        {
-            switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
-            {
-                case PCAP_ERROR:
-                    logger(1, "Error while reading pcap file");
-                    corrupt_files_count++;
-                    pcap_close(handle);
-                    remove(pcap_files[currentFileIndex]);
-                    continue;
-                case PCAP_ERROR_BREAK:
-                    corrupt_files_count++;
-                    pcap_close(handle);
-                    remove(pcap_files[currentFileIndex]);
-                    continue;
-                default:
-                    ;
-            }
-        }
+        //if (handle == NULL) 
+        //{
+        //    corrupt_files_count++;
+        //    logger(1, "Error opening file: %s\n", pcap_error_buffer);
+        //    remove(pcap_files[currentFileIndex]);
+        //    continue;
+        //}
+        //else
+        //{
+        //    switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
+        //    {
+        //        case PCAP_ERROR:
+        //            logger(1, "Error while reading pcap file");
+        //            corrupt_files_count++;
+        //            pcap_close(handle);
+        //            remove(pcap_files[currentFileIndex]);
+        //            continue;
+        //        case PCAP_ERROR_BREAK:
+        //            corrupt_files_count++;
+        //            pcap_close(handle);
+        //            remove(pcap_files[currentFileIndex]);
+        //            continue;
+        //        default:
+        //            ;
+        //    }
+        //}
 
-         pcap_close(handle);
+        // pcap_close(handle);
 
        
 
@@ -7760,9 +7760,9 @@ int main(int argc, char ** argv)
         init_flow_map(&flow_map, 10000);
 
 
-        //signal(SIGINT, sighandler);
-        //signal(SIGTERM, sighandler);
-        //signal(SIGPIPE, SIG_IGN);
+        signal(SIGINT, sighandler);
+        signal(SIGTERM, sighandler);
+        signal(SIGPIPE, SIG_IGN);
 
         while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
         {
@@ -7787,16 +7787,16 @@ int main(int argc, char ** argv)
         global_context = NULL;
 
         daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
-        //rotate_event_log_file();
-        //rotate_alert_log_file();
+        rotate_event_log_file();
+        rotate_alert_log_file();
         logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
-        //remove(pcap_files[currentFileIndex]);
-        //free(pcap_files[currentFileIndex]);
-        //pcap_files[currentFileIndex] = NULL;
-        //free(generated_tmp_json_files_events[currentFileIndex]);
-        //free(generated_tmp_json_files_alerts[currentFileIndex]);
-        //free(generated_json_files_events[currentFileIndex]);
-        //free(generated_json_files_alerts[currentFileIndex]);
+        remove(pcap_files[currentFileIndex]);
+        free(pcap_files[currentFileIndex]);
+        pcap_files[currentFileIndex] = NULL;
+        free(generated_tmp_json_files_events[currentFileIndex]);
+        free(generated_tmp_json_files_alerts[currentFileIndex]);
+        free(generated_json_files_events[currentFileIndex]);
+        free(generated_json_files_alerts[currentFileIndex]);
 
         logger(0, "%s", "Bye.");
         free_flow_map(&flow_map);        
