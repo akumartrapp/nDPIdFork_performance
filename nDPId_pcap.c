@@ -2052,6 +2052,7 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
+    write_to_console(0, "init_workflow called \n");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2120,6 +2121,10 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
                          pcap_error_buffer);
             free_workflow(&workflow);
             return NULL;
+        }
+        else
+        {
+            write_to_console(0, "workflow->pcap_handle is not NULL \n");
         }
 
         if (workflow->is_pcap_file == 0 && pcap_setnonblock(workflow->pcap_handle, 1, pcap_error_buffer) == PCAP_ERROR)
@@ -2453,6 +2458,7 @@ static char * get_default_pcapdev(char * errbuf)
 
 static int setup_reader_threads(void)
 {
+    write_to_console(0, "setup_reader_threads called \n");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
     // Ashwani
@@ -6159,6 +6165,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
+    write_to_console(0, "run_capture_loop called \n");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6410,6 +6417,7 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
+    write_to_console(0, "processing_thread called \n");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6448,6 +6456,7 @@ static WARN_UNUSED int processing_threads_error_or_eof(void)
 
 static int start_reader_threads(void)
 {
+    write_to_console(0, "start_reader_threads called \n");
     sigset_t thread_signal_set, old_signal_set;
 
     sigfillset(&thread_signal_set);
