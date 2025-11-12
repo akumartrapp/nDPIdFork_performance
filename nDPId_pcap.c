@@ -7659,7 +7659,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.12.2025.01\n");
+    logger(0, "nDPID_pcap program version is 11.12.2025.02\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
@@ -7674,7 +7674,6 @@ int main(int argc, char ** argv)
         {
             logger_early(1, "Could not initialize libnDPI global context.");
         }
-
 
         set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
         logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
@@ -7691,6 +7690,7 @@ int main(int argc, char ** argv)
         }
         else
         {
+            write_to_console(0, "pcap_open_offline_with_tstamp_precision is SUCCESSFUL \n");
             switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
             {
                 case PCAP_ERROR:
