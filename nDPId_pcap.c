@@ -161,7 +161,7 @@ static time_t master_file_start_time = 0;
 // Variables to hold config values
 static int log_file_duration_in_seconds = 60; 
 static int log_file_size_in_mb = 5;
-static bool detailed_console_ouput_enabled = false;
+static bool detailed_console_output_enabled = false;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
@@ -1308,7 +1308,7 @@ void read_ndpid_config(const char * filename)
         {
             if (json_object_object_get_ex(consoleOutput_obj, "detailed", &val))
             {
-                detailed_console_ouput_enabled = json_object_get_boolean(val);
+                detailed_console_output_enabled = json_object_get_boolean(val);
             }
 
         }
