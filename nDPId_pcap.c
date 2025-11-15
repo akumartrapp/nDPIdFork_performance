@@ -401,7 +401,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
-    write_to_file(0, "  write_to_file called");
+    write_to_file(0, "write_to_file called");
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
@@ -3424,7 +3424,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
                             int length)
 {
-    write_to_file(0, "  write_to_socket_2 called");
+    write_to_file(0, "write_to_socket_2 called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     errno = 0;
@@ -3495,7 +3495,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
 {
-    write_to_file(0, "  write_to_socket called");
+    write_to_file(0, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
