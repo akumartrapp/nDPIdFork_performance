@@ -3395,12 +3395,18 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 1;
     }
 
+    
     if (connect(reader_thread->collector_sockfd,
                 &nDPId_options.parsed_collector_address.raw,
                 nDPId_options.parsed_collector_address.size) < 0)
     {
+        write_to_console(0, "\tFailed to establish connection witht the socket");
         reader_thread->collector_sock_last_errno = errno;
         return 1;
+    }
+    else
+    {
+        write_to_console(0, "\tSuccessfully established connection witht the socket");
     }
 
     if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
