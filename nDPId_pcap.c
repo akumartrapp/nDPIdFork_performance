@@ -187,7 +187,6 @@ int currentFileIndex = -1;
 
 void write_to_console(int error, const char * fmt, ...)
 {
-    return;
     if (!detailed_console_output_enabled)
     {
         return;
