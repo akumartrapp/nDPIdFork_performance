@@ -169,7 +169,7 @@ static bool output_send_to_file = true;
 static int master_log_file_duration_in_minutes = 10;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 static int collector_reconnect_interval_sec = 5;
-static int collector_reconnect_timeout_sec = 60
+static int collector_reconnect_timeout_sec = 60;
 
 // variable for p cap files
 /*---------------------------------------------------------------------------------------------------------/*/
