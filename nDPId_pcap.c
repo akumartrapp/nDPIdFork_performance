@@ -3452,6 +3452,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
                             int length)
 {
+    write_to_console(0, "\write_to_socket_2 called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     errno = 0;
@@ -3463,7 +3464,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
         if (saved_errno == EPIPE || written == 0)
         {
             logger(1,
-                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
+                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
                    workflow->packets_captured,
                    reader_thread->array_index);
         }
@@ -3491,7 +3492,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                 if (saved_errno == EPIPE || written == 0)
                 {
                     logger(1,
-                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
+                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector (3)",
                            workflow->packets_captured,
                            reader_thread->array_index);
                     reader_thread->collector_sock_last_errno = saved_errno;
@@ -3533,7 +3534,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
             if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
             {
                 logger(1,
-                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s",
+                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s (1)",
                        workflow->packets_captured,
                        reader_thread->array_index,
                        GET_CMDARG_STR(nDPId_options.collector_address));
@@ -3700,7 +3701,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         if (saved_errno == EPIPE || written == 0)
         {
             logger(1,
-                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
+                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector (1)",
                    workflow->packets_captured,
                    reader_thread->array_index);
         }
@@ -3728,7 +3729,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                 if (saved_errno == EPIPE || written == 0)
                 {
                     logger(1,
-                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
+                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
                            workflow->packets_captured,
                            reader_thread->array_index);
                     reader_thread->collector_sock_last_errno = saved_errno;
@@ -5207,7 +5208,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
-    write_to_console(0, "\tndpi_process_packet called");
+    //write_to_console(0, "\tndpi_process_packet called");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
