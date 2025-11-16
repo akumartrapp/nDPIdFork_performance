@@ -3488,6 +3488,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
         }
         else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
         {
+            write_to_console(0, "<nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX> case called");
             size_t pos = (written < 0 ? 0 : written);
             set_collector_block(reader_thread);
             while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos)) !=
@@ -3528,6 +3529,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                      const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
 {
+    write_to_console(0, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
