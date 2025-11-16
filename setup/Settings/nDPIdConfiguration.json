@@ -14,7 +14,9 @@
         },
 
         "sockets": {
-            "COLLECTOR_UNIX_SOCKET": "/tmp/ndpid-collector_unix.sock"
+            "COLLECTOR_UNIX_SOCKET": "/tmp/ndpid-collector_unix.sock",
+            "COLLECTOR_RECONNECT_INTERVAL_SEC": 3,
+            "COLLECTOR_RECONNECT_TIMEOUT_SEC": 60
         },
 
         "output": {

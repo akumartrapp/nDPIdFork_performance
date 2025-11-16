@@ -168,6 +168,8 @@ static bool output_send_to_socket = true;
 static bool output_send_to_file = true; 
 static int master_log_file_duration_in_minutes = 10;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
+static int collector_reconnect_interval_sec = 5;
+static int collector_reconnect_timeout_sec = 60
 
 // variable for p cap files
 /*---------------------------------------------------------------------------------------------------------/*/
@@ -1357,6 +1359,16 @@ void read_ndpid_config(const char * filename)
                 {
                     set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
                 }
+            }
+
+            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_INTERVAL_SEC", &val))
+            {
+                collector_reconnect_interval_sec = json_object_get_int(val);              
+            }
+
+            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_TIMEOUT_SEC", &val))
+            {
+                collector_reconnect_timeout_sec = json_object_get_int(val);             
             }
         }
     }
@@ -3370,54 +3382,71 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {
-    if (reader_thread->collector_sockfd >= 0)
-    {
-        close(reader_thread->collector_sockfd);
-    }
+    time_t start_time = time(NULL);
 
-    int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
-    reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
-    if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
+    while (1)
     {
-        reader_thread->collector_sock_last_errno = errno;
-        return 1;
-    }
+        if (reader_thread->collector_sockfd >= 0)
+        {
+            close(reader_thread->collector_sockfd);
+        }
 
-    int opt = NETWORK_BUFFER_MAX_SIZE;
-    if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
-    {
-        return 1;
-    }
+        int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
+        reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
+        if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
 
-    if (set_collector_nonblock(reader_thread) != 0)
-    {
-        return 1;
-    }
+        int opt = NETWORK_BUFFER_MAX_SIZE;
+        if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
 
-    
-    if (connect(reader_thread->collector_sockfd,
-                &nDPId_options.parsed_collector_address.raw,
-                nDPId_options.parsed_collector_address.size) < 0)
-    {
-        write_to_console(0, "\tFailed to establish connection witht the socket");
-        reader_thread->collector_sock_last_errno = errno;
-        return 1;
-    }
-    else
-    {
-        write_to_console(0, "\tSuccessfully established connection witht the socket");
-    }
+        if (set_collector_nonblock(reader_thread) != 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
 
-    if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
-    {
-        reader_thread->collector_sock_last_errno = errno;
-        return 1;
+        if (connect(reader_thread->collector_sockfd,
+                    &nDPId_options.parsed_collector_address.raw,
+                    nDPId_options.parsed_collector_address.size) < 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            write_to_console(0, "\tFailed to establish connection with the socket");
+            goto retry_or_fail;
+        }
+        else
+        {
+            write_to_console(0, "\tSuccessfully established connection with the socket");
+        }
+
+        if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
+
+        reader_thread->collector_sock_last_errno = 0;
+        return 0;
+
+    retry_or_fail:
+        // Retry every collector_reconnect_interval_sec seconds for max collector_reconnect_timeout_sec seconds
+        if (time(NULL) - start_time >= collector_reconnect_timeout_sec)
+        {
+            logger(1, "FATAL: Unable to reconnect to collector for %d seconds. Exiting.", collector_reconnect_timeout_sec);
+            exit(1);
+        }
+
+        sleep(collector_reconnect_interval_sec);
+        // retry again by falling through to next loop iteration
     }
-
-    reader_thread->collector_sock_last_errno = 0;
-
-    return 0;
 }
+
 
 static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
@@ -6441,7 +6470,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        logger(0, "connect_to_collector : Success\n");
+        logger(0, " connect_to_collector : Success\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
