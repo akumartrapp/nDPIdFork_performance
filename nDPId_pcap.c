@@ -3417,12 +3417,12 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
                     nDPId_options.parsed_collector_address.size) < 0)
         {
             reader_thread->collector_sock_last_errno = errno;
-            write_to_console(0, "\tFailed to establish connection with the socket");
+            write_to_console(0, "Failed to establish connection with the socket");
             goto retry_or_fail;
         }
         else
         {
-            write_to_console(0, "\tSuccessfully established connection with the socket");
+            write_to_console(0, "Successfully established connection with the socket");
         }
 
         if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
@@ -3435,6 +3435,11 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 0;
 
     retry_or_fail:
+        if (reader_thread->collector_sockfd >= 0)
+        {
+            close(reader_thread->collector_sockfd);
+            reader_thread->collector_sockfd = -1;
+        }
         // Retry every collector_reconnect_interval_sec seconds for max collector_reconnect_timeout_sec seconds
         if (time(NULL) - start_time >= collector_reconnect_timeout_sec)
         {
@@ -3452,7 +3457,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                             char const * const newline_json_msg,
                             int length)
 {
-    write_to_console(0, "\write_to_socket_2 called");
+    write_to_console(0, "write_to_socket_2 called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     errno = 0;
