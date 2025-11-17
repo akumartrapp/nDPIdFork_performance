@@ -322,11 +322,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_master_filename,
-                 sizeof(current_master_filename),
-                 "%s/nDPId_MASTER_log_%s.tmp",
-                 master_folder_full_path,
-                 timestamp);
+        snprintf(current_master_filename, sizeof(current_master_filename),"%s/nDPId_MASTER_log_%s.tmp", master_folder_full_path, timestamp);
 
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
