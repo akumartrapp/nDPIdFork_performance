@@ -3418,12 +3418,12 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
                     nDPId_options.parsed_collector_address.size) < 0)
         {
             reader_thread->collector_sock_last_errno = errno;
-            logger(0, " Failed to establish connection with the socket");
+            logger(0, "Failed to establish connection with the socket");
             goto retry_or_fail;
         }
         else
         {
-            logger(0, " Successfully established connection with the socket");
+            logger(0, "Successfully established connection with the socket");
         }
 
         if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
@@ -7706,11 +7706,9 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.12.2025.02\n");
+    logger(0, "nDPID_pcap program version is 11.16.2025.02\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
-
-
 
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
