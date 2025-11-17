@@ -140,15 +140,18 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 #include <dirent.h>
 
+#define PATH_STR_LEN 2048
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN 1200
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
 const char * master_folder_name = "Master";
-char alerts_folder_full_path[PATH_MAX_LEN];
-char events_folder_full_path[PATH_MAX_LEN];
-char master_folder_full_path[PATH_MAX_LEN];
+
+char alerts_folder_full_path[PATH_STR_LEN];
+char events_folder_full_path[PATH_STR_LEN];
+char master_folder_full_path[PATH_STR_LEN];
+
 char executable_directory[PATH_MAX_LEN];
 
 static FILE * event_log_fp = NULL;
