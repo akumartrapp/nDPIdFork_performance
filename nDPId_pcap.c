@@ -459,11 +459,11 @@ void create_events_and_alerts_folders()
     }
 
     // Build full paths
-    snprintf(alerts_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, alerts_folder_name);
-    snprintf(events_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, events_folder_name);
+    snprintf(alerts_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, alerts_folder_name);
+    snprintf(events_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, events_folder_name);
     if (master_log_file_enabled)
     {
-        snprintf(master_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, master_folder_name);
+        snprintf(master_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
     printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
