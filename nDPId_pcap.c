@@ -6479,7 +6479,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        logger(0, " connect_to_collector : Success\n");
+        logger(0, "connect_to_collector : Success\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
@@ -7706,7 +7706,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.16.2025.02\n");
+    logger(0, "nDPID_pcap program version is 11.16.2025.03\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
