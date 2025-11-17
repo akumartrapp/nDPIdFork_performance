@@ -2065,7 +2065,7 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
-    write_to_console(0, "\tinit_workflow called");
+    write_to_console(0, "init_workflow called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2137,7 +2137,7 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         }
         else
         {
-            write_to_console(0, "\tworkflow->pcap_handle is not NULL");
+            write_to_console(0, "workflow->pcap_handle is not NULL");
         }
 
         if (workflow->is_pcap_file == 0 && pcap_setnonblock(workflow->pcap_handle, 1, pcap_error_buffer) == PCAP_ERROR)
@@ -2471,7 +2471,7 @@ static char * get_default_pcapdev(char * errbuf)
 
 static int setup_reader_threads(void)
 {
-    write_to_console(0, "\tsetup_reader_threads called");
+    write_to_console(0, "setup_reader_threads called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
     // Ashwani
@@ -3766,7 +3766,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
 {
-    write_to_console(0, "\tserialize_and_send called");
+    write_to_console(0, "serialize_and_send called");
     char * json_msg;
     uint32_t json_msg_len;
 
@@ -4078,7 +4078,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
-    write_to_console(0, "\tjsonize_flow_event called");
+    write_to_console(0, "jsonize_flow_event called");
     if (skipEventsFromLogging(event))
     {       
         return -1;
@@ -6212,7 +6212,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
-    write_to_console(0, "\trun_capture_loop called");
+    write_to_console(0, "run_capture_loop called");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6464,7 +6464,7 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    write_to_console(0, "\tprocessing_thread called");
+    write_to_console(0, "processing_thread called");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6503,7 +6503,7 @@ static WARN_UNUSED int processing_threads_error_or_eof(void)
 
 static int start_reader_threads(void)
 {
-    write_to_console(0, "\tstart_reader_threads called");
+    write_to_console(0, "start_reader_threads called");
     sigset_t thread_signal_set, old_signal_set;
 
     sigfillset(&thread_signal_set);
@@ -7737,7 +7737,7 @@ int main(int argc, char ** argv)
         }
         else
         {
-            write_to_console(0, "\tpcap_open_offline_with_tstamp_precision is SUCCESSFUL");
+            write_to_console(0, "pcap_open_offline_with_tstamp_precision is SUCCESSFUL");
             switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
             {
                 case PCAP_ERROR:
