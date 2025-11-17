@@ -142,7 +142,8 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 
 #define PATH_STR_LEN 4096
 #define PATH_MAX_LEN 1024
-#define MAX_FILENAME_LEN 1200
+#define MAX_FILENAME_LEN PATH_STR_LEN
+
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
