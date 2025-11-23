@@ -192,6 +192,14 @@ int currentFileIndex = -1;
 
 /*---------------------------------------------------------------------------------------------------------*/
 
+static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
+{
+    out[0] = (value >> 24) & 0xFF;
+    out[1] = (value >> 16) & 0xFF;
+    out[2] = (value >> 8) & 0xFF;
+    out[3] = value & 0xFF;
+}
+
 void write_to_console(int error, const char * fmt, ...)
 {
     if (!detailed_console_output_enabled)
