@@ -3485,6 +3485,11 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                saved_errno);
         return;
     }
+    else
+    {
+        write_to_console
+    }
+ 
 
     /* ---------------------------
        Step 2: Send JSON payload
@@ -3551,6 +3556,10 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
             }
             set_collector_nonblock(reader_thread);
         }
+    }
+    else
+    {
+        write_to_console(0, "Data written to socket successfully");
     }
 }
 

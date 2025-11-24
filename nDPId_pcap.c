@@ -6746,7 +6746,7 @@ static int stop_reader_threads(void)
 
     //printf("------------------------------------ Results\n");
     // Ashwani
-    return;
+    return 0;
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -7626,8 +7626,8 @@ static void fetch_files_to_process_and_set_default_options(const char * pcap_fil
     }
 
     index = 0;
-    int distance = length_of_longest_file + 5;
-    int distance_plus_10 = distance + 10;
+    //int distance = length_of_longest_file + 5;
+    //int distance_plus_10 = distance + 10;
     //for (index = 0; index < number_of_valid_files_found; index++)
     //{
     //    logger(0,
