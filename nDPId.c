@@ -3626,7 +3626,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 {
     write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
-    int saved_errno;
 
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
