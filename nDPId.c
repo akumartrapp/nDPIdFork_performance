@@ -3633,7 +3633,8 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
 {
-    write_to_console(0, "send_to_collector called");
+    logger(1, "Ashwani: send_to_collector called");
+    //write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
 
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
