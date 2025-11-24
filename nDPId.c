@@ -138,15 +138,17 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include "nDPIJsonDataConverter.h"
 #include "../json-c/include/json-c/json.h"
 
+#define PATH_STR_LEN 4096
 #define PATH_MAX_LEN 1024
-#define MAX_FILENAME_LEN 512
+#define MAX_FILENAME_LEN (PATH_STR_LEN + 512)
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
 const char * master_folder_name = "Master";
-char alerts_folder_full_path[PATH_MAX_LEN];
-char events_folder_full_path[PATH_MAX_LEN];
-char master_folder_full_path[PATH_MAX_LEN];
+char alerts_folder_full_path[PATH_STR_LEN];
+char events_folder_full_path[PATH_STR_LEN];
+char master_folder_full_path[PATH_STR_LEN];
+
 char executable_directory[PATH_MAX_LEN];
 
 static FILE * event_log_fp = NULL;
@@ -464,11 +466,11 @@ void create_events_and_alerts_folders()
     }
 
     // Build full paths
-    snprintf(alerts_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, alerts_folder_name);
-    snprintf(events_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, events_folder_name);
+    snprintf(alerts_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, alerts_folder_name);
+    snprintf(events_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, events_folder_name);
     if (master_log_file_enabled)
     {
-        snprintf(master_folder_full_path, PATH_MAX_LEN, "%s/%s", executable_directory, master_folder_name);
+        snprintf(master_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
     printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
