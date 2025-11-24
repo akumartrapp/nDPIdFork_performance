@@ -3487,7 +3487,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     }
     else
     {
-        write_to_console
+        write_to_console(0, "Header written to socket successfully");
     }
  
 
