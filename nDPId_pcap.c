@@ -1321,7 +1321,6 @@ void read_ndpid_config(const char * filename)
             {
                 detailed_console_output_enabled = json_object_get_boolean(val);
             }
-
         }
 
         struct json_object * debug_logs_obj;
@@ -7742,7 +7741,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.16.2025.03\n");
+    logger(0, "nDPID_pcap program version is 11.23.2025.01\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 

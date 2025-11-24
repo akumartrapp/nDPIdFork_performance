@@ -162,14 +162,40 @@ static time_t master_file_start_time = 0;
 // Variables to hold config values
 static int log_file_duration_in_seconds = 60; 
 static int log_file_size_in_mb = 5;
+static bool detailed_console_output_enabled = false;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
 static bool output_send_to_file = true; 
 static int master_log_file_duration_in_minutes = 10;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
+static int collector_reconnect_interval_sec = 5;
+static int collector_reconnect_timeout_sec = 60;
 
 /*---------------------------------------------------------------------------------------------------------*/
+static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
+{
+    out[0] = (value >> 24) & 0xFF;
+    out[1] = (value >> 16) & 0xFF;
+    out[2] = (value >> 8) & 0xFF;
+    out[3] = value & 0xFF;
+}
+
+void write_to_console(int error, const char * fmt, ...)
+{
+    if (!detailed_console_output_enabled)
+    {
+        return;
+    }
+
+    char buffer[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    logger(error, "%s", buffer);
+}
 
 bool is_file_larger_than_threshold(FILE * fp)
 {
@@ -285,11 +311,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_master_filename,
-                 sizeof(current_master_filename),
-                 "%s/nDPId_MASTER_log_%s.tmp",
-                 master_folder_full_path,
-                 timestamp);
+        snprintf(current_master_filename, sizeof(current_master_filename), "%s/nDPId_MASTER_log_%s.tmp", master_folder_full_path, timestamp);
 
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
@@ -1289,6 +1311,15 @@ void read_ndpid_config(const char * filename)
             log_file_size_in_mb = json_object_get_int(val);
         }
 
+        struct json_object * consoleOutput_obj;
+        if (json_object_object_get_ex(ndpid_obj, "consoleOutput", &consoleOutput_obj))
+        {
+            if (json_object_object_get_ex(consoleOutput_obj, "detailed", &val))
+            {
+                detailed_console_output_enabled = json_object_get_boolean(val);
+            }
+        }
+
         struct json_object * debug_logs_obj;
         if (json_object_object_get_ex(ndpid_obj, "debugLogs", &debug_logs_obj))
         {
@@ -1332,6 +1363,16 @@ void read_ndpid_config(const char * filename)
                 {
                     set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
                 }
+            }
+
+            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_INTERVAL_SEC", &val))
+            {
+                collector_reconnect_interval_sec = json_object_get_int(val);
+            }
+
+            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_TIMEOUT_SEC", &val))
+            {
+                collector_reconnect_timeout_sec = json_object_get_int(val);
             }
         }
     }
@@ -2025,6 +2066,7 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
+    write_to_console(0, "init_workflow called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2093,6 +2135,10 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
                          pcap_error_buffer);
             free_workflow(&workflow);
             return NULL;
+        }
+        else
+        {
+            write_to_console(0, "workflow->pcap_handle is not NULL");
         }
 
         if (workflow->is_pcap_file == 0 && pcap_setnonblock(workflow->pcap_handle, 1, pcap_error_buffer) == PCAP_ERROR)
@@ -2426,6 +2472,7 @@ static char * get_default_pcapdev(char * errbuf)
 
 static int setup_reader_threads(void)
 {
+    write_to_console(0, "setup_reader_threads called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
     printf("Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
@@ -3335,67 +3382,120 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {
-    if (reader_thread->collector_sockfd >= 0)
+    time_t start_time = time(NULL);
+
+    while (1)
     {
-        close(reader_thread->collector_sockfd);
+        if (reader_thread->collector_sockfd >= 0)
+        {
+            close(reader_thread->collector_sockfd);
+        }
+
+        int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
+        reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
+        if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
+
+        int opt = NETWORK_BUFFER_MAX_SIZE;
+        if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
+
+        if (set_collector_nonblock(reader_thread) != 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
+
+        if (connect(reader_thread->collector_sockfd,
+                    &nDPId_options.parsed_collector_address.raw,
+                    nDPId_options.parsed_collector_address.size) < 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            logger(0, "Failed to establish connection with the socket");
+            goto retry_or_fail;
+        }
+        else
+        {
+            logger(0, "Successfully established connection with the socket");
+        }
+
+        if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
+        {
+            reader_thread->collector_sock_last_errno = errno;
+            goto retry_or_fail;
+        }
+
+        reader_thread->collector_sock_last_errno = 0;
+        return 0;
+
+    retry_or_fail:
+        if (reader_thread->collector_sockfd >= 0)
+        {
+            close(reader_thread->collector_sockfd);
+            reader_thread->collector_sockfd = -1;
+        }
+        // Retry every collector_reconnect_interval_sec seconds for max collector_reconnect_timeout_sec seconds
+        if (time(NULL) - start_time >= collector_reconnect_timeout_sec)
+        {
+            logger(1, "FATAL: Unable to reconnect to collector for %d seconds. Exiting.", collector_reconnect_timeout_sec);
+            exit(1);
+        }
+
+        sleep(collector_reconnect_interval_sec);
+        // retry again by falling through to next loop iteration
     }
-
-    int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
-    reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
-    if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
-    {
-        reader_thread->collector_sock_last_errno = errno;
-        return 1;
-    }
-
-    int opt = NETWORK_BUFFER_MAX_SIZE;
-    if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0)
-    {
-        return 1;
-    }
-
-    if (set_collector_nonblock(reader_thread) != 0)
-    {
-        return 1;
-    }
-
-    if (connect(reader_thread->collector_sockfd,
-                &nDPId_options.parsed_collector_address.raw,
-                nDPId_options.parsed_collector_address.size) < 0)
-    {
-        reader_thread->collector_sock_last_errno = errno;
-        return 1;
-    }
-
-    if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
-    {
-        reader_thread->collector_sock_last_errno = errno;
-        return 1;
-    }
-
-    reader_thread->collector_sock_last_errno = 0;
-
-    return 0;
 }
 
 static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
-                            char const * const newline_json_msg,
-                            int length)
+                              char const * const newline_json_msg,
+                              int length)
 {
+    write_to_console(0, "write_to_socket_2 called");
+
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
-    printf("before writing to collector\n");
-    errno = 0;
     ssize_t written;
+
+    /* ---------------------------
+       Step 1: Send 4-byte header
+       --------------------------- */
+    unsigned char len_hdr[4];
+    encode_uint32_be((uint32_t)length, len_hdr);
+
+    errno = 0;
+    ssize_t header_written = write(reader_thread->collector_sockfd, len_hdr, 4);
+
+    if (header_written != 4)
+    {
+        saved_errno = errno;
+        reader_thread->collector_sock_last_errno = saved_errno;
+
+        logger(1,
+               "[%8llu, %zu] Failed to send length header to nDPIsrvd Collector (header write). errno=%d",
+               workflow->packets_captured,
+               reader_thread->array_index,
+               saved_errno);
+        return;
+    }
+
+    /* ---------------------------
+       Step 2: Send JSON payload
+       --------------------------- */
+    errno = 0;
     if (reader_thread->collector_sock_last_errno == 0 &&
         (written = write(reader_thread->collector_sockfd, newline_json_msg, length)) != length)
     {
-        printf("After writing to collector\n");
         saved_errno = errno;
         if (saved_errno == EPIPE || written == 0)
         {
             logger(1,
-                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
+                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
                    workflow->packets_captured,
                    reader_thread->array_index);
         }
@@ -3414,16 +3514,18 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
         }
         else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
         {
+            write_to_console(0, "<AF_UNIX blocking fallback triggered>");
+
             size_t pos = (written < 0 ? 0 : written);
             set_collector_block(reader_thread);
             while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos)) !=
-                   length - pos)
+                   (length - pos))
             {
                 saved_errno = errno;
                 if (saved_errno == EPIPE || written == 0)
                 {
                     logger(1,
-                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
+                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector (3)",
                            workflow->packets_captured,
                            reader_thread->array_index);
                     reader_thread->collector_sock_last_errno = saved_errno;
@@ -3447,13 +3549,14 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
             }
             set_collector_nonblock(reader_thread);
         }
-    }    
+    }
 }
 
 static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                     const char * const json_msg,
+                            const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
 {
+    write_to_console(0, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
@@ -3465,7 +3568,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
             if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
             {
                 logger(1,
-                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s",
+                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s (1)",
                        workflow->packets_captured,
                        reader_thread->array_index,
                        GET_CMDARG_STR(nDPId_options.collector_address));
@@ -3517,19 +3620,20 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     }
 }
 
-static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
+static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
 {
+    write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
- 
+
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
     int s_ret = snprintf(newline_json_msg,
-                     sizeof(newline_json_msg),
-                     "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
-                     json_msg_len + 1,
-                     (int)json_msg_len,
-                     json_msg);
+                         sizeof(newline_json_msg),
+                         "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
+                         json_msg_len + 1,
+                         (int)json_msg_len,
+                         json_msg);
 
     if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
     {
@@ -3547,7 +3651,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                    reader_thread->array_index,
                    ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
                    newline_json_msg);
-        }       
+        }
         return;
     }
 
@@ -3558,18 +3662,18 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
- 
-    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE)) 
+
+    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
     {
         add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        return; 
+        return;
     }
-    else 
+    else
     {
         json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
     }
 
-    // Ashwani 
+    // Ashwani
     // We are not using socket so no need to connect just return from here.
 
     if (workflow->is_pcap_file && output_send_to_file)
@@ -3581,120 +3685,120 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     {
         write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
     }
-    
+
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
-
 
     return;
 
     //--------------------------------------------- Not Used-----------------------------------
-    if (reader_thread->collector_sock_last_errno != 0)
-    {
-        saved_errno = reader_thread->collector_sock_last_errno;
+    // if (reader_thread->collector_sock_last_errno != 0)
+    //{
+    //    saved_errno = reader_thread->collector_sock_last_errno;
 
-        if (connect_to_collector(reader_thread) == 0)
-        {
-            if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
-            {
-                logger(1,
-                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s",
-                       workflow->packets_captured,
-                       reader_thread->array_index,
-                       GET_CMDARG_STR(nDPId_options.collector_address));
-                jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
-            }
-        }
-        else
-        {
-            if (saved_errno != reader_thread->collector_sock_last_errno)
-            {
-                logger(1,
-                       "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
-                       workflow->packets_captured,
-                       reader_thread->array_index,
-                       GET_CMDARG_STR(nDPId_options.collector_address),
-                       (reader_thread->collector_sock_last_errno != 0
-                            ? strerror(reader_thread->collector_sock_last_errno)
-                            : "Internal Error."));
-            }
-            return;
-        }
-    }
+    //    if (connect_to_collector(reader_thread) == 0)
+    //    {
+    //        if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
+    //        {
+    //            logger(1,
+    //                   "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s",
+    //                   workflow->packets_captured,
+    //                   reader_thread->array_index,
+    //                   GET_CMDARG_STR(nDPId_options.collector_address));
+    //            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        if (saved_errno != reader_thread->collector_sock_last_errno)
+    //        {
+    //            logger(1,
+    //                   "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
+    //                   workflow->packets_captured,
+    //                   reader_thread->array_index,
+    //                   GET_CMDARG_STR(nDPId_options.collector_address),
+    //                   (reader_thread->collector_sock_last_errno != 0
+    //                        ? strerror(reader_thread->collector_sock_last_errno)
+    //                        : "Internal Error."));
+    //        }
+    //        return;
+    //    }
+    //}
 
-    errno = 0;
-    ssize_t written;
-    if (reader_thread->collector_sock_last_errno == 0 &&
-        (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
-    {
-        saved_errno = errno;
-        if (saved_errno == EPIPE || written == 0)
-        {
-            logger(1,
-                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
-                   workflow->packets_captured,
-                   reader_thread->array_index);
-        }
-        if (saved_errno != EAGAIN)
-        {
-            if (saved_errno == ECONNREFUSED)
-            {
-                logger(1,
-                       "[%8llu, %zu] %s to %s refused by endpoint",
-                       workflow->packets_captured,
-                       reader_thread->array_index,
-                       (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection" : "Datagram"),
-                       GET_CMDARG_STR(nDPId_options.collector_address));
-            }
-            reader_thread->collector_sock_last_errno = saved_errno;
-        }
-        else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
-        {
-            size_t pos = (written < 0 ? 0 : written);
-            set_collector_block(reader_thread);
-            while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
-                   s_ret - pos)
-            {
-                saved_errno = errno;
-                if (saved_errno == EPIPE || written == 0)
-                {
-                    logger(1,
-                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector",
-                           workflow->packets_captured,
-                           reader_thread->array_index);
-                    reader_thread->collector_sock_last_errno = saved_errno;
-                    break;
-                }
-                else if (written < 0)
-                {
-                    logger(1,
-                           "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
-                           workflow->packets_captured,
-                           reader_thread->array_index,
-                           GET_CMDARG_STR(nDPId_options.collector_address),
-                           strerror(saved_errno));
-                    reader_thread->collector_sock_last_errno = saved_errno;
-                    break;
-                }
-                else
-                {
-                    pos += written;
-                }
-            }
-            set_collector_nonblock(reader_thread);
-        }
-    }
+    // errno = 0;
+    // ssize_t written;
+    // if (reader_thread->collector_sock_last_errno == 0 &&
+    //     (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
+    //{
+    //     saved_errno = errno;
+    //     if (saved_errno == EPIPE || written == 0)
+    //     {
+    //         logger(1,
+    //                "[%8llu, %zu] Lost connection to nDPIsrvd Collector (1)",
+    //                workflow->packets_captured,
+    //                reader_thread->array_index);
+    //     }
+    //     if (saved_errno != EAGAIN)
+    //     {
+    //         if (saved_errno == ECONNREFUSED)
+    //         {
+    //             logger(1,
+    //                    "[%8llu, %zu] %s to %s refused by endpoint",
+    //                    workflow->packets_captured,
+    //                    reader_thread->array_index,
+    //                    (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection" : "Datagram"),
+    //                    GET_CMDARG_STR(nDPId_options.collector_address));
+    //         }
+    //         reader_thread->collector_sock_last_errno = saved_errno;
+    //     }
+    //     else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
+    //     {
+    //         size_t pos = (written < 0 ? 0 : written);
+    //         set_collector_block(reader_thread);
+    //         while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
+    //                s_ret - pos)
+    //         {
+    //             saved_errno = errno;
+    //             if (saved_errno == EPIPE || written == 0)
+    //             {
+    //                 logger(1,
+    //                        "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
+    //                        workflow->packets_captured,
+    //                        reader_thread->array_index);
+    //                 reader_thread->collector_sock_last_errno = saved_errno;
+    //                 break;
+    //             }
+    //             else if (written < 0)
+    //             {
+    //                 logger(1,
+    //                        "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
+    //                        workflow->packets_captured,
+    //                        reader_thread->array_index,
+    //                        GET_CMDARG_STR(nDPId_options.collector_address),
+    //                        strerror(saved_errno));
+    //                 reader_thread->collector_sock_last_errno = saved_errno;
+    //                 break;
+    //             }
+    //             else
+    //             {
+    //                 pos += written;
+    //             }
+    //         }
+    //         set_collector_nonblock(reader_thread);
+    //     }
+    // }
 }
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
 {
+    write_to_console(0, "serialize_and_send called");
     char * json_msg;
     uint32_t json_msg_len;
 
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    //printf("%s\n", json_msg);
+    // printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
@@ -3999,6 +4103,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
+    write_to_console(0, "jsonize_flow_event called");
     if (skipEventsFromLogging(event))
     {       
         return -1;
@@ -6131,6 +6236,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
+    write_to_console(0, "run_capture_loop called");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6382,6 +6488,7 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
+    write_to_console(0, "processing_thread called");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6420,6 +6527,7 @@ static WARN_UNUSED int processing_threads_error_or_eof(void)
 
 static int start_reader_threads(void)
 {
+    write_to_console(0, "start_reader_threads called");
     sigset_t thread_signal_set, old_signal_set;
 
     sigfillset(&thread_signal_set);
@@ -7452,7 +7560,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    logger(0, "nDPID program version is 11.01.2025.01\n");
+    logger(0, "nDPID program version is 11.23.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
