@@ -217,6 +217,7 @@ struct socket_buffer_queue
 static struct socket_buffer_queue socket_queue;
 static pthread_t socket_writer_thread;
 static int socket_writer_running = 1;
+static void * socket_writer_thread_func(void * arg);
 
 static void init_socket_buffer()
 {
