@@ -128,6 +128,8 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
+static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
+
 // -----------------------------Ashwani added code Starts here--------------------------------------------------------------------
 #include <uthash.h>
 #include <sys/stat.h>
@@ -1148,7 +1150,7 @@ static char const * const daemon_event_name_table[DAEMON_EVENT_COUNT] = {
 };
 
 static struct ndpi_global_context * global_context = NULL;
-static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
+// static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
 static MT_VALUE(nDPId_main_thread_shutdown, int) = MT_INIT(0);
 static MT_VALUE(global_flow_id, uint64_t) = MT_INIT(1);
 
