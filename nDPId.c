@@ -174,15 +174,8 @@ static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 static int collector_reconnect_interval_sec = 5;
 static int collector_reconnect_timeout_sec = 60;
 
-/*---------------------------------------------------------------------------------------------------------*/
-static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
-{
-    out[0] = (value >> 24) & 0xFF;
-    out[1] = (value >> 16) & 0xFF;
-    out[2] = (value >> 8) & 0xFF;
-    out[3] = value & 0xFF;
-}
 
+/*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, const char * fmt, ...)
 {
     if (!detailed_console_output_enabled)
@@ -197,6 +190,127 @@ void write_to_console(int error, const char * fmt, ...)
     va_end(args);
 
     logger(error, "%s", buffer);
+}
+
+/*----------------socket thread related code------------------------------------------------------------------*/
+#define SOCKET_BUFFER_CAPACITY 8192 // number of messages allowed in queue adjust based on memory
+
+struct socket_message
+{
+    char * json_msg;
+    char * json_string_with_http_or_tls_info;
+};
+
+struct socket_buffer_queue
+{
+    struct socket_message queue[SOCKET_BUFFER_CAPACITY];
+
+    int head;  // index for consumer
+    int tail;  // index for producer
+    int count; // number of valid entries
+
+    pthread_mutex_t lock;
+    pthread_cond_t not_empty;
+    pthread_cond_t not_full;
+};
+
+static struct socket_buffer_queue socket_queue;
+static pthread_t socket_writer_thread;
+static int socket_writer_running = 1;
+
+static void init_socket_buffer()
+{
+    write_to_console(0, "Initializing socket buffer...\n");
+    socket_queue.head = 0;
+    socket_queue.tail = 0;
+    socket_queue.count = 0;
+
+    pthread_mutex_init(&socket_queue.lock, NULL);
+    pthread_cond_init(&socket_queue.not_empty, NULL);
+    pthread_cond_init(&socket_queue.not_full, NULL);
+
+    socket_writer_running = 1;
+
+    pthread_create(&socket_writer_thread, NULL, socket_writer_thread_func, NULL);
+}
+
+static void shutdown_socket_buffer()
+{
+    write_to_console(0, "Shutting down socket buffer...\n");
+    pthread_mutex_lock(&socket_queue.lock);
+    socket_writer_running = 0;
+    pthread_cond_signal(&socket_queue.not_empty);
+    pthread_mutex_unlock(&socket_queue.lock);
+
+    pthread_join(socket_writer_thread, NULL);
+}
+
+static void log_socket_buffer_stats()
+{
+    pthread_mutex_lock(&socket_queue.lock);
+
+    int count = socket_queue.count;
+    int head = socket_queue.head;
+    int tail = socket_queue.tail;
+
+    pthread_mutex_unlock(&socket_queue.lock);
+
+    char stat_msg[256];
+    snprintf(stat_msg,
+             sizeof(stat_msg),
+             "Socket buffer stats: count=%d, head=%d, tail=%d, capacity=%d",
+             count,
+             head,
+             tail,
+             SOCKET_BUFFER_CAPACITY);
+
+    write_to_console(0, stat_msg);
+}
+
+static void * socket_writer_thread_func(void * arg)
+{
+    write_to_console(0, "Socket writer thread started.\n");
+    while (1)
+    {
+        pthread_mutex_lock(&socket_queue.lock);
+
+        while (socket_queue.count == 0 && socket_writer_running)
+            pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
+
+        if (!socket_writer_running && socket_queue.count == 0)
+        {
+            pthread_mutex_unlock(&socket_queue.lock);
+            break;
+        }
+
+        struct socket_message msg = socket_queue.queue[socket_queue.head];
+
+        socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
+        socket_queue.count--;
+
+        pthread_cond_signal(&socket_queue.not_full);
+        pthread_mutex_unlock(&socket_queue.lock);
+
+        // --- Call your existing function ---
+        write_to_socket(global_reader_thread, // use your reader_thread
+                        msg.json_msg,
+                        msg.json_string_with_http_or_tls_info);
+
+        free(msg.json_msg);
+        if (msg.json_string_with_http_or_tls_info)
+            free(msg.json_string_with_http_or_tls_info);
+    }
+
+    return NULL;
+}
+
+/*---------------------------------------------------------------------------------------------------------*/
+static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
+{
+    out[0] = (value >> 24) & 0xFF;
+    out[1] = (value >> 16) & 0xFF;
+    out[2] = (value >> 8) & 0xFF;
+    out[3] = value & 0xFF;
 }
 
 bool is_file_larger_than_threshold(FILE * fp)
@@ -3631,6 +3745,32 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     }
 }
 
+static void write_to_socket_buffer(struct nDPId_reader_thread * reader_thread,
+                            const char * json_msg,
+                            const char * json_string_with_http_or_tls_info)
+{
+    pthread_mutex_lock(&socket_queue.lock);
+
+    while (socket_queue.count == SOCKET_BUFFER_CAPACITY)
+        pthread_cond_wait(&socket_queue.not_full, &socket_queue.lock);
+
+    struct socket_message * msg = &socket_queue.queue[socket_queue.tail];
+
+    msg->json_msg = strdup(json_msg);
+
+    if (json_string_with_http_or_tls_info)
+        msg->json_string_with_http_or_tls_info = strdup(json_string_with_http_or_tls_info);
+    else
+        msg->json_string_with_http_or_tls_info = NULL;
+
+    socket_queue.tail = (socket_queue.tail + 1) % SOCKET_BUFFER_CAPACITY;
+    socket_queue.count++;
+
+    pthread_cond_signal(&socket_queue.not_empty);
+    pthread_mutex_unlock(&socket_queue.lock);
+}
+
+
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
 {
     write_to_console(0, "send_to_collector called");
@@ -3693,110 +3833,16 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     if (output_send_to_socket)
     {
-        write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
+        write_to_socket_buffer(reader_thread, json_msg, json_string_with_http_or_tls_info);
+        // Optionally log stats
+        if (socket_queue.count % 500 == 0 || socket_queue.count > SOCKET_BUFFER_CAPACITY * 0.8)
+        {
+            log_socket_buffer_stats();
+        }
     }
 
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
-
-    return;
-
-    //--------------------------------------------- Not Used-----------------------------------
-    // if (reader_thread->collector_sock_last_errno != 0)
-    //{
-    //    saved_errno = reader_thread->collector_sock_last_errno;
-
-    //    if (connect_to_collector(reader_thread) == 0)
-    //    {
-    //        if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
-    //        {
-    //            logger(1,
-    //                   "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s",
-    //                   workflow->packets_captured,
-    //                   reader_thread->array_index,
-    //                   GET_CMDARG_STR(nDPId_options.collector_address));
-    //            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
-    //        }
-    //    }
-    //    else
-    //    {
-    //        if (saved_errno != reader_thread->collector_sock_last_errno)
-    //        {
-    //            logger(1,
-    //                   "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
-    //                   workflow->packets_captured,
-    //                   reader_thread->array_index,
-    //                   GET_CMDARG_STR(nDPId_options.collector_address),
-    //                   (reader_thread->collector_sock_last_errno != 0
-    //                        ? strerror(reader_thread->collector_sock_last_errno)
-    //                        : "Internal Error."));
-    //        }
-    //        return;
-    //    }
-    //}
-
-    // errno = 0;
-    // ssize_t written;
-    // if (reader_thread->collector_sock_last_errno == 0 &&
-    //     (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
-    //{
-    //     saved_errno = errno;
-    //     if (saved_errno == EPIPE || written == 0)
-    //     {
-    //         logger(1,
-    //                "[%8llu, %zu] Lost connection to nDPIsrvd Collector (1)",
-    //                workflow->packets_captured,
-    //                reader_thread->array_index);
-    //     }
-    //     if (saved_errno != EAGAIN)
-    //     {
-    //         if (saved_errno == ECONNREFUSED)
-    //         {
-    //             logger(1,
-    //                    "[%8llu, %zu] %s to %s refused by endpoint",
-    //                    workflow->packets_captured,
-    //                    reader_thread->array_index,
-    //                    (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection" : "Datagram"),
-    //                    GET_CMDARG_STR(nDPId_options.collector_address));
-    //         }
-    //         reader_thread->collector_sock_last_errno = saved_errno;
-    //     }
-    //     else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
-    //     {
-    //         size_t pos = (written < 0 ? 0 : written);
-    //         set_collector_block(reader_thread);
-    //         while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
-    //                s_ret - pos)
-    //         {
-    //             saved_errno = errno;
-    //             if (saved_errno == EPIPE || written == 0)
-    //             {
-    //                 logger(1,
-    //                        "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
-    //                        workflow->packets_captured,
-    //                        reader_thread->array_index);
-    //                 reader_thread->collector_sock_last_errno = saved_errno;
-    //                 break;
-    //             }
-    //             else if (written < 0)
-    //             {
-    //                 logger(1,
-    //                        "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
-    //                        workflow->packets_captured,
-    //                        reader_thread->array_index,
-    //                        GET_CMDARG_STR(nDPId_options.collector_address),
-    //                        strerror(saved_errno));
-    //                 reader_thread->collector_sock_last_errno = saved_errno;
-    //                 break;
-    //             }
-    //             else
-    //             {
-    //                 pos += written;
-    //             }
-    //         }
-    //         set_collector_nonblock(reader_thread);
-    //     }
-    // }
 }
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
@@ -7566,6 +7612,8 @@ int main(int argc, char ** argv)
         return 1;
     }
 
+    init_socket_buffers();
+
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   
 
@@ -7598,6 +7646,7 @@ int main(int argc, char ** argv)
     rotate_alert_log_file();
     logger(0, "%s", "Bye.");
     free_flow_map(&flow_map);
+    shutdown_socket_buffer();
     shutdown_logging();
 
     return 0;
