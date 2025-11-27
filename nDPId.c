@@ -3677,7 +3677,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
         write_to_console(0, "Data written to socket successfully");
     }
 }
-
+ 
 static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                             const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
