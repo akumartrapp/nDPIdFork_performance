@@ -293,9 +293,7 @@ static void * socket_writer_thread_func(void * arg)
         pthread_mutex_unlock(&socket_queue.lock);
 
         // --- Call your existing function ---
-        write_to_socket(global_reader_thread, // use your reader_thread
-                        msg.json_msg,
-                        msg.json_string_with_http_or_tls_info);
+        write_to_socket(reader_threads[0], msg.json_msg, msg.json_string_with_http_or_tls_info);
 
         free(msg.json_msg);
         if (msg.json_string_with_http_or_tls_info)
