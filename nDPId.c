@@ -128,7 +128,6 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MT_GET_AND_SUB(name, value) __sync_fetch_and_sub(&name, value)
 #endif
 
-static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
 
 // -----------------------------Ashwani added code Starts here--------------------------------------------------------------------
 #include <uthash.h>
@@ -177,6 +176,7 @@ static int collector_reconnect_interval_sec = 5;
 static int collector_reconnect_timeout_sec = 60;
 
 
+static struct nDPId_reader_thread reader_threads[nDPId_MAX_READER_THREADS] = {};
 /*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, const char * fmt, ...)
 {
