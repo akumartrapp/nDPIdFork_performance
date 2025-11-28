@@ -176,6 +176,30 @@ static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 static int collector_reconnect_interval_sec = 5;
 static int collector_reconnect_timeout_sec = 60;
 
+/*----------------socket thread related code------------------------------------------------------------------*/
+struct socket_message
+{
+    char * json_msg;
+    char * json_string_with_http_or_tls_info;
+};
+
+struct socket_buffer_queue
+{
+    struct socket_message queue[SOCKET_BUFFER_CAPACITY];
+
+    int head;  // index for consumer
+    int tail;  // index for producer
+    int count; // number of valid entries
+
+    pthread_mutex_t lock;
+    pthread_cond_t not_empty;
+    pthread_cond_t not_full;
+};
+
+static struct socket_buffer_queue socket_queue;
+static pthread_t socket_writer_thread;
+static int socket_writer_running = 1;
+static void * socket_writer_thread_func(void * arg);
 
 /*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, const char * fmt, ...)
@@ -7406,31 +7430,8 @@ static int nDPId_parsed_config_line(
     return 1;
 }
 
-/*----------------socket thread related code------------------------------------------------------------------*/
-struct socket_message
-{
-    char * json_msg;
-    char * json_string_with_http_or_tls_info;
-};
 
-struct socket_buffer_queue
-{
-    struct socket_message queue[SOCKET_BUFFER_CAPACITY];
-
-    int head;  // index for consumer
-    int tail;  // index for producer
-    int count; // number of valid entries
-
-    pthread_mutex_t lock;
-    pthread_cond_t not_empty;
-    pthread_cond_t not_full;
-};
-
-static struct socket_buffer_queue socket_queue;
-static pthread_t socket_writer_thread;
-static int socket_writer_running = 1;
-static void * socket_writer_thread_func(void * arg);
-
+/*----------------------------------------------------------------------------*/
 static void init_socket_buffer()
 {
     write_to_console(0, "Initializing socket buffer...\n");
