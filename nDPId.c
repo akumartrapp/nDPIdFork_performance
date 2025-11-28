@@ -1290,10 +1290,11 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
 // Function to read and parse the JSON config
 void read_ndpid_config(const char * filename)
 {
+    write_to_console(0, 1, "read_ndpid_config called");
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
-        printf("ERROR: opening JSON config file %s: %s\n", filename, strerror(errno));
+        write_to_console(1, 1,"ERROR while opening JSON config file %s: %s\n", filename, strerror(errno));
         return;
     }
 
@@ -1304,7 +1305,7 @@ void read_ndpid_config(const char * filename)
     char * file_contents = malloc(file_size + 1);
     if (!file_contents)
     {
-        printf("ERROR: Memory allocation failed\n");
+        write_to_console(1, 1,"ERROR (malloc): Memory allocation failed\n");
         fclose(fp);
         return;
     }
@@ -1325,7 +1326,7 @@ void read_ndpid_config(const char * filename)
 
     if (!parsed_json)
     {
-        printf("ERROR: Failed to parse JSON\n");
+        write_to_console(1, 1, "ERROR: Failed to parse JSON\n");
         return;
     }
 
@@ -7566,6 +7567,8 @@ int main(int argc, char ** argv)
     init_logging("nDPId");
 
     read_ndpid_config("Settings/nDPIdConfiguration.json");
+    return 1;
+
     ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
    
     if (nDPId_parse_options(argc, argv) != 0)
