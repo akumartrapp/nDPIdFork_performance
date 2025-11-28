@@ -1350,6 +1350,9 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(consoleOutput_obj, "detail_level", &val))
             {
                 console_output_level = json_object_get_int(val);
+                char stat_msg[256];
+                snprintf(stat_msg, sizeof(stat_msg), "console_output_level: %d", console_output_level);
+                write_to_console(0, 1, stat_msg);
             }
         }
 
