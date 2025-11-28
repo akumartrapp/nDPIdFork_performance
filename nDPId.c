@@ -3752,7 +3752,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     {
         write_to_socket_buffer(reader_thread, json_msg, json_string_with_http_or_tls_info);
         // Optionally log stats
-        if (socket_queue.count % 500 == 0 || socket_queue.count > SOCKET_BUFFER_CAPACITY * 0.8)
+        //if (socket_queue.count % 500 == 0 || socket_queue.count > SOCKET_BUFFER_CAPACITY * 0.8)
         {
             log_socket_buffer_stats();
         }
