@@ -142,6 +142,11 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN (PATH_STR_LEN + 512)
 
+
+static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
+                            const char * const json_msg,
+                            const char * const json_string_with_http_or_tls_info);
+
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
 const char * master_folder_name = "Master";
