@@ -3734,16 +3734,20 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         return;
     }
 
+    write_to_console(0, 3, "send_to_collector 1 called");
     if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
     }
+
+    write_to_console(0, 3, "send_to_collector 2 called");
 
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
 
     if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
     {
+        write_to_console(0, 3, "send_to_collector 3 called");
         add_or_update_flow_entry(&flow_map, flow_id, json_msg);
         return;
     }
@@ -3753,16 +3757,20 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     // Ashwani
-    // We are not using socket so no need to connect just return from here.
+    // We are not using socket so no need to connect just return from here. vv
 
+    write_to_console(0, 3, "send_to_collector 4 called");
     if (workflow->is_pcap_file && output_send_to_file)
     {
+        write_to_console(0, 3, "send_to_collector 5 called");
         write_to_file(json_msg, json_string_with_http_or_tls_info);
     }
 
     if (output_send_to_socket)
     {
+        write_to_console(0, 3, "send_to_collector 6 called");
         write_to_socket_buffer(reader_thread, json_msg, json_string_with_http_or_tls_info);
+        write_to_console(0, 3, "send_to_collector 7 called");
         // Optionally log stats
         //if (socket_queue.count % 500 == 0 || socket_queue.count > SOCKET_BUFFER_CAPACITY * 0.8)
         {
