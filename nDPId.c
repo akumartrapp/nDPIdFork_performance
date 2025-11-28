@@ -7491,16 +7491,18 @@ static void * socket_writer_thread_func(void * arg)
     while (1)
     {
         pthread_mutex_lock(&socket_queue.lock);
-
+        write_to_console(0, "Socket writer thread  1.\n");
         while (socket_queue.count == 0 && socket_writer_running)
             pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
 
+        write_to_console(0, "Socket writer thread  2.\n");
         if (!socket_writer_running && socket_queue.count == 0)
         {
             pthread_mutex_unlock(&socket_queue.lock);
             break;
         }
 
+        write_to_console(0, "Socket writer thread  3.\n");
         struct socket_message msg = socket_queue.queue[socket_queue.head];
 
         socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
