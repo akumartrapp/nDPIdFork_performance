@@ -206,7 +206,6 @@ static void init_socket_buffer();
 /*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, int level, const char * fmt, ...)
 {
-    printf("write_to_console called, console_output_level = %d, level = %d\n", console_output_level, level);
     if (console_output_level < level)
     {
         return;
@@ -7568,7 +7567,6 @@ int main(int argc, char ** argv)
     init_logging("nDPId");
 
     read_ndpid_config("Settings/nDPIdConfiguration.json");
-    return 1;
 
     ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
    
