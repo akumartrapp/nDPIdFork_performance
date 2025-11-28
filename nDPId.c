@@ -141,11 +141,8 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define PATH_STR_LEN 4096
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN (PATH_STR_LEN + 512)
+#define SOCKET_BUFFER_CAPACITY 8192 // number of messages allowed in queue adjust based on memory
 
-
-static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                            const char * const json_msg,
-                            const char * const json_string_with_http_or_tls_info);
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
@@ -1263,118 +1260,6 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
 
     return 0;
 }
-
-/*----------------socket thread related code------------------------------------------------------------------*/
-#define SOCKET_BUFFER_CAPACITY 8192 // number of messages allowed in queue adjust based on memory
-
-struct socket_message
-{
-    char * json_msg;
-    char * json_string_with_http_or_tls_info;
-};
-
-struct socket_buffer_queue
-{
-    struct socket_message queue[SOCKET_BUFFER_CAPACITY];
-
-    int head;  // index for consumer
-    int tail;  // index for producer
-    int count; // number of valid entries
-
-    pthread_mutex_t lock;
-    pthread_cond_t not_empty;
-    pthread_cond_t not_full;
-};
-
-static struct socket_buffer_queue socket_queue;
-static pthread_t socket_writer_thread;
-static int socket_writer_running = 1;
-static void * socket_writer_thread_func(void * arg);
-
-static void init_socket_buffer()
-{
-    write_to_console(0, "Initializing socket buffer...\n");
-    socket_queue.head = 0;
-    socket_queue.tail = 0;
-    socket_queue.count = 0;
-
-    pthread_mutex_init(&socket_queue.lock, NULL);
-    pthread_cond_init(&socket_queue.not_empty, NULL);
-    pthread_cond_init(&socket_queue.not_full, NULL);
-
-    socket_writer_running = 1;
-
-    pthread_create(&socket_writer_thread, NULL, socket_writer_thread_func, NULL);
-}
-
-static void shutdown_socket_buffer()
-{
-    write_to_console(0, "Shutting down socket buffer...\n");
-    pthread_mutex_lock(&socket_queue.lock);
-    socket_writer_running = 0;
-    pthread_cond_signal(&socket_queue.not_empty);
-    pthread_mutex_unlock(&socket_queue.lock);
-
-    pthread_join(socket_writer_thread, NULL);
-}
-
-static void log_socket_buffer_stats()
-{
-    pthread_mutex_lock(&socket_queue.lock);
-
-    int count = socket_queue.count;
-    int head = socket_queue.head;
-    int tail = socket_queue.tail;
-
-    pthread_mutex_unlock(&socket_queue.lock);
-
-    char stat_msg[256];
-    snprintf(stat_msg,
-             sizeof(stat_msg),
-             "Socket buffer stats: count=%d, head=%d, tail=%d, capacity=%d",
-             count,
-             head,
-             tail,
-             SOCKET_BUFFER_CAPACITY);
-
-    write_to_console(0, stat_msg);
-}
-
-static void * socket_writer_thread_func(void * arg)
-{
-    write_to_console(0, "Socket writer thread started.\n");
-    while (1)
-    {
-        pthread_mutex_lock(&socket_queue.lock);
-
-        while (socket_queue.count == 0 && socket_writer_running)
-            pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
-
-        if (!socket_writer_running && socket_queue.count == 0)
-        {
-            pthread_mutex_unlock(&socket_queue.lock);
-            break;
-        }
-
-        struct socket_message msg = socket_queue.queue[socket_queue.head];
-
-        socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
-        socket_queue.count--;
-
-        pthread_cond_signal(&socket_queue.not_full);
-        pthread_mutex_unlock(&socket_queue.lock);
-
-        // --- Call your existing function ---
-        write_to_socket(&reader_threads[0], msg.json_msg, msg.json_string_with_http_or_tls_info);
-
-        free(msg.json_msg);
-        if (msg.json_string_with_http_or_tls_info)
-            free(msg.json_string_with_http_or_tls_info);
-    }
-
-    return NULL;
-}
-
 
 // Function to read and parse the JSON config
 void read_ndpid_config(const char * filename)
@@ -7520,6 +7405,118 @@ static int nDPId_parsed_config_line(
 
     return 1;
 }
+
+/*----------------socket thread related code------------------------------------------------------------------*/
+struct socket_message
+{
+    char * json_msg;
+    char * json_string_with_http_or_tls_info;
+};
+
+struct socket_buffer_queue
+{
+    struct socket_message queue[SOCKET_BUFFER_CAPACITY];
+
+    int head;  // index for consumer
+    int tail;  // index for producer
+    int count; // number of valid entries
+
+    pthread_mutex_t lock;
+    pthread_cond_t not_empty;
+    pthread_cond_t not_full;
+};
+
+static struct socket_buffer_queue socket_queue;
+static pthread_t socket_writer_thread;
+static int socket_writer_running = 1;
+static void * socket_writer_thread_func(void * arg);
+
+static void init_socket_buffer()
+{
+    write_to_console(0, "Initializing socket buffer...\n");
+    socket_queue.head = 0;
+    socket_queue.tail = 0;
+    socket_queue.count = 0;
+
+    pthread_mutex_init(&socket_queue.lock, NULL);
+    pthread_cond_init(&socket_queue.not_empty, NULL);
+    pthread_cond_init(&socket_queue.not_full, NULL);
+
+    socket_writer_running = 1;
+
+    pthread_create(&socket_writer_thread, NULL, socket_writer_thread_func, NULL);
+}
+
+static void shutdown_socket_buffer()
+{
+    write_to_console(0, "Shutting down socket buffer...\n");
+    pthread_mutex_lock(&socket_queue.lock);
+    socket_writer_running = 0;
+    pthread_cond_signal(&socket_queue.not_empty);
+    pthread_mutex_unlock(&socket_queue.lock);
+
+    pthread_join(socket_writer_thread, NULL);
+}
+
+static void log_socket_buffer_stats()
+{
+    pthread_mutex_lock(&socket_queue.lock);
+
+    int count = socket_queue.count;
+    int head = socket_queue.head;
+    int tail = socket_queue.tail;
+
+    pthread_mutex_unlock(&socket_queue.lock);
+
+    char stat_msg[256];
+    snprintf(stat_msg,
+             sizeof(stat_msg),
+             "Socket buffer stats: count=%d, head=%d, tail=%d, capacity=%d",
+             count,
+             head,
+             tail,
+             SOCKET_BUFFER_CAPACITY);
+
+    write_to_console(0, stat_msg);
+}
+
+static void * socket_writer_thread_func(void * arg)
+{
+    write_to_console(0, "Socket writer thread started.\n");
+    while (1)
+    {
+        pthread_mutex_lock(&socket_queue.lock);
+
+        while (socket_queue.count == 0 && socket_writer_running)
+            pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
+
+        if (!socket_writer_running && socket_queue.count == 0)
+        {
+            pthread_mutex_unlock(&socket_queue.lock);
+            break;
+        }
+
+        struct socket_message msg = socket_queue.queue[socket_queue.head];
+
+        socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
+        socket_queue.count--;
+
+        pthread_cond_signal(&socket_queue.not_full);
+        pthread_mutex_unlock(&socket_queue.lock);
+
+        // --- Call your existing function ---
+        write_to_socket(&reader_threads[0], msg.json_msg, msg.json_string_with_http_or_tls_info);
+
+        free(msg.json_msg);
+        if (msg.json_string_with_http_or_tls_info)
+            free(msg.json_string_with_http_or_tls_info);
+    }
+
+    return NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
 
 
 #ifndef NO_MAIN
