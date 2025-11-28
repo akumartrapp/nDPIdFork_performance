@@ -166,7 +166,7 @@ static time_t master_file_start_time = 0;
 // Variables to hold config values
 static int log_file_duration_in_seconds = 60; 
 static int log_file_size_in_mb = 5;
-static bool detailed_console_output_enabled = false;
+static int console_output_level = 1;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
@@ -204,9 +204,9 @@ static void log_socket_buffer_stats();
 static void init_socket_buffer();
 
 /*--------------------------------------------------------------------------------------------------------------*/
-void write_to_console(int error, const char * fmt, ...)
+void write_to_console(int error, int level, const char * fmt, ...)
 {
-    if (!detailed_console_output_enabled)
+    if (console_output_level < level)
     {
         return;
     }
@@ -1347,9 +1347,9 @@ void read_ndpid_config(const char * filename)
         struct json_object * consoleOutput_obj;
         if (json_object_object_get_ex(ndpid_obj, "consoleOutput", &consoleOutput_obj))
         {
-            if (json_object_object_get_ex(consoleOutput_obj, "detailed", &val))
+            if (json_object_object_get_ex(consoleOutput_obj, "detail_level", &val))
             {
-                detailed_console_output_enabled = json_object_get_boolean(val);
+                console_output_level = json_object_get_int(val);
             }
         }
 
@@ -2099,7 +2099,7 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
-    write_to_console(0, "init_workflow called");
+    write_to_console(0, 1, "init_workflow called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2171,7 +2171,7 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         }
         else
         {
-            write_to_console(0, "workflow->pcap_handle is not NULL");
+            write_to_console(0, 1, "workflow->pcap_handle is not NULL");
         }
 
         if (workflow->is_pcap_file == 0 && pcap_setnonblock(workflow->pcap_handle, 1, pcap_error_buffer) == PCAP_ERROR)
@@ -2505,7 +2505,7 @@ static char * get_default_pcapdev(char * errbuf)
 
 static int setup_reader_threads(void)
 {
-    write_to_console(0, "setup_reader_threads called");
+    write_to_console(0, 1, "setup_reader_threads called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
     printf("Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
@@ -3415,7 +3415,7 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread, bool initial)
 {
-    write_to_console(0, "connect_to_collector called");
+    write_to_console(0, 3, "connect_to_collector called");
     time_t start_time = time(NULL);
 
     while (1)
@@ -3495,7 +3495,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
                               char const * const newline_json_msg,
                               int length)
 {
-    write_to_console(0, "write_to_socket_2 called");
+    write_to_console(0, 3, "write_to_socket_2 called");
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
@@ -3524,7 +3524,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     }
     else
     {
-        write_to_console(0, "Header written to socket successfully");
+        write_to_console(0, 3, "Header written to socket successfully");
     }
  
 
@@ -3558,7 +3558,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
         }
         else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
         {
-            write_to_console(0, "<AF_UNIX blocking fallback triggered>");
+            write_to_console(0, 1, "<AF_UNIX blocking fallback triggered>");
 
             size_t pos = (written < 0 ? 0 : written);
             set_collector_block(reader_thread);
@@ -3596,7 +3596,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     }
     else
     {
-        write_to_console(0, "Data written to socket successfully");
+        write_to_console(0, 3, "Data written to socket successfully");
     }
 }
  
@@ -3604,7 +3604,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                             const char * const json_msg,
                             const char * const json_string_with_http_or_tls_info)
 {
-    write_to_console(0, "write_to_socket called");
+    write_to_console(0, 3, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
@@ -3672,7 +3672,7 @@ static void write_to_socket_buffer(struct nDPId_reader_thread * reader_thread,
                             const char * json_msg,
                             const char * json_string_with_http_or_tls_info)
 {
-    write_to_console(0, "write_to_socket_buffer called");
+    write_to_console(0, 3, "write_to_socket_buffer called");
     pthread_mutex_lock(&socket_queue.lock);
 
     while (socket_queue.count == SOCKET_BUFFER_CAPACITY)
@@ -3692,13 +3692,13 @@ static void write_to_socket_buffer(struct nDPId_reader_thread * reader_thread,
 
     pthread_cond_signal(&socket_queue.not_empty);
     pthread_mutex_unlock(&socket_queue.lock);
-    write_to_console(0, "write_to_socket_buffer exiting");
+    write_to_console(0, 3, "write_to_socket_buffer exiting");
 }
 
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
 {
-    write_to_console(0, "send_to_collector called");
+    write_to_console(0, 3, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
 
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
@@ -3772,7 +3772,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
 {
-    write_to_console(0, "serialize_and_send called");
+    write_to_console(0, 3, "serialize_and_send called");
     char * json_msg;
     uint32_t json_msg_len;
 
@@ -4084,7 +4084,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
-    write_to_console(0, "jsonize_flow_event called");
+    write_to_console(0, 3, "jsonize_flow_event called");
     if (skipEventsFromLogging(event))
     {       
         return -1;
@@ -6217,7 +6217,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
-    write_to_console(0, "run_capture_loop called");
+    write_to_console(0, 1, "run_capture_loop called");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6469,7 +6469,7 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    write_to_console(0, "processing_thread called");
+    write_to_console(0, 1, "processing_thread called");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
@@ -6508,7 +6508,7 @@ static WARN_UNUSED int processing_threads_error_or_eof(void)
 
 static int start_reader_threads(void)
 {
-    write_to_console(0, "start_reader_threads called");
+    write_to_console(0, 1, "start_reader_threads called");
     sigset_t thread_signal_set, old_signal_set;
 
     sigfillset(&thread_signal_set);
@@ -6863,6 +6863,9 @@ static void print_usage(char const * const arg0)
         "\t  \tDefault: disabled\n"
         "\t-J\tLoad a nDPI JA4 hash blacklist file.\n"
         "\t  \tDefault: disabled\n"
+        "\t-k\tSet the console output level from 1 to 4.\n"
+        "\t  \t1 = critical only, 4 = detailed output.\n"
+        "\t  \tDefault: 1\n"
         "\t-S\tLoad a nDPI SSL SHA1 hash blacklist file.\n"
         "\t  \tSee: https://sslbl.abuse.ch/blacklist/sslblacklist.csv\n"
         "\t  \tDefault: disabled\n"
@@ -6961,7 +6964,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:edp:u:g:R:P:C:J:S:a:U:Azo:vh")) != -1)
+    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:edp:u:g:R:P:C:J:S:a:U:Azo:k:vh")) != -1)
     {
         switch (opt)
         {
@@ -7035,6 +7038,20 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'J':
                 set_cmdarg_string(&nDPId_options.custom_ja4_file, optarg);
                 break;
+            case 'k': /* console output level */
+            {
+                char * endptr = NULL;
+                long lvl = strtol(optarg, &endptr, 10);
+
+                if (endptr == optarg || *endptr != '\0')
+                {
+                    logger_early(1, "Invalid integer for -k: %s", optarg);
+                    return 1;
+                }
+
+                console_output_level = (int)lvl;
+                break;
+            }
             case 'S':
                 set_cmdarg_string(&nDPId_options.custom_sha1_file, optarg);
                 break;
@@ -7444,7 +7461,7 @@ static int nDPId_parsed_config_line(
 /*----------------------------------------------------------------------------*/
 static void init_socket_buffer()
 {
-    write_to_console(0, "Initializing socket buffer...\n");
+    write_to_console(0, 1, "init_socket_buffer called\n");
     socket_queue.head = 0;
     socket_queue.tail = 0;
     socket_queue.count = 0;
@@ -7460,7 +7477,7 @@ static void init_socket_buffer()
 
 static void shutdown_socket_buffer()
 {
-    write_to_console(0, "Shutting down socket buffer...\n");
+    write_to_console(0, 1, "shutdown_socket_buffer called\n");
     pthread_mutex_lock(&socket_queue.lock);
     socket_writer_running = 0;
     pthread_cond_signal(&socket_queue.not_empty);
@@ -7488,27 +7505,26 @@ static void log_socket_buffer_stats()
              tail,
              SOCKET_BUFFER_CAPACITY);
 
-    write_to_console(0, stat_msg);
+    write_to_console(0, 2, stat_msg);
 }
 
 static void * socket_writer_thread_func(void * arg)
 {
-    write_to_console(0, "Socket writer thread started.\n");
+    write_to_console(0, 1, "socket_writer_thread_func called.\n");
     while (1)
     {
         pthread_mutex_lock(&socket_queue.lock);
-        write_to_console(0, "Socket writer thread  1.\n");
+       
         while (socket_queue.count == 0 && socket_writer_running)
             pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
 
-        write_to_console(0, "Socket writer thread  2.\n");
         if (!socket_writer_running && socket_queue.count == 0)
         {
             pthread_mutex_unlock(&socket_queue.lock);
+            write_to_console(0, 1, "Breaking from socket_writer_thread_func");
             break;
         }
 
-        write_to_console(0, "Socket writer thread  3.\n");
         struct socket_message msg = socket_queue.queue[socket_queue.head];
 
         socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
@@ -7529,7 +7545,6 @@ static void * socket_writer_thread_func(void * arg)
 }
 
 /*----------------------------------------------------------------------------*/
-
 
 
 #ifndef NO_MAIN

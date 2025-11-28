@@ -10,7 +10,7 @@
         },
 
         "consoleOutput": {
-            "detailed": true
+            "detail_level": 4
         },
 
         "sockets": {
