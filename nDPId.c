@@ -200,6 +200,7 @@ static struct socket_buffer_queue socket_queue;
 static pthread_t socket_writer_thread;
 static int socket_writer_running = 1;
 static void * socket_writer_thread_func(void * arg);
+static void log_socket_buffer_stats();
 
 /*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, const char * fmt, ...)
