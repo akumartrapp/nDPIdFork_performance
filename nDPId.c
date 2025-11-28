@@ -3666,6 +3666,7 @@ static void write_to_socket_buffer(struct nDPId_reader_thread * reader_thread,
                             const char * json_msg,
                             const char * json_string_with_http_or_tls_info)
 {
+    write_to_console(0, "write_to_socket_buffer called");
     pthread_mutex_lock(&socket_queue.lock);
 
     while (socket_queue.count == SOCKET_BUFFER_CAPACITY)
@@ -3685,6 +3686,7 @@ static void write_to_socket_buffer(struct nDPId_reader_thread * reader_thread,
 
     pthread_cond_signal(&socket_queue.not_empty);
     pthread_mutex_unlock(&socket_queue.lock);
+    write_to_console(0, "write_to_socket_buffer exiting");
 }
 
 
