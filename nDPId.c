@@ -3415,6 +3415,7 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
 
 static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {
+    write_to_console(0, "connect_to_collector called");
     time_t start_time = time(NULL);
 
     while (1)
@@ -7628,7 +7629,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    logger(0, "nDPID program version is 11.23.2025.01\n");
+    logger(0, "nDPID program version is 11.27.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
