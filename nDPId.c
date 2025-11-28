@@ -206,7 +206,7 @@ static void init_socket_buffer();
 /*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, int level, const char * fmt, ...)
 {
-    printf("write_to_console called\n");
+    printf("write_to_console called, console_output_level = %d, level = %d\n", console_output_level, level);
     if (console_output_level < level)
     {
         return;
