@@ -3413,7 +3413,7 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "thread_ts_usec", workflow->last_thread_time);
 }
 
-static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
+static int connect_to_collector(struct nDPId_reader_thread * const reader_thread, bool initial)
 {
     write_to_console(0, "connect_to_collector called");
     time_t start_time = time(NULL);
@@ -3469,6 +3469,11 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 0;
 
     retry_or_fail:
+        if (initial)
+        {
+            break;
+        }
+
         if (reader_thread->collector_sockfd >= 0)
         {
             close(reader_thread->collector_sockfd);
@@ -3606,7 +3611,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     {
         saved_errno = reader_thread->collector_sock_last_errno;
 
-        if (connect_to_collector(reader_thread) == 0)
+        if (connect_to_collector(reader_thread, false) == 0)
         {
             if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
             {
@@ -6469,7 +6474,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
 
     reader_thread->collector_sockfd = -1;
 
-    if (connect_to_collector(reader_thread) != 0)
+    if (connect_to_collector(reader_thread, true) != 0)
     {
         printf ("Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s\n",
                reader_thread->array_index,
