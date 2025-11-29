@@ -1363,7 +1363,7 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
             {
                 detailed_log_enabled = json_object_get_boolean(val);
-                printf("detailed_log_enabled: %s\n", detailed_log_enabled? "TRUE" "FALSE");
+                printf("detailed_log_enabled: %s\n", detailed_log_enabled? "TRUE": "FALSE");
 
             }
 
