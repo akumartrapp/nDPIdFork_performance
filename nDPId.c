@@ -1363,14 +1363,14 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
             {
                 detailed_log_enabled = json_object_get_boolean(val);
-                printf("detailed_log_enabled: %s\n", detailed_log_enabled? "TRUE", "FALSE");
+                printf("detailed_log_enabled: %s\n", detailed_log_enabled? "TRUE" "FALSE");
 
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
             {
                 master_log_file_enabled = json_object_get_boolean(val);
-                printf("master_log_file_enabled: %s\n", master_log_file_enabled? "TRUE", "FALSE");
+                printf("master_log_file_enabled: %s\n", master_log_file_enabled? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
@@ -1386,13 +1386,13 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(ouput_obj, "sendToSocket", &val))
             {
                 output_send_to_socket = json_object_get_boolean(val);
-                printf("output_send_to_socket: %s\n", output_send_to_socket? "TRUE", "FALSE");
+                printf("output_send_to_socket: %s\n", output_send_to_socket? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(ouput_obj, "writeToJsonFiles", &val))
             {
                 output_send_to_file = json_object_get_boolean(val);
-                printf("output_send_to_file: %s\n", output_send_to_file? "TRUE", "FALSE");
+                printf("output_send_to_file: %s\n", output_send_to_file? "TRUE" : "FALSE");
             }
         }
 
