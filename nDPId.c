@@ -1290,11 +1290,11 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
 // Function to read and parse the JSON config
 void read_ndpid_config(const char * filename)
 {
-    write_to_console(0, 1, "read_ndpid_config called");
+    printf("read_ndpid_config called");
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
-        write_to_console(1, 1,"ERROR while opening JSON config file %s: %s\n", filename, strerror(errno));
+        printf("ERROR: while opening JSON config file %s: %s\n", filename, strerror(errno));
         return;
     }
 
@@ -1305,7 +1305,7 @@ void read_ndpid_config(const char * filename)
     char * file_contents = malloc(file_size + 1);
     if (!file_contents)
     {
-        write_to_console(1, 1,"ERROR (malloc): Memory allocation failed\n");
+        printf("ERROR (malloc): Memory allocation failed\n");
         fclose(fp);
         return;
     }
@@ -1326,7 +1326,7 @@ void read_ndpid_config(const char * filename)
 
     if (!parsed_json)
     {
-        write_to_console(1, 1, "ERROR: Failed to parse JSON\n");
+        printf("ERROR: Failed to parse JSON\n");
         return;
     }
 
@@ -1338,11 +1338,13 @@ void read_ndpid_config(const char * filename)
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInSeconds", &val))
         {
             log_file_duration_in_seconds = json_object_get_int(val);
+            printf("log_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
         }
 
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
         {
             log_file_size_in_mb = json_object_get_int(val);
+            printf("log_file_size_in_mb: %d\n", log_file_size_in_mb);
         }
 
         struct json_object * consoleOutput_obj;
@@ -1351,9 +1353,7 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(consoleOutput_obj, "detail_level", &val))
             {
                 console_output_level = json_object_get_int(val);
-                char stat_msg[256];
-                snprintf(stat_msg, sizeof(stat_msg), "console_output_level: %d", console_output_level);
-                write_to_console(0, 1, stat_msg);
+                printf("console_output_level: %d\n", console_output_level);
             }
         }
 
@@ -1363,16 +1363,20 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
             {
                 detailed_log_enabled = json_object_get_boolean(val);
+                printf("detailed_log_enabled: %s\n", detailed_log_enabled? "TRUE", "FALSE");
+
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
             {
                 master_log_file_enabled = json_object_get_boolean(val);
+                printf("master_log_file_enabled: %s\n", master_log_file_enabled? "TRUE", "FALSE");
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
             {
                 master_log_file_duration_in_minutes = json_object_get_int(val);
+                printf("master_log_file_duration_in_minutes: %d\n", master_log_file_duration_in_minutes);
             }
         }
 
@@ -1382,11 +1386,13 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(ouput_obj, "sendToSocket", &val))
             {
                 output_send_to_socket = json_object_get_boolean(val);
+                printf("output_send_to_socket: %s\n", output_send_to_socket? "TRUE", "FALSE");
             }
 
             if (json_object_object_get_ex(ouput_obj, "writeToJsonFiles", &val))
             {
                 output_send_to_file = json_object_get_boolean(val);
+                printf("output_send_to_file: %s\n", output_send_to_file? "TRUE", "FALSE");
             }
         }
 
@@ -1399,17 +1405,20 @@ void read_ndpid_config(const char * filename)
                 if (strlen(collector_unix_socket_location) != 0)
                 {
                     set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
+                    printf("COLLECTOR_UNIX_SOCKET: %s\n", collector_unix_socket_location);
                 }
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_INTERVAL_SEC", &val))
             {
                 collector_reconnect_interval_sec = json_object_get_int(val);
+                printf("collector_reconnect_interval_sec: %d\n", collector_reconnect_interval_sec);
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_TIMEOUT_SEC", &val))
             {
                 collector_reconnect_timeout_sec = json_object_get_int(val);
+                printf("collector_reconnect_timeout_sec: %d\n", collector_reconnect_timeout_sec);
             }
         }
     }
@@ -3734,20 +3743,16 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         return;
     }
 
-    write_to_console(0, 3, "send_to_collector 1 called");
     if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
     }
-
-    write_to_console(0, 3, "send_to_collector 2 called");
 
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
 
     if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
     {
-        write_to_console(0, 3, "send_to_collector 3 called");
         add_or_update_flow_entry(&flow_map, flow_id, json_msg);
         return;
     }
@@ -3759,23 +3764,15 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Ashwani
     // We are not using socket so no need to connect just return from here. vv
 
-    write_to_console(0, 3, "send_to_collector 4 called");
     if (workflow->is_pcap_file && output_send_to_file)
     {
-        write_to_console(0, 3, "send_to_collector 5 called");
         write_to_file(json_msg, json_string_with_http_or_tls_info);
     }
 
     if (output_send_to_socket)
     {
-        write_to_console(0, 3, "send_to_collector 6 called");
         write_to_socket_buffer(reader_thread, json_msg, json_string_with_http_or_tls_info);
-        write_to_console(0, 3, "send_to_collector 7 called");
-        // Optionally log stats
-        //if (socket_queue.count % 500 == 0 || socket_queue.count > SOCKET_BUFFER_CAPACITY * 0.8)
-        {
-            log_socket_buffer_stats();
-        }
+        log_socket_buffer_stats();        
     }
 
     free(json_string_with_http_or_tls_info);
