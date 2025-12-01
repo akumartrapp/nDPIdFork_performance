@@ -7660,7 +7660,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    logger(0, "nDPID program version is 11.27.2025.01\n");
+    logger(0, "nDPID program version is 12.01.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
