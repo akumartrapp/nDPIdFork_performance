@@ -140,21 +140,20 @@ static char * strDuplicate(const char * inputSting)
 void convert_usec_to_utc_string(uint64_t usec_since_epoch, char * output, size_t output_len)
 {
     time_t seconds = usec_since_epoch / 1000000;
-    suseconds_t microseconds = usec_since_epoch % 1000000;
 
     struct tm gmtime_result;
     gmtime_r(&seconds, &gmtime_result);
 
+    // Format: 2025-07-11T01:08:20Z
     snprintf(output,
              output_len,
-             "%04d-%02d-%02d %02d:%02d:%02d.%06ld",
+             "%04d-%02d-%02dT%02d:%02d:%02dZ",
              gmtime_result.tm_year + 1900,
              gmtime_result.tm_mon + 1,
              gmtime_result.tm_mday,
              gmtime_result.tm_hour,
              gmtime_result.tm_min,
-             gmtime_result.tm_sec,
-             (long)microseconds);
+             gmtime_result.tm_sec);
 }
 
 static inline uint64_t max_u64(uint64_t a, uint64_t b)
