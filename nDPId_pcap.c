@@ -7740,7 +7740,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.23.2025.01\n");
+    logger(0, "nDPID_pcap program version is 11.23.2025.02\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
