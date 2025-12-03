@@ -3768,7 +3768,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Ashwani
     // We are not using socket so no need to connect just return from here. vv
 
-    if (workflow->is_pcap_file && output_send_to_file)
+    if (output_send_to_file)
     {
         write_to_file(json_msg, json_string_with_http_or_tls_info);
     }
