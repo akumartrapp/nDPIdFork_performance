@@ -369,6 +369,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 {
+    write_to_console(0, 3, "write_to_event_file called");
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
@@ -405,6 +406,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 {
+    write_to_console(0, 3, "write_to_alert_file called");
     time_t now = time(NULL);
 
     // Create new file if none open or time elapsed
@@ -442,6 +444,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
+    write_to_console(0, 3, "write_to_file called");
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
@@ -3789,7 +3792,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    printf("%s\n", json_msg);
+    //printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
