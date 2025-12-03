@@ -3464,7 +3464,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
                     nDPId_options.parsed_collector_address.size) < 0)
         {
             reader_thread->collector_sock_last_errno = errno;
-            logger(0, "Failed to establish connection with the socket");
+            logger(1, "Failed to establish connection with the socket");
             goto retry_or_fail;
         }
         else
@@ -3789,7 +3789,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    // printf("%s\n", json_msg);
+    printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
