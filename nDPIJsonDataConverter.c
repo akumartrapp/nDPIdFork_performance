@@ -819,7 +819,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
     json_object* ndpiObj = json_object_new_object();
 
     // Serialize flow_risk
-    json_object* flowRiskArray = json_object_new_array();
+
     for (size_t i = 0; i < ndpi->flow_risk_count; ++i) 
     {
         if (i == flowRiskIndex)
@@ -839,15 +839,6 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
             json_object_object_add(ndpiObj, "flow_risk", riskObj);
             
         }
-    }
-
-    if (ndpi->flow_risk_count > 0)
-    {
-        json_object_object_add(ndpiObj, "flow_risk", flowRiskArray);        
-    }
-    else
-    {
-        json_object_put(flowRiskArray);
     }
 
     //  Serialize confidence
