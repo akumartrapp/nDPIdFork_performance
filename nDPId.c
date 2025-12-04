@@ -3524,6 +3524,8 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         sleep(collector_reconnect_interval_sec);
         // retry again by falling through to next loop iteration
     }
+
+    return -1;
 }
 
 static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
