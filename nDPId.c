@@ -3722,7 +3722,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     }
 }
 
-static void write_to_socket_buffer(struct nDPId_reader_thread * reader_thread,
+static void write_to_socket_buffer(
                             const char * json_msg,
                             const char * json_string_with_http_or_tls_info)
 {
@@ -3813,7 +3813,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     if (output_send_to_socket)
     {
-        write_to_socket_buffer(reader_thread, json_msg, json_string_with_http_or_tls_info);
+        write_to_socket_buffer(json_msg, json_string_with_http_or_tls_info);
         log_socket_buffer_stats();        
     }
 
@@ -7559,7 +7559,7 @@ static void log_socket_buffer_stats()
     write_to_console(0, 2, stat_msg);
 }
 
-static void * socket_writer_thread_func(void * arg)
+static void * socket_writer_thread_func()
 {
     write_to_console(0, 1, "socket_writer_thread_func called.\n");
     while (1)
