@@ -3687,10 +3687,10 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
             if (flow_risk_count)
             {
                 write_to_socket_2(reader_thread, converted_json_str, length);
-                for (size_t index = 1; index < flow_risk_count; index++)
+                for (int index = 1; index < flow_risk_count; index++)
                 {
                     free(converted_json_str);
-                    size_t flow_risk_count_dummy = 0;
+                    int flow_risk_count_dummy = 0;
                     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &flow_risk_count_dummy);
                     length = strlen(converted_json_str);
                     if (length != 0)
