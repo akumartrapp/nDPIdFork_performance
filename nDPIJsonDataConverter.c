@@ -820,7 +820,7 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
 
     // Serialize flow_risk
 
-    for (size_t i = 0; i < ndpi->flow_risk_count; ++i) 
+    for (int i = 0; i < (int)ndpi->flow_risk_count; ++i) 
     {
         if (i == flowRiskIndex)
         {
