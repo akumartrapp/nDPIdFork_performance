@@ -410,7 +410,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     fflush(alert_log_fp); // ensure data is written
 }
 
-void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
+static void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
@@ -424,10 +424,10 @@ void write_to_file(const char * const json_msg, const char * const json_string_w
             if (flow_risk_count)
             {
                 write_to_alert_file(converted_json_str, length);
-                for (size_t index = 1; index < flow_risk_count; index++)
+                for (int index = 1; index < flow_risk_count; index++)
                 {
                     free(converted_json_str);
-                    size_t flow_risk_count_dummy = 0;
+                    int flow_risk_count_dummy = 0;
                     ConvertnDPIDataFormat(json_msg,
                                           json_string_with_http_or_tls_info,
                                           index,
