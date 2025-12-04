@@ -812,7 +812,7 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     return result;
 }
 
-static char * create_nDPI_Json_String(json_object ** root_object, const struct NDPI_Data * ndpi)
+static char * create_nDPI_Json_String(json_object ** root_object, const struct NDPI_Data * ndpi, int flowRiskIndex)
 {
     // Create a new JSON object for ndpi
     //json_object* root = json_object_new_object();
@@ -822,19 +822,23 @@ static char * create_nDPI_Json_String(json_object ** root_object, const struct N
     json_object* flowRiskArray = json_object_new_array();
     for (size_t i = 0; i < ndpi->flow_risk_count; ++i) 
     {
-        json_object* riskObj = json_object_new_object();
-        json_object_object_add(riskObj, "key", json_object_new_int(ndpi->flow_risk[i].key));
-        json_object_object_add(riskObj, "description", json_object_new_string(ndpi_risk2description((ndpi_risk_enum)ndpi->flow_risk[i].key)));
-        json_object_object_add(riskObj, "risk", json_object_new_string(ndpi->flow_risk[i].risk));
-        json_object_object_add(riskObj, "severity", json_object_new_string(ndpi->flow_risk[i].severity));
+        if (i == flowRiskIndex)
+        {
+            json_object * riskObj = json_object_new_object();
+            json_object_object_add(riskObj, "key", json_object_new_int(ndpi->flow_risk[i].key));
+            json_object_object_add(riskObj, "description", json_object_new_string(ndpi_risk2description((ndpi_risk_enum)ndpi->flow_risk[i].key)));
+            json_object_object_add(riskObj, "risk", json_object_new_string(ndpi->flow_risk[i].risk));
+            json_object_object_add(riskObj, "severity", json_object_new_string(ndpi->flow_risk[i].severity));
 
-        json_object* riskScoreObj = json_object_new_object();
-        json_object_object_add(riskScoreObj, "total", json_object_new_int(ndpi->flow_risk[i].risk_score.total));
-        json_object_object_add(riskScoreObj, "client", json_object_new_int(ndpi->flow_risk[i].risk_score.client));
-        json_object_object_add(riskScoreObj, "server", json_object_new_int(ndpi->flow_risk[i].risk_score.server));
-        json_object_object_add(riskObj, "risk_score", riskScoreObj);
+            json_object* riskScoreObj = json_object_new_object();
+            json_object_object_add(riskScoreObj, "total", json_object_new_int(ndpi->flow_risk[i].risk_score.total));
+            json_object_object_add(riskScoreObj, "client", json_object_new_int(ndpi->flow_risk[i].risk_score.client));
+            json_object_object_add(riskScoreObj, "server", json_object_new_int(ndpi->flow_risk[i].risk_score.server));
+            json_object_object_add(riskObj, "risk_score", riskScoreObj);
 
-        json_object_array_add(flowRiskArray, riskObj);
+            json_object_object_add(ndpiObj, "flow_risk", riskObj);
+            
+        }
     }
 
     if (ndpi->flow_risk_count > 0)
@@ -1201,9 +1205,9 @@ static void FreeConvertRootDataFormat(struct Root_data* rootData)
 
 }
 
-static int add_nDPI_Data(json_object** root_object, struct NDPI_Data nDPIStructure)
+static int add_nDPI_Data(json_object ** root_object, struct NDPI_Data nDPIStructure, int flowRiskIndex)
 {
-    char * nDPIJsonString = create_nDPI_Json_String(root_object, & nDPIStructure);
+    char * nDPIJsonString = create_nDPI_Json_String(root_object, &nDPIStructure, flowRiskIndex);
     if (nDPIJsonString == NULL)
     {
         // Ashwani
@@ -1413,6 +1417,7 @@ static void add_Root_Data(json_object ** root_object,
 
 void ConvertnDPIDataFormat(const char * originalJsonStr,
                            const char * const json_string_with_http_or_tls_info,
+                           int flowRiskIndex,
                            char ** converted_json_str,
                            int * createAlert)
 {
@@ -1423,7 +1428,7 @@ void ConvertnDPIDataFormat(const char * originalJsonStr,
 
     json_object* root_object = json_object_new_object();
     struct Root_data rootData;
-    if (add_nDPI_Data(&root_object, ndpiData))
+    if (add_nDPI_Data(&root_object, ndpiData, flowRiskIndex))
     {
         rootData = getRootDataStructure(originalJsonStr);
         bool filterd = matchEntryInParamsVector(rootData.src_ip, rootData.dest_ip, rootData.dst_port);
