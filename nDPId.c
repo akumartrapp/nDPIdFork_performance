@@ -507,7 +507,7 @@ void create_events_and_alerts_folders()
     {
         executable_directory[count] = '\0';
       
-        snprintf(stat_msg, sizeof(stat_msg), "Executable path: [%s]", executable_directory);
+        snprintf(stat_msg, sizeof(stat_msg), "Executable path: [%.200s]", executable_directory);
         write_to_console(0, 1, stat_msg);
 
         // Strip the filename to get directory
@@ -515,7 +515,7 @@ void create_events_and_alerts_folders()
         if (last_slash != NULL)
         {
             *last_slash = '\0';
-            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [%s]", executable_directory);
+            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [%.200s]", executable_directory);
             write_to_console(0, 1, stat_msg);
         }
     }
@@ -533,15 +533,15 @@ void create_events_and_alerts_folders()
         snprintf(master_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
-     snprintf(stat_msg, sizeof(stat_msg), "Alerts Folder Path is : [%s]", alerts_folder_full_path);
+     snprintf(stat_msg, sizeof(stat_msg), "Alerts Folder Path is : [%.200s]", alerts_folder_full_path);
      write_to_console(0, 1, stat_msg);
 
-     snprintf(stat_msg, sizeof(stat_msg), "Events Folder Path is : [%s]", events_folder_full_path);
+     snprintf(stat_msg, sizeof(stat_msg), "Events Folder Path is : [%.200s]", events_folder_full_path);
      write_to_console(0, 1, stat_msg);
 
     if (master_log_file_enabled)
     {
-        snprintf(stat_msg, sizeof(stat_msg), "Master Folder Path is : [%s]", master_folder_full_path);
+        snprintf(stat_msg, sizeof(stat_msg), "Master Folder Path is : [%.200s]", master_folder_full_path);
         write_to_console(0, 1, stat_msg);
     }
   
