@@ -9,7 +9,7 @@ void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * fl
 int CheckSRCIPField(const char * json_str);
 void UpdateXferIfGreater(char * json_str1, const char * json_str2, char ** converted_json_str);
 unsigned long long int GetFlowId(const char * json_str);
-void ReadNdpidConfigurationFilterFile(const char * filename);
+void ReadNdpidConfigurationFilterFile(const char * filename, bool print_to_console);
 
 #ifdef __cplusplus
 }

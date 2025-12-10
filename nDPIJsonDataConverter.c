@@ -1806,18 +1806,6 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
 {
     json_object_object_foreach(jsonObj, key, val)
     {
-        // Only consider skipParameters
-        if (strcmp(key, "skipParameters") != 0)
-        {
-            // But still traverse nested objects to eventually reach skipParameters
-            enum json_type t = json_object_get_type(val);
-            if (t == json_type_object || t == json_type_array)
-            {
-                traverseJsonObject(val, paramsVector, vectorSize);
-            }
-            continue; // Ignore everything else
-        }
-
         enum json_type type = json_object_get_type(val);
 
         if (type == json_type_object)
@@ -1932,7 +1920,7 @@ static bool matchEntryInParamsVector(const char* srcIP, const char* destIP, int 
 
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
-void ReadNdpidConfigurationFilterFile(const char * filename)
+void ReadNdpidConfigurationFilterFile(const char * filename, bool print_to_console)
 {
     if (!hasAlreadyReadLogFile)
     {
@@ -1966,22 +1954,28 @@ void ReadNdpidConfigurationFilterFile(const char * filename)
         file_contents[file_size] = '\0';
         fclose(fp);
 
-        struct json_object * parsed_json = json_tokener_parse(file_contents);
+        struct json_object * root_object = json_tokener_parse(file_contents);
         free(file_contents);
 
-        if (!parsed_json)
+        if (!root_object)
         {
             printf("ERROR: Failed to parse JSON\n");
             return;
         }
 
-        traverseJsonObject(parsed_json, &paramsVector, &vectorSize);
-        printParamsVector(paramsVector, vectorSize);
+        json_object * skipParameters;
+        if (json_object_object_get_ex(root_object, "skipParameters", &skipParameters))
+        {
+            traverseJsonObject(skipParameters, &paramsVector, &vectorSize);
+            if (print_to_console)
+            {
+                printParamsVector(paramsVector, vectorSize);
+            }
+        }
 
         // Free the JSON object
-        json_object_put(parsed_json);
-        hasAlreadyReadLogFile = true;
-     
+        json_object_put(root_object);
+        hasAlreadyReadLogFile = true;     
     }
 }
 

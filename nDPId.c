@@ -7843,7 +7843,7 @@ int main(int argc, char ** argv)
     }
 
     printConfigurationData(1);
-    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json");
+    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json", console_output_level >= 1);
     set_config_defaults(&general_config_map[0], nDPIsrvd_ARRAY_LENGTH(general_config_map));
     set_config_defaults(&tuning_config_map[0], nDPIsrvd_ARRAY_LENGTH(tuning_config_map));
     {
