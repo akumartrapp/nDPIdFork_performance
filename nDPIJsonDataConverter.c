@@ -1920,7 +1920,7 @@ static bool matchEntryInParamsVector(const char* srcIP, const char* destIP, int 
 
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
-void ReadNdpidConfigurationFilterFile(const char * filename, bool print_to_console)
+void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_console)
 {
     if (!hasAlreadyReadLogFile)
     {
@@ -1967,7 +1967,7 @@ void ReadNdpidConfigurationFilterFile(const char * filename, bool print_to_conso
         if (json_object_object_get_ex(root_object, "skipParameters", &skipParameters))
         {
             traverseJsonObject(skipParameters, &paramsVector, &vectorSize);
-            if (print_to_console)
+            if (print_to_console >= 1)
             {
                 printParamsVector(paramsVector, vectorSize);
             }
