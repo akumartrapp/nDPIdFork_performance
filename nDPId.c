@@ -3699,14 +3699,14 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 #ifdef ENABLE_CRYPTO
                     if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
                     {
-                        written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg + pos, s_ret - pos);
+                        written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg + pos, length - pos);
                     }
                     else
 #endif
                     {
-                        written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos);
+                        written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos);
                     }
-                    if ((size_t)written == s_ret - pos)
+                    if ((size_t)written == length - pos)
                     {
                         break;
                     }
