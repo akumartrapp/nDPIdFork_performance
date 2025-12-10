@@ -352,7 +352,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
         {
-            logger(1, "ERROR: Failed to open log file: %s (%s)\n", current_master_filename, strerror(errno));
+            logger(1, "ERROR: Failed to open log file: %s (%s)", current_master_filename, strerror(errno));
             return;
         }
 
@@ -363,7 +363,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, master_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR: Partial write to '%s'\n", master_folder_full_path);
+        logger(1, "ERROR: Partial write to '%s'", master_folder_full_path);
     }
 
     fwrite("\n", 1, 1, master_log_fp);
@@ -389,7 +389,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
         event_log_fp = fopen(current_event_filename, "a");
         if (!event_log_fp)
         {
-            logger(1, "ERROR (events): Failed to open log file: %s (%s)\n", current_event_filename, strerror(errno));            
+            logger(1, "ERROR (events): Failed to open log file: %s (%s)", current_event_filename, strerror(errno));            
             return;
         }
 
@@ -400,7 +400,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, event_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR (events): Partial write to '%s'\n", events_folder_full_path);       
+        logger(1, "ERROR (events): Partial write to '%s'", events_folder_full_path);       
     }
 
     fwrite("\n", 1, 1, event_log_fp);
@@ -426,7 +426,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
         alert_log_fp = fopen(current_alert_filename, "a");
         if (!alert_log_fp)
         {
-            logger(1, "ERROR (alerts): Failed to open log file: %s (%s)\n", current_alert_filename, strerror(errno));
+            logger(1, "ERROR (alerts): Failed to open log file: %s (%s)", current_alert_filename, strerror(errno));
             return;
         }
 
@@ -437,7 +437,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, alert_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR: Partial write to '%s'\n", alerts_folder_full_path);   
+        logger(1, "ERROR: Partial write to '%s'", alerts_folder_full_path);   
     }
 
     fwrite("\n", 1, 1, alert_log_fp);
@@ -501,13 +501,13 @@ static void write_to_file(const char * const json_msg, const char * const json_s
 void create_events_and_alerts_folders()
 {
     // Get path to executable
+    char stat_msg[256];
     ssize_t count = readlink("/proc/self/exe", executable_directory, PATH_MAX_LEN - 1);
     if (count != -1)
     {
         executable_directory[count] = '\0';
-
-        char stat_msg[256];
-        snprintf(stat_msg, sizeof(stat_msg), "Executable path: [%s]\n", executable_directory);
+      
+        snprintf(stat_msg, sizeof(stat_msg), "Executable path: [%s]", executable_directory);
         write_to_console(0, 1, stat_msg);
 
         // Strip the filename to get directory
@@ -515,7 +515,7 @@ void create_events_and_alerts_folders()
         if (last_slash != NULL)
         {
             *last_slash = '\0';
-            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [% s]\n ", executable_directory");
+            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [% s]", executable_directory);
             write_to_console(0, 1, stat_msg);
         }
     }
@@ -533,19 +533,19 @@ void create_events_and_alerts_folders()
         snprintf(master_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
-     snprintf(stat_msg, sizeof(stat_msg), "Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
+     snprintf(stat_msg, sizeof(stat_msg), "Alerts Folder Path is : [%s]", alerts_folder_full_path);
      write_to_console(0, 1, stat_msg);
 
-     snprintf(stat_msg, sizeof(stat_msg), "Events Folder Path is : [%s]\n", events_folder_full_path);
+     snprintf(stat_msg, sizeof(stat_msg), "Events Folder Path is : [%s]", events_folder_full_path);
      write_to_console(0, 1, stat_msg);
 
     if (master_log_file_enabled)
     {
-        snprintf(stat_msg, sizeof(stat_msg), "Master Folder Path is : [%s]\n", master_folder_full_path);
+        snprintf(stat_msg, sizeof(stat_msg), "Master Folder Path is : [%s]", master_folder_full_path);
         write_to_console(0, 1, stat_msg);
     }
   
-    snprintf(stat_msg, sizeof(stat_msg), "UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
+    snprintf(stat_msg, sizeof(stat_msg), "UID=%d, EUID=%d, GID=%d, EGID=%d", getuid(), geteuid(), getgid(), getegid());
     write_to_console(0, 1, stat_msg);
 
     // Check write/execute access to parent directory
@@ -564,7 +564,7 @@ void create_events_and_alerts_folders()
         }
         else
         {
-            logger(1, "ERROR:mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
+            logger(1, "ERROR:mkdir('%s') failed: %s", alerts_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -582,7 +582,7 @@ void create_events_and_alerts_folders()
         }
         else
         {
-            logger(1, "ERROR: mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
+            logger(1, "ERROR: mkdir('%s') failed: %s", events_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -602,7 +602,7 @@ void create_events_and_alerts_folders()
             }
             else
             {
-                logger(1, "ERROR: mkdir('%s') failed: %s\n", master_folder_full_path, strerror(errno));
+                logger(1, "ERROR: mkdir('%s') failed: %s", master_folder_full_path, strerror(errno));
                 exit(EXIT_FAILURE);
             }
         }
@@ -1012,7 +1012,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
 
             if (!map->entries[i].json_str)
             {
-                logger(1, "strdup failed in add_or_update_flow_entry 1\n");
+                logger(1, "strdup failed in add_or_update_flow_entry 1");
                 exit(EXIT_FAILURE);
             }
 
@@ -1025,7 +1025,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->entries[map->size].json_str = strdup(json_str);
     if (!map->entries[map->size].json_str)
     {
-        logger(1, "strdup failed in add_or_update_flow_entry 2\n");
+        logger(1, "strdup failed in add_or_update_flow_entry 2");
         exit(EXIT_FAILURE);
     }
 
@@ -2630,7 +2630,7 @@ static int setup_reader_threads(void)
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
     char stat_msg[256];
-    snprintf(stat_msg, sizeof(stat_msg), "Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    snprintf(stat_msg, sizeof(stat_msg), "Number of Readers Thread = %lld", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
     write_to_console(0, 1, stat_msg);
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
@@ -6692,7 +6692,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        write_to_console(0, 1, "connect_to_collector : Success\n");
+        write_to_console(0, 1, "connect_to_collector : Success");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
@@ -7011,7 +7011,7 @@ static void print_subopt_usage(void)
 static printVersion()
 {
     // MM.DD.YYYY
-    fprintf(stderr, "nDPID program version is 12.09.2025.03\n");
+    printf("nDPID program version is 12.09.2025.03\n");
 }
 
 static void print_usage(char const * const arg0)
