@@ -1806,6 +1806,18 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
 {
     json_object_object_foreach(jsonObj, key, val)
     {
+        // Only consider skipParameters
+        if (strcmp(key, "skipParameters") != 0)
+        {
+            // But still traverse nested objects to eventually reach skipParameters
+            enum json_type t = json_object_get_type(val);
+            if (t == json_type_object || t == json_type_array)
+            {
+                traverseJsonObject(val, paramsVector, vectorSize);
+            }
+            continue; // Ignore everything else
+        }
+
         enum json_type type = json_object_get_type(val);
 
         if (type == json_type_object)
