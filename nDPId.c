@@ -169,7 +169,7 @@ static time_t master_file_start_time = 0;
 // Variables to hold config values
 static int log_file_duration_in_seconds = 60; 
 static int log_file_size_in_mb = 5;
-static int console_output_level = 1;
+static int console_output_level = -1; // no console output by default
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
@@ -299,7 +299,7 @@ void rotate_event_log_file()
                                                                                                              // ".tmp"
         if (rename(current_event_filename, new_name) != 0)
         {
-            printf("ERROR: rename() failed");
+            logger(1, "ERROR (events log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
         }
 
         event_log_fp = NULL;
@@ -321,7 +321,7 @@ void rotate_alert_log_file()
                                           // ".tmp"
         if (rename(current_alert_filename, new_name) != 0)
         {
-            printf("ERROR: rename() failed");
+              logger(1, "ERROR (alerts log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
         }
 
         alert_log_fp = NULL;
@@ -352,7 +352,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
         {
-            printf("ERROR: Failed to open log file: %s (%s)\n", current_master_filename, strerror(errno));
+            logger(1, "ERROR: Failed to open log file: %s (%s)\n", current_master_filename, strerror(errno));
             return;
         }
 
@@ -363,7 +363,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, master_log_fp);
     if (written != json_msg_len)
     {
-        printf("ERROR: Partial write to '%s'\n", master_folder_full_path);
+        logger(1, "ERROR: Partial write to '%s'\n", master_folder_full_path);
     }
 
     fwrite("\n", 1, 1, master_log_fp);
@@ -389,7 +389,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
         event_log_fp = fopen(current_event_filename, "a");
         if (!event_log_fp)
         {
-            printf("ERROR: Failed to open log file: %s (%s)\n", current_event_filename, strerror(errno));
+            logger(1, "ERROR (events): Failed to open log file: %s (%s)\n", current_event_filename, strerror(errno));            
             return;
         }
 
@@ -400,7 +400,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, event_log_fp);
     if (written != json_msg_len)
     {
-        printf("ERROR: Partial write to '%s'\n", events_folder_full_path);
+        logger(1, "ERROR (events): Partial write to '%s'\n", events_folder_full_path);       
     }
 
     fwrite("\n", 1, 1, event_log_fp);
@@ -426,7 +426,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
         alert_log_fp = fopen(current_alert_filename, "a");
         if (!alert_log_fp)
         {
-            printf("ERROR: Failed to open log file: %s (%s)\n", current_alert_filename, strerror(errno));
+            logger(1, "ERROR (alerts): Failed to open log file: %s (%s)\n", current_alert_filename, strerror(errno));
             return;
         }
 
@@ -437,7 +437,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, alert_log_fp);
     if (written != json_msg_len)
     {
-        printf("ERROR: Partial write to '%s'\n", alerts_folder_full_path);
+        logger(1, "ERROR: Partial write to '%s'\n", alerts_folder_full_path);   
     }
 
     fwrite("\n", 1, 1, alert_log_fp);
@@ -505,19 +505,23 @@ void create_events_and_alerts_folders()
     if (count != -1)
     {
         executable_directory[count] = '\0';
-        printf("Executable path: [%s]\n", executable_directory);
+
+        char stat_msg[256];
+        snprintf(stat_msg, sizeof(stat_msg), "Executable path: [%s]\n", executable_directory);
+        write_to_console(0, 1, stat_msg);
 
         // Strip the filename to get directory
         char * last_slash = strrchr(executable_directory, '/');
         if (last_slash != NULL)
         {
             *last_slash = '\0';
-            printf("Executable directory: [%s]\n", executable_directory);
+            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [% s]\n ", executable_directory");
+            write_to_console(0, 1, stat_msg);
         }
     }
     else
     {
-        perror("readlink() failed");
+        logger(1, "readlink failed");
         exit(EXIT_FAILURE);
     }
 
@@ -529,19 +533,25 @@ void create_events_and_alerts_folders()
         snprintf(master_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
-    printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
-    printf("Events Folder Path is : [%s]\n", events_folder_full_path);
+     snprintf(stat_msg, sizeof(stat_msg), "Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
+     write_to_console(0, 1, stat_msg);
+
+     snprintf(stat_msg, sizeof(stat_msg), "Events Folder Path is : [%s]\n", events_folder_full_path);
+     write_to_console(0, 1, stat_msg);
+
     if (master_log_file_enabled)
     {
-        printf("Master Folder Path is : [%s]\n", master_folder_full_path);
+        snprintf(stat_msg, sizeof(stat_msg), "Master Folder Path is : [%s]\n", master_folder_full_path);
+        write_to_console(0, 1, stat_msg);
     }
   
-    printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
+    snprintf(stat_msg, sizeof(stat_msg), "UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
+    write_to_console(0, 1, stat_msg);
 
     // Check write/execute access to parent directory
     if (access(executable_directory, W_OK | X_OK) != 0)
     {
-        printf("ERROR: access() to executable_directory failed");
+        logger(1, "ERROR: access() to executable_directory failed");
         exit(EXIT_FAILURE);
     }
 
@@ -549,32 +559,36 @@ void create_events_and_alerts_folders()
     if (mkdir(alerts_folder_full_path, 0777) == -1)
     {
         if (errno == EEXIST)
-            printf("Alerts folder already exists.\n");
+        {
+            write_to_console(0, 1, "Alerts folder already exists");
+        }
         else
         {
-            printf("ERROR:mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
+            logger(1, "ERROR:mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        printf("Alerts folder created successfully.\n");
+        write_to_console(0, 1, "Alerts folder created successfully");
     }
 
     // Create Events folder
     if (mkdir(events_folder_full_path, 0777) == -1)
     {
         if (errno == EEXIST)
-            printf("Events folder already exists.\n");
+        {
+            write_to_console(0, 1, "Events folder already exists");
+        }
         else
         {
-            printf("ERROR: mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
+            logger(1, "ERROR: mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        printf("Events folder created successfully.\n");
+        write_to_console(0, 1, "Events folder created successfully.");
     }
 
      // Create Master folder
@@ -583,16 +597,18 @@ void create_events_and_alerts_folders()
         if (mkdir(master_folder_full_path, 0777) == -1)
         {
             if (errno == EEXIST)
-                printf("Master folder already exists.\n");
+            {
+                write_to_console(0, 1, "Master folder already exists");
+            }
             else
             {
-                printf("ERROR: mkdir('%s') failed: %s\n", master_folder_full_path, strerror(errno));
+                logger(1, "ERROR: mkdir('%s') failed: %s\n", master_folder_full_path, strerror(errno));
                 exit(EXIT_FAILURE);
             }
         }
         else
         {
-            printf("Master folder created successfully.\n");
+            write_to_console(0, 1, "Master folder created successfully.");
         }
     }
 }
@@ -996,7 +1012,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
 
             if (!map->entries[i].json_str)
             {
-                printf("strdup failed in add_or_update_flow_entry 1\n");
+                logger(1, "strdup failed in add_or_update_flow_entry 1\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -1009,7 +1025,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->entries[map->size].json_str = strdup(json_str);
     if (!map->entries[map->size].json_str)
     {
-        printf("strdup failed in add_or_update_flow_entry 2\n");
+        logger(1, "strdup failed in add_or_update_flow_entry 2\n");
         exit(EXIT_FAILURE);
     }
 
@@ -1328,10 +1344,28 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
     return 0;
 }
 
-// Function to read and parse the JSON config
-void read_ndpid_config(const char * filename)
+static void printConfigurationData(int level)
 {
-    printf("read_ndpid_config called");
+    if (level <= console_output_level)
+    {
+        printf("nDPId Configuration Data:\n");
+        printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
+        printf("\tlog_file_size_in_mb: %d\n", log_file_size_in_mb);
+        printf("\tconsole_output_level: %d\n", console_output_level);
+        printf("\tdetailed_log_enabled: %s\n", detailed_log_enabled ? "TRUE" : "FALSE");
+        printf("\tmaster_log_file_enabled: %s\n", master_log_file_enabled ? "TRUE" : "FALSE");
+        printf("\tmaster_log_file_duration_in_minutes: %d\n", master_log_file_duration_in_minutes);
+        printf("\toutput_send_to_socket: %s\n", output_send_to_socket ? "TRUE" : "FALSE");
+        printf("\toutput_send_to_file: %s\n", output_send_to_file ? "TRUE" : "FALSE");
+        printf("\tcollector_unix_socket_location: %s\n", collector_unix_socket_location);
+        printf("\tcollector_reconnect_interval_sec: %d\n", collector_reconnect_interval_sec);
+        printf("\tcollector_reconnect_timeout_sec: %d\n", collector_reconnect_timeout_sec);
+    }  
+}
+
+// Function to read and parse the JSON config
+static void readConfigurationData(const char * filename)
+{
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
@@ -1378,14 +1412,12 @@ void read_ndpid_config(const char * filename)
 
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInSeconds", &val))
         {
-            log_file_duration_in_seconds = json_object_get_int(val);
-            printf("log_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
+            log_file_duration_in_seconds = json_object_get_int(val);           
         }
 
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
         {
-            log_file_size_in_mb = json_object_get_int(val);
-            printf("log_file_size_in_mb: %d\n", log_file_size_in_mb);
+            log_file_size_in_mb = json_object_get_int(val);           
         }
 
         struct json_object * consoleOutput_obj;
@@ -1393,8 +1425,7 @@ void read_ndpid_config(const char * filename)
         {
             if (json_object_object_get_ex(consoleOutput_obj, "detail_level", &val))
             {
-                console_output_level = json_object_get_int(val);
-                printf("console_output_level: %d\n", console_output_level);
+                console_output_level = json_object_get_int(val);                
             }
         }
 
@@ -1403,21 +1434,17 @@ void read_ndpid_config(const char * filename)
         {
             if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
             {
-                detailed_log_enabled = json_object_get_boolean(val);
-                printf("detailed_log_enabled: %s\n", detailed_log_enabled? "TRUE": "FALSE");
-
+                detailed_log_enabled = json_object_get_boolean(val);                
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
             {
                 master_log_file_enabled = json_object_get_boolean(val);
-                printf("master_log_file_enabled: %s\n", master_log_file_enabled? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
             {
                 master_log_file_duration_in_minutes = json_object_get_int(val);
-                printf("master_log_file_duration_in_minutes: %d\n", master_log_file_duration_in_minutes);
             }
         }
 
@@ -1427,13 +1454,11 @@ void read_ndpid_config(const char * filename)
             if (json_object_object_get_ex(ouput_obj, "sendToSocket", &val))
             {
                 output_send_to_socket = json_object_get_boolean(val);
-                printf("output_send_to_socket: %s\n", output_send_to_socket? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(ouput_obj, "writeToJsonFiles", &val))
             {
                 output_send_to_file = json_object_get_boolean(val);
-                printf("output_send_to_file: %s\n", output_send_to_file? "TRUE" : "FALSE");
             }
         }
 
@@ -1446,20 +1471,17 @@ void read_ndpid_config(const char * filename)
                 if (strlen(collector_unix_socket_location) != 0)
                 {
                     set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
-                    printf("COLLECTOR_UNIX_SOCKET: %s\n", collector_unix_socket_location);
                 }
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_INTERVAL_SEC", &val))
             {
                 collector_reconnect_interval_sec = json_object_get_int(val);
-                printf("collector_reconnect_interval_sec: %d\n", collector_reconnect_interval_sec);
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_TIMEOUT_SEC", &val))
             {
                 collector_reconnect_timeout_sec = json_object_get_int(val);
-                printf("collector_reconnect_timeout_sec: %d\n", collector_reconnect_timeout_sec);
             }
         }
     }
@@ -2607,7 +2629,9 @@ static int setup_reader_threads(void)
     write_to_console(0, 1, "setup_reader_threads called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
-    printf("Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    char stat_msg[256];
+    snprintf(stat_msg, sizeof(stat_msg), "Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
+    write_to_console(0, 1, stat_msg);
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
         return 1;
@@ -6660,7 +6684,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
 
     if (connect_to_collector(reader_thread, true) != 0)
     {
-        printf ("Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s\n",
+        logger (1, "Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s\n",
                reader_thread->array_index,
                GET_CMDARG_STR(nDPId_options.collector_address),
                (reader_thread->collector_sock_last_errno != 0 ? strerror(reader_thread->collector_sock_last_errno)
@@ -6668,7 +6692,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        logger(0, "connect_to_collector : Success\n");
+        write_to_console(0, 1, "connect_to_collector : Success\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
@@ -6987,7 +7011,7 @@ static void print_subopt_usage(void)
 static printVersion()
 {
     // MM.DD.YYYY
-    fprintf(stderr, "nDPID program version is 12.09.2025.02\n");
+    fprintf(stderr, "nDPID program version is 12.09.2025.03\n");
 }
 
 static void print_usage(char const * const arg0)
@@ -7811,15 +7835,15 @@ int main(int argc, char ** argv)
     ncrypt_ctx(&ncrypt_ctx);
 #endif
 
-    read_ndpid_config("Settings/nDPIdConfiguration.json");
-
-    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
+    readConfigurationData("Settings/nDPIdConfiguration.json");
    
     if (nDPId_parse_options(argc, argv) != 0)
     {
         return 1;
     }
 
+    printConfigurationData(1);
+    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json");
     set_config_defaults(&general_config_map[0], nDPIsrvd_ARRAY_LENGTH(general_config_map));
     set_config_defaults(&tuning_config_map[0], nDPIsrvd_ARRAY_LENGTH(tuning_config_map));
     {
