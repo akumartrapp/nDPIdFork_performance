@@ -10,7 +10,7 @@
         },
 
         "consoleOutput": {
-            "detail_level": 1
+            "detail_level": -1
         },
 
         "sockets": {
@@ -23,6 +23,7 @@
             "sendToSocket": true,
             "writeToJsonFiles": true
         },
+
         "skipParameters": [
             {
                 "sourceIP": "192.168.2.126",
