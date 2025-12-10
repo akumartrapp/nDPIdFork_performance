@@ -7502,7 +7502,7 @@ static int validate_options(void)
         else
         {
             set_cmdarg_string(&nDPId_options.instance_alias, hname);
-            logger_early(1,
+            write_to_console(0, 1,
                          "No instance alias given, using your hostname `%s'",
                          GET_CMDARG_STR(nDPId_options.instance_alias));
             if (IS_CMDARG_SET(nDPId_options.instance_alias) == 0)
