@@ -34,6 +34,9 @@
 
 #include "config.h"
 #include "nDPIsrvd.h"
+#ifdef ENABLE_CRYPTO
+#include "ncrypt.h"
+#endif
 #include "nio.h"
 #ifdef ENABLE_PFRING
 #include "npfring.h"
@@ -795,6 +798,9 @@ struct nDPId_workflow
     uint64_t total_compression_diff;
     uint64_t current_compression_diff;
 #endif
+#ifdef ENABLE_CRYPTO
+    struct ncrypt_entity ncrypt_entity;
+#endif
 
     uint64_t last_scan_time;
     uint64_t last_status_time;
@@ -1103,6 +1109,9 @@ static MT_VALUE(zlib_compression_diff, uint64_t) = MT_INIT(0);
 static MT_VALUE(zlib_compression_bytes, uint64_t) = MT_INIT(0);
 #endif
 
+#ifdef ENABLE_CRYPTO
+static struct ncrypt_ctx ncrypt_ctx;
+#endif
 static struct
 {
     /* options which are resolved automatically */
@@ -1137,6 +1146,11 @@ static struct
 #endif
 #ifdef ENABLE_PFRING
     struct cmdarg use_pfring;
+#endif
+#ifdef ENABLE_CRYPTO
+    struct cmdarg client_crt_pem_file;
+    struct cmdarg client_key_pem_file;
+    struct cmdarg server_ca_pem_file;
 #endif
     /* subopts */
     struct cmdarg max_flows_per_thread;
@@ -1187,6 +1201,11 @@ static struct
 #endif
 #ifdef ENABLE_PFRING
                    .use_pfring = CMDARG_BOOL(0),
+#endif
+#ifdef ENABLE_CRYPTO
+                   .client_crt_pem_file = CMDARG_STR(NULL),
+                   .client_key_pem_file = CMDARG_STR(NULL),
+                   .server_ca_pem_file = CMDARG_STR(NULL),
 #endif
                    .max_flows_per_thread = CMDARG_ULL(nDPId_MAX_FLOWS_PER_THREAD / 2),
                    .max_idle_flows_per_thread = CMDARG_ULL(nDPId_MAX_IDLE_FLOWS_PER_THREAD / 2),
@@ -1900,6 +1919,11 @@ static void * ndpi_malloc_wrapper(size_t const size)
 
 static void ndpi_free_wrapper(void * const freeable)
 {
+    if (freeable == NULL)
+    {
+        return;
+    }
+
     void * p = (uint8_t *)freeable - sizeof(uint64_t);
 
     MT_GET_AND_ADD(ndpi_memory_free_count, 1);
@@ -1907,6 +1931,49 @@ static void ndpi_free_wrapper(void * const freeable)
 
     free(p);
 }
+
+static void * ndpi_calloc_wrapper(size_t nmemb, size_t size)
+{
+    void * p = ndpi_malloc_wrapper(nmemb * size);
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    memset(p, 0x00, nmemb * size);
+
+    return p;
+}
+
+static void * ndpi_realloc_wrapper(void * const reallocable, size_t new_size)
+{
+    if (reallocable == NULL)
+    {
+        return ndpi_malloc_wrapper(new_size);
+    }
+
+    void * const p = (uint8_t *)reallocable - sizeof(uint64_t);
+    void * const new_ptr = realloc(p, sizeof(uint64_t) + new_size);
+
+    if (new_ptr == NULL)
+    {
+        return (uint8_t *)p + sizeof(uint64_t);
+    }
+
+    size_t old_size = *(uint64_t *)new_ptr;
+    *(uint64_t *)new_ptr = new_size;
+
+    if (old_size > new_size)
+    {
+        MT_GET_AND_SUB(ndpi_memory_alloc_bytes, old_size - new_size);
+    }
+    else
+    {
+        MT_GET_AND_ADD(ndpi_memory_alloc_bytes, new_size - old_size);
+    }
+
+    return (uint8_t *)new_ptr + sizeof(uint64_t);
+}
+
 
 #ifdef ENABLE_MEMORY_PROFILING
 static void log_memory_usage(struct nDPId_reader_thread const * const reader_thread)
@@ -2336,9 +2403,6 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
-    NDPI_PROTOCOL_BITMASK protos;
-    NDPI_BITMASK_SET_ALL(protos);
-    ndpi_set_protocol_detection_bitmask2(workflow->ndpi_struct, &protos);
     if (IS_CMDARG_SET(nDPId_options.custom_risk_domain_file) != 0)
     {
         ndpi_load_risk_domain_file(workflow->ndpi_struct, GET_CMDARG_STR(nDPId_options.custom_risk_domain_file));
@@ -2752,7 +2816,7 @@ static int is_error_event_threshold(struct nDPId_workflow * const workflow)
 //static void ndpi_idle_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
 //    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
-//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic * const *)A;
 //
 //    (void)depth;
 //
@@ -2829,8 +2893,8 @@ static void ndpi_idle_scan_walker(struct nDPId_flow_basic * flow_basic, struct n
 
 //static int ndpi_workflow_node_cmp(void const * const A, void const * const B)
 //{
-//    struct nDPId_flow_basic const * const flow_basic_a = (struct nDPId_flow_basic *)A;
-//    struct nDPId_flow_basic const * const flow_basic_b = (struct nDPId_flow_basic *)B;
+//    struct nDPId_flow_basic const * const flow_basic_a = (struct nDPId_flow_basic const *)A;
+//    struct nDPId_flow_basic const * const flow_basic_b = (struct nDPId_flow_basic const *)B;
 //
 //    if (flow_basic_a->hashval < flow_basic_b->hashval)
 //    {
@@ -2916,21 +2980,15 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
 
                 if (flow->info.detection_completed == 0)
                 {
-                    uint8_t protocol_was_guessed = 0;
-
                     if (ndpi_is_protocol_detected(flow->info.detection_data->guessed_l7_protocol) == 0)
                     {
                         flow->info.detection_data->guessed_l7_protocol =
                             ndpi_detection_giveup(workflow->ndpi_struct,
-                                                  &flow->info.detection_data->flow,
-                                                  &protocol_was_guessed);
+                                                  &flow->info.detection_data->flow);
                     }
-                    else
-                    {
-                        protocol_was_guessed = 1;
-                    }
+                   
 
-                    if (protocol_was_guessed != 0)
+                    if (flow->info.detection_data->flow.protocol_was_guessed != 0)
                     {
                         workflow->total_guessed_flows++;
                         jsonize_flow_detection_event(reader_thread, flow, FLOW_EVENT_GUESSED);
@@ -3004,7 +3062,7 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 //{
 //    struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)user_data;
 //    struct nDPId_workflow * const workflow = reader_thread->workflow;
-//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic * const *)A;
 //
 //    (void)depth;
 //
@@ -3236,6 +3294,7 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
     }
 
     jsonize_basic(reader_thread, 1);
+#ifndef NO_MAIN
 #ifndef PKG_VERSION
     ndpi_serialize_string_string(&workflow->ndpi_serializer, "version", "unknown");
 #else
@@ -3243,6 +3302,11 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
 #endif
     ndpi_serialize_string_string(&workflow->ndpi_serializer, "ndpi_version", ndpi_revision());
     ndpi_serialize_string_uint32(&workflow->ndpi_serializer, "ndpi_api_version", ndpi_get_api_version());
+#else
+    ndpi_serialize_string_string(&workflow->ndpi_serializer, "version", "");
+    ndpi_serialize_string_string(&workflow->ndpi_serializer, "ndpi_version", "");
+    ndpi_serialize_string_uint32(&workflow->ndpi_serializer, "ndpi_api_version", 0);
+#endif    
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
                                  "size_per_flow",
                                  (uint64_t)(sizeof(struct nDPId_flow) + sizeof(struct nDPId_detection_data)));
@@ -3458,9 +3522,12 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         if (reader_thread->collector_sockfd >= 0)
         {
             close(reader_thread->collector_sockfd);
+#ifdef ENABLE_CRYPTO
+            ncrypt_clear_handshake(&reader_thread->workflow->ncrypt_entity);
+#endif
         }
 
-        int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
+        int sock_type = SOCK_STREAM;
         reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
         if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
         {
@@ -3475,7 +3542,10 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
             goto retry_or_fail;
         }
 
-        if (set_collector_nonblock(reader_thread) != 0)
+        struct timeval sock_read;
+        sock_read.tv_sec = 5;
+        sock_read.tv_usec = 0;
+        if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_RCVTIMEO, &sock_read, sizeof(sock_read)) < 0)
         {
             reader_thread->collector_sock_last_errno = errno;
             goto retry_or_fail;
@@ -3494,7 +3564,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
             logger(0, "Successfully established connection with the socket");
         }
 
-        if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
+        if (set_collector_nonblock(reader_thread) != 0)
         {
             reader_thread->collector_sock_last_errno = errno;
             goto retry_or_fail;
@@ -3536,7 +3606,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
-    ssize_t written;
+   
 
     /* ---------------------------
        Step 1: Send 4-byte header
@@ -3545,7 +3615,18 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     encode_uint32_be((uint32_t)length, len_hdr);
 
     errno = 0;
-    ssize_t header_written = write(reader_thread->collector_sockfd, len_hdr, 4);
+    ssize_t header_written = -1;
+
+ #ifdef ENABLE_CRYPTO
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+    {
+        header_written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
+    }
+    else
+#endif
+    {
+        header_written = write(reader_thread->collector_sockfd, len_hdr, 4);
+    }
 
     if (header_written != 4)
     {
@@ -3568,72 +3649,101 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     /* ---------------------------
        Step 2: Send JSON payload
        --------------------------- */
+    ssize_t written;
     errno = 0;
-    if (reader_thread->collector_sock_last_errno == 0 &&
-        (written = write(reader_thread->collector_sockfd, newline_json_msg, length)) != length)
+    if (reader_thread->collector_sock_last_errno == 0)
     {
-        saved_errno = errno;
-        if (saved_errno == EPIPE || written == 0)
+#ifdef ENABLE_CRYPTO
+        if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
         {
-            logger(1,
-                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
-                   workflow->packets_captured,
-                   reader_thread->array_index);
+            written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
         }
-        if (saved_errno != EAGAIN)
+        else
+#endif
         {
-            if (saved_errno == ECONNREFUSED)
+            written = write(reader_thread->collector_sockfd, newline_json_msg, length);
+        }
+
+        if (written != length)
+        {
+            saved_errno = errno;
+            if (saved_errno == EPIPE || written == 0)
             {
                 logger(1,
-                       "[%8llu, %zu] %s to %s refused by endpoint",
+                       "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
                        workflow->packets_captured,
-                       reader_thread->array_index,
-                       (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection" : "Datagram"),
-                       GET_CMDARG_STR(nDPId_options.collector_address));
+                       reader_thread->array_index);
             }
-            reader_thread->collector_sock_last_errno = saved_errno;
-        }
-        else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
-        {
-            write_to_console(0, 1, "<AF_UNIX blocking fallback triggered>");
-
-            size_t pos = (written < 0 ? 0 : written);
-            set_collector_block(reader_thread);
-            while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos)) !=
-                   (length - pos))
+            if (saved_errno != EAGAIN)
             {
-                saved_errno = errno;
-                if (saved_errno == EPIPE || written == 0)
+                if (saved_errno == ECONNREFUSED)
                 {
                     logger(1,
-                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector (3)",
-                           workflow->packets_captured,
-                           reader_thread->array_index);
-                    reader_thread->collector_sock_last_errno = saved_errno;
-                    break;
-                }
-                else if (written < 0)
-                {
-                    logger(1,
-                           "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
+                           "[%8llu, %zu] %s to %s refused by endpoint",
                            workflow->packets_captured,
                            reader_thread->array_index,
-                           GET_CMDARG_STR(nDPId_options.collector_address),
-                           strerror(saved_errno));
-                    reader_thread->collector_sock_last_errno = saved_errno;
-                    break;
+                           (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection"
+                                                                                            : "Datagram"),
+                           GET_CMDARG_STR(nDPId_options.collector_address));
                 }
-                else
-                {
-                    pos += written;
-                }
+                reader_thread->collector_sock_last_errno = saved_errno;
             }
-            set_collector_nonblock(reader_thread);
+            else 
+            {
+                write_to_console(0, 1, "<AF_UNIX blocking fallback triggered>");
+
+                size_t pos = (written < 0 ? 0 : written);
+                set_collector_block(reader_thread);
+                while (1)
+                {
+#ifdef ENABLE_CRYPTO
+                    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+                    {
+                        written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg + pos, s_ret - pos);
+                    }
+                    else
+#endif
+                    {
+                        written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos);
+                    }
+                    if ((size_t)written == s_ret - pos)
+                    {
+                        break;
+                    }
+
+                    saved_errno = errno;
+                    if (saved_errno == EPIPE || written == 0)
+                    {
+                        logger(1,
+                               "[%8llu, %zu] Lost connection to nDPIsrvd Collector (3)",
+                               workflow->packets_captured,
+                               reader_thread->array_index);
+                        reader_thread->collector_sock_last_errno = saved_errno;
+                        break;
+                    }
+                    else if (written < 0)
+                    {
+                        logger(1,
+                               "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
+                               workflow->packets_captured,
+                               reader_thread->array_index,
+                               GET_CMDARG_STR(nDPId_options.collector_address),
+                               strerror(saved_errno));
+                        reader_thread->collector_sock_last_errno = saved_errno;
+                        break;
+                    }
+                    else
+                    {
+                        pos += written;
+                    }
+                }
+                set_collector_nonblock(reader_thread);
+            }
         }
-    }
-    else
-    {
-        write_to_console(0, 3, "Data written to socket successfully");
+        else
+        {
+            write_to_console(0, 3, "Data written to socket successfully");
+        }
     }
 }
  
@@ -3650,22 +3760,19 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
 
         if (connect_to_collector(reader_thread, false) == 0)
         {
-            if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
-            {
-                logger(1,
-                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s (1)",
-                       workflow->packets_captured,
-                       reader_thread->array_index,
-                       GET_CMDARG_STR(nDPId_options.collector_address));
-                jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
-            }
+            logger(1,
+                   "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s (1)",
+                   workflow->packets_captured,
+                   reader_thread->array_index,
+                   GET_CMDARG_STR(nDPId_options.collector_address));
+            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);           
         }
         else
         {
             if (saved_errno != reader_thread->collector_sock_last_errno)
             {
                 logger(1,
-                       "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
+                       "[%8llu, %zu] Could not reconnect to nDPIsrvd Collector at %s, will try again later. Error: %s",
                        workflow->packets_captured,
                        reader_thread->array_index,
                        GET_CMDARG_STR(nDPId_options.collector_address),
@@ -3676,6 +3783,30 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
             return;
         }
     }
+
+ #ifdef ENABLE_CRYPTO
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+    {
+        if (ncrypt_handshake_done(&workflow->ncrypt_entity) == 0)
+        {
+            set_collector_block(reader_thread);
+            ncrypt_free_entity(&workflow->ncrypt_entity);
+            int rv = ncrypt_on_connect(&ncrypt_ctx, reader_thread->collector_sockfd, &workflow->ncrypt_entity);
+            if (rv != NCRYPT_SUCCESS)
+            {
+                logger(1,
+                       "[%8llu, %zu] TLS handshake failed with: %d",
+                       workflow->packets_captured,
+                       reader_thread->array_index,
+                       rv);
+                reader_thread->collector_sock_last_errno = EPIPE;
+                return;
+            }
+            ncrypt_set_handshake(&workflow->ncrypt_entity);
+            set_collector_nonblock(reader_thread);
+        }
+    }
+#endif
 
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
@@ -4619,14 +4750,6 @@ static uint32_t calculate_ndpi_flow_struct_hash(struct ndpi_flow_struct const * 
                                                                       // future)
     hash += ndpi_flow->confidence;
 
-    const size_t protocol_bitmask_size = sizeof(ndpi_flow->excluded_protocol_bitmask.fds_bits) /
-                                         sizeof(ndpi_flow->excluded_protocol_bitmask.fds_bits[0]);
-    for (size_t i = 0; i < protocol_bitmask_size; ++i)
-    {
-        hash += ndpi_flow->excluded_protocol_bitmask.fds_bits[i];
-        hash += ndpi_flow->excluded_protocol_bitmask.fds_bits[i];
-    }
-
     size_t host_server_name_len =
         strnlen((const char *)ndpi_flow->host_server_name, sizeof(ndpi_flow->host_server_name));
     hash += host_server_name_len;
@@ -4911,7 +5034,7 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
                 return 1;
             }
 
-            ethernet = (struct ndpi_ethhdr *)&packet[eth_offset];
+            ethernet = (struct ndpi_ethhdr const *)&packet[eth_offset];
             *ip_offset = sizeof(struct ndpi_ethhdr) + eth_offset;
             *layer3_type = ntohs(ethernet->h_proto);
 
@@ -5003,7 +5126,7 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
                                      UNKNOWN_DATALINK_LAYER,
                                      "%s%u",
                                      "layer_type",
-                                     ntohl(*((uint32_t *)&packet[eth_offset])));
+                                     ntohl(*((uint32_t const *)&packet[eth_offset])));
                 jsonize_packet_event(reader_thread, header, packet, 0, 0, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
             return 1;
@@ -5169,7 +5292,7 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
         return 0; /* Too short for GRE header*/
     }
     uint32_t offset = (l4_ptr - packet);
-    struct ndpi_gre_basehdr * grehdr = (struct ndpi_gre_basehdr *)&packet[offset];
+    struct ndpi_gre_basehdr const * const grehdr = (struct ndpi_gre_basehdr const *)&packet[offset];
     offset += sizeof(struct ndpi_gre_basehdr);
 
     /*
@@ -5289,7 +5412,7 @@ static void ndpi_process_packet(uint8_t * const args,
     uint8_t is_new_flow = 0;
 
     const struct ndpi_iphdr * ip;
-    struct ndpi_ipv6hdr * ip6;
+    const struct ndpi_ipv6hdr * ip6;
     const struct ndpi_tcphdr * tcp = NULL;
 
     uint64_t time_us;
@@ -5337,7 +5460,7 @@ static void ndpi_process_packet(uint8_t * const args,
 process_layer3_again:
     if (type == ETH_P_IP)
     {
-        ip = (struct ndpi_iphdr *)&packet[ip_offset];
+        ip = (struct ndpi_iphdr const *)&packet[ip_offset];
         ip6 = NULL;
         if (header->caplen < ip_offset + sizeof(*ip))
         {
@@ -5358,7 +5481,7 @@ process_layer3_again:
     else if (type == ETH_P_IPV6)
     {
         ip = NULL;
-        ip6 = (struct ndpi_ipv6hdr *)&packet[ip_offset];
+        ip6 = (struct ndpi_ipv6hdr const *)&packet[ip_offset];
         if (header->caplen < ip_offset + sizeof(*ip6))
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
@@ -5405,7 +5528,7 @@ process_layer3_again:
         flow_basic.l3_type = L3_IP;
 
         if (ndpi_detection_get_l4(
-                (uint8_t *)ip, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV4) != 0)
+                (uint8_t const *)ip, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV4) != 0)
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
             {
@@ -5425,7 +5548,7 @@ process_layer3_again:
     {
         flow_basic.l3_type = L3_IP6;
         if (ndpi_detection_get_l4(
-                (uint8_t *)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
+                (uint8_t const*)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
             {
@@ -5564,7 +5687,7 @@ process_layer3_again:
             }
             return;
         }
-        tcp = (struct ndpi_tcphdr *)l4_ptr;
+        tcp = (struct ndpi_tcphdr const *)l4_ptr;
         l4_payload_len = ndpi_max(0, l4_len - 4 * tcp->doff);
         flow_basic.tcp_fin_rst_seen = (tcp->fin == 1 || tcp->rst == 1 ? 1 : 0);
         flow_basic.tcp_is_midstream_flow = (tcp->syn == 0 ? 1 : 0);
@@ -5598,7 +5721,7 @@ process_layer3_again:
             }
             return;
         }
-        udp = (struct ndpi_udphdr *)l4_ptr;
+        udp = (struct ndpi_udphdr const *)l4_ptr;
         l4_payload_len = (l4_len > sizeof(struct ndpi_udphdr)) ? l4_len - sizeof(struct ndpi_udphdr) : 0;
         flow_basic.src_port = ntohs(udp->source);
         flow_basic.dst_port = ntohs(udp->dest);
@@ -5982,7 +6105,7 @@ process_layer3_again:
                      1);
         flow_to_process->flow_extended.flow_analysis
             ->entropies[(total_flow_packets - 1) % GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse)] =
-            ndpi_entropy((ip != NULL ? (uint8_t *)ip : (uint8_t *)ip6), ip_size);
+            ndpi_entropy((ip != NULL ? (uint8_t const *)ip : (uint8_t const *)ip6), ip_size);
 
         if (total_flow_packets == GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse))
         {
@@ -6010,12 +6133,13 @@ process_layer3_again:
     flow_to_process->flow_extended.detected_l7_protocol =
         ndpi_detection_process_packet(workflow->ndpi_struct,
                                       &flow_to_process->info.detection_data->flow,
-                                      ip != NULL ? (uint8_t *)ip : (uint8_t *)ip6,
+                                      ip != NULL ? (uint8_t const *)ip : (uint8_t const *)ip6,
                                       ip_size,
                                       workflow->last_thread_time / 1000,
                                       NULL);
 
     if (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) != 0 &&
+        flow_to_process->info.detection_data->flow.protocol_was_guessed == 0 &&
         flow_to_process->info.detection_completed == 0)
     {
         flow_to_process->info.detection_completed = 1;
@@ -6047,17 +6171,17 @@ process_layer3_again:
         }
     }
 
-    if (flow_to_process->info.detection_data->flow.num_processed_pkts ==
-            GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) &&
-        flow_to_process->info.detection_completed == 0)
+   if ((flow_to_process->info.detection_data->flow.num_processed_pkts ==
+             GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) &&
+         flow_to_process->info.detection_completed == 0) ||
+        (flow_to_process->flow_extended.detected_l7_protocol.state == NDPI_STATE_CLASSIFIED &&
+         (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) == 0 ||
+          flow_to_process->info.detection_data->flow.protocol_was_guessed != 0)))
     {
         /* last chance to guess something, better then nothing */
-        uint8_t protocol_was_guessed = 0;
         flow_to_process->info.detection_data->guessed_l7_protocol =
-            ndpi_detection_giveup(workflow->ndpi_struct,
-                                  &flow_to_process->info.detection_data->flow,
-                                  &protocol_was_guessed);
-        if (protocol_was_guessed != 0)
+            ndpi_detection_giveup(workflow->ndpi_struct, &flow_to_process->info.detection_data->flow);
+        if (flow_to_process->info.detection_data->flow.protocol_was_guessed != 0)
         {
             workflow->total_guessed_flows++;
             jsonize_flow_detection_event(reader_thread, flow_to_process, FLOW_EVENT_GUESSED);
@@ -6071,8 +6195,7 @@ process_layer3_again:
 
     if (flow_to_process->info.detection_data->flow.num_processed_pkts ==
             GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) ||
-        (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) != 0 &&
-         ndpi_extra_dissection_possible(workflow->ndpi_struct, &flow_to_process->info.detection_data->flow) == 0))
+        flow_to_process->flow_extended.detected_l7_protocol.state == NDPI_STATE_CLASSIFIED)
     {
         struct ndpi_proto detected_l7_protocol = flow_to_process->flow_extended.detected_l7_protocol;
         if (ndpi_is_protocol_detected(detected_l7_protocol) == 0)
@@ -6120,8 +6243,8 @@ static void get_current_time(struct timeval * const tval)
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 //static void ndpi_log_flow_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
-//    struct nDPId_reader_thread const * const reader_thread = (struct nDPId_reader_thread *)user_data;
-//    struct nDPId_flow_basic const * const flow_basic = *(struct nDPId_flow_basic **)A;
+//    struct nDPId_reader_thread const * const reader_thread = (struct nDPId_reader_thread const *)user_data;
+//    struct nDPId_flow_basic const * const flow_basic = *(struct nDPId_flow_basic const * const *)A;
 //
 //    (void)depth;
 //    (void)user_data;
@@ -6146,7 +6269,7 @@ static void get_current_time(struct timeval * const tval)
 //
 //            case FS_FINISHED:
 //            {
-//                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
+//                struct nDPId_flow const * const flow = (struct nDPId_flow const *)flow_basic;
 //
 //                uint64_t last_seen = get_last_pkt_time(flow_basic);
 //                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
@@ -6166,7 +6289,7 @@ static void get_current_time(struct timeval * const tval)
 //
 //            case FS_INFO:
 //            {
-//                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
+//                struct nDPId_flow const * const flow = (struct nDPId_flow const *)flow_basic;
 //
 //                uint64_t last_seen = get_last_pkt_time(flow_basic);
 //                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
@@ -6309,6 +6432,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 
         sigaddset(&thread_signal_set, SIGINT);
         sigaddset(&thread_signal_set, SIGTERM);
+        sigaddset(&thread_signal_set, SIGPIPE);
         sigaddset(&thread_signal_set, SIGUSR1);
         int signal_fd = signalfd(-1, &thread_signal_set, SFD_NONBLOCK);
         if (signal_fd < 0 || set_fd_cloexec(signal_fd) < 0)
@@ -6428,6 +6552,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     }
                     else
                     {
+                        int silenced = 0;
                         int is_valid_signal = 0;
                         char const * signame = "unknown";
                         switch (fdsi.ssi_signo)
@@ -6442,19 +6567,25 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                                 signame = "SIGTERM";
                                 sighandler(SIGTERM);
                                 break;
+                            case SIGPIPE:
+                                silenced = 1;
+                                break;
                             case SIGUSR1:
                                 is_valid_signal = 1;
                                 signame = "SIGUSR1";
                                 log_all_flows(reader_thread);
                                 break;
                         }
-                        if (is_valid_signal != 0)
+                        if (silenced == 0)
                         {
-                            logger(1, "Received signal %d (%s)", fdsi.ssi_signo, signame);
-                        }
-                        else
-                        {
-                            logger(1, "Received signal %d (%s), ignored", fdsi.ssi_signo, signame);
+                            if (is_valid_signal != 0)
+                            {
+                                logger(1, "Received signal %d (%s)", fdsi.ssi_signo, signame);
+                            }
+                            else
+                            {
+                                logger(1, "Received signal %d (%s), ignored", fdsi.ssi_signo, signame);
+                            }
                         }
                     }
                 }
@@ -6628,7 +6759,7 @@ static int start_reader_threads(void)
 //static void ndpi_shutdown_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
 //    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
-//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic * const *)A;
 //
 //    (void)depth;
 //
@@ -6896,6 +7027,14 @@ static void print_usage(char const * const arg0)
         "\t  \tDefault: disabled\n"
         "\t-c\tPath to a UNIX socket (nDPIsrvd Collector) or a custom UDP endpoint.\n"
         "\t  \tDefault: `%s'\n"
+#ifdef ENABLE_CRYPTO
+        "\t-k\tPath to the client certificate file (PEM format)\n"
+        "\t  \tDefault: disabled\n"
+        "\t-K\tPath to the client key file (PEM format)\n"
+        "\t  \tDefault: disabled\n"
+        "\t-F\tPath to the server CA file (PEM format)\n"
+        "\t  \tDefault: disabled\n"
+#endif
 #ifdef ENABLE_EPOLL
         "\t-e\tUse poll() instead of epoll().\n"
         "\t  \tDefault: epoll() on Linux, poll() otherwise\n"
@@ -6916,7 +7055,7 @@ static void print_usage(char const * const arg0)
         "\t  \tDefault: disabled\n"
         "\t-J\tLoad a nDPI JA4 hash blacklist file.\n"
         "\t  \tDefault: disabled\n"
-        "\t-k\tSet the console output level from 1 to 4.\n"
+        "\t-y\tSet the console output level from 1 to 4.\n"
         "\t  \t1 = critical only, 4 = detailed output.\n"
         "\t  \tDefault: 1\n"
         "\t-S\tLoad a nDPI SSL SHA1 hash blacklist file.\n"
@@ -7017,7 +7156,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:edp:u:g:R:P:C:J:S:a:U:Azo:k:vh")) != -1)
+    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:k:K:F:edp:u:g:R:P:C:J:S:a:U:Azo:y:vh")) != -1)
     {
         switch (opt)
         {
@@ -7059,6 +7198,30 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'c':
                 set_cmdarg_string(&nDPId_options.collector_address, optarg);
                 break;
+            case 'k':
+#ifdef ENABLE_CRYPTO
+                set_cmdarg_string(&nDPId_options.client_crt_pem_file, optarg);
+                break;
+#else
+                logger(1, "Client cert PEM file: %s", "nDPId was built w/o OpenSSL/Crypto support");
+                return 1;
+#endif
+            case 'K':
+#ifdef ENABLE_CRYPTO
+                set_cmdarg_string(&nDPId_options.client_key_pem_file, optarg);
+                break;
+#else
+                logger(1, "Client key PEM file: %s", "nDPId was built w/o OpenSSL/Crypto support");
+                return 1;
+#endif
+            case 'F':
+#ifdef ENABLE_CRYPTO
+                set_cmdarg_string(&nDPId_options.server_ca_pem_file, optarg);
+                break;
+#else
+                logger(1, "Server CA PEM file: %s", "nDPId was built w/o OpenSSL/Crypto support");
+                return 1;
+#endif
             case 'e':
 #ifdef ENABLE_EPOLL
                 set_cmdarg_boolean(&nDPId_options.use_poll, 1);
@@ -7091,7 +7254,7 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'J':
                 set_cmdarg_string(&nDPId_options.custom_ja4_file, optarg);
                 break;
-            case 'k': /* console output level */
+            case 'y': /* console output level */
             {
                 char * endptr = NULL;
                 long lvl = strtol(optarg, &endptr, 10);
@@ -7432,6 +7595,31 @@ static int validate_options(void)
         logger_early(1, "%s", "Higher values of max-packets-per-flow-to-send may cause superfluous network usage.");
     }
 
+    #ifdef ENABLE_CRYPTO
+    if ((IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 &&
+         IS_CMDARG_SET(nDPId_options.client_key_pem_file) == 0) ||
+        (IS_CMDARG_SET(nDPId_options.client_crt_pem_file) == 0 &&
+         IS_CMDARG_SET(nDPId_options.client_key_pem_file) != 0) ||
+        (IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 && IS_CMDARG_SET(nDPId_options.server_ca_pem_file) == 0))
+    {
+        logger_early(1,
+                     "%s",
+                     "Encryption requires a client certificate, key and a server CA file to be set. See `-k', `-K' and "
+                     "`-F'.");
+        retval = 1;
+    }
+
+    if ((IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 ||
+         IS_CMDARG_SET(nDPId_options.client_key_pem_file) != 0 ||
+         IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0) &&
+        (IS_CMDARG_SET(nDPId_options.collector_address) == 0 ||
+         nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX))
+    {
+        logger_early(1, "%s", "Encryption requires an TCP endpoint set with `-c'.");
+        retval = 1;
+    }
+#endif
+
     return retval;
 }
 
@@ -7608,12 +7796,13 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    set_ndpi_malloc(ndpi_malloc_wrapper);
-    set_ndpi_free(ndpi_free_wrapper);
-    set_ndpi_flow_malloc(NULL);
-    set_ndpi_flow_free(NULL);
+    ndpi_set_memory_alloction_functions(ndpi_malloc_wrapper, ndpi_free_wrapper, ndpi_calloc_wrapper, ndpi_realloc_wrapper, NULL, NULL, NULL, NULL);
 
     init_logging("nDPId");
+#ifdef ENABLE_CRYPTO
+    ncrypt_init();
+    ncrypt_ctx(&ncrypt_ctx);
+#endif
 
     read_ndpid_config("Settings/nDPIdConfiguration.json");
 
@@ -7655,6 +7844,18 @@ int main(int argc, char ** argv)
         logger_early(1, "%s", "Option validation failed.");
         return 1;
     }
+
+#ifdef ENABLE_CRYPTO
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0 &&
+        ncrypt_init_client(&ncrypt_ctx,
+                           GET_CMDARG_STR(nDPId_options.server_ca_pem_file),
+                           GET_CMDARG_STR(nDPId_options.client_key_pem_file),
+                           GET_CMDARG_STR(nDPId_options.client_crt_pem_file)) != NCRYPT_SUCCESS)
+    {
+        logger_early(1, "%s", "Could not initialize crypto.");
+        return 1;
+    }
+#endif
 
     log_app_info();
 
@@ -7703,7 +7904,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    logger(0, "nDPID program version is 12.03.2025.02\n");
+    logger(0, "nDPID program version is 12.09.2025.01\n");
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
@@ -7733,6 +7934,10 @@ int main(int argc, char ** argv)
     free_flow_map(&flow_map);
     shutdown_socket_buffer();
     shutdown_logging();
+
+#ifdef ENABLE_CRYPTO
+    ncrypt_free_ctx(&ncrypt_ctx);
+#endif
 
     return 0;
 }
