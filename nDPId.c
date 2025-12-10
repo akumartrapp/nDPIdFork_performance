@@ -515,7 +515,7 @@ void create_events_and_alerts_folders()
         if (last_slash != NULL)
         {
             *last_slash = '\0';
-            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [% s]", executable_directory);
+            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [%s]", executable_directory);
             write_to_console(0, 1, stat_msg);
         }
     }
@@ -7008,7 +7008,7 @@ static void print_subopt_usage(void)
     }
 }
 
-static printVersion()
+static void printVersion()
 {
     // MM.DD.YYYY
     printf("nDPID program version is 12.09.2025.03\n");
