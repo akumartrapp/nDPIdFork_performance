@@ -6984,8 +6984,15 @@ static void print_subopt_usage(void)
     }
 }
 
+static printVersion()
+{
+    // MM.DD.YYYY
+    fprintf(stderr, "nDPID program version is 12.09.2025.02\n");
+}
+
 static void print_usage(char const * const arg0)
 {
+    printVersion();
     static char const usage[] =
         "Usage: %s "
         "[-f config-file]\n"
@@ -7904,7 +7911,7 @@ int main(int argc, char ** argv)
     init_flow_map(&flow_map, 10000);   
 
     // MM.DD.YYYY
-    logger(0, "nDPID program version is 12.09.2025.01\n");
+    printVersion();
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
