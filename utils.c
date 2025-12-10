@@ -463,7 +463,7 @@ void init_logging(char const * const name)
 
 void log_app_info(void)
 {
-    logger(0,
+    write_to_console(0,1,
            "version %s",
 #ifdef GIT_VERSION
            GIT_VERSION
