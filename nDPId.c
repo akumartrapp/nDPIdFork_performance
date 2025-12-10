@@ -1833,7 +1833,7 @@ static void get_ip6_address_and_netmask(struct ifaddrs const * const ifaddr)
         void const * saddr = &nDPId_options.pcap_dev_ip6.v6.ip;
         void const * snetm = &nDPId_options.pcap_dev_netmask6.v6.ip;
         void const * ssubn = &nDPId_options.pcap_dev_subnet6.v6.ip;
-        logger(0,
+        write_to_console(0, 1,
                "%s IPv6 address netmask subnet: %s %s %s",
                GET_CMDARG_STR(nDPId_options.pcap_file_or_interface),
                inet_ntop(AF_INET6, saddr, addr, sizeof(addr)),
@@ -7123,6 +7123,13 @@ static void print_usage(char const * const arg0)
 
 static void nDPId_print_deps_version(FILE * const out)
 {
+    if (console_output_level < 1)
+    {
+        return;
+    }
+    // MM.DD.YYYY
+    printVersion();
+
     fprintf(out,
             "-------------------------------------------------------\n"
             "package version: %s\n"
@@ -7933,9 +7940,6 @@ int main(int argc, char ** argv)
 
     create_events_and_alerts_folders();
     init_flow_map(&flow_map, 10000);   
-
-    // MM.DD.YYYY
-    printVersion();
 
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
