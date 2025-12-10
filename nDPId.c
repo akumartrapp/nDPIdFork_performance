@@ -7782,7 +7782,7 @@ static void log_socket_buffer_stats()
 
 static void * socket_writer_thread_func()
 {
-    write_to_console(0, 1, "socket_writer_thread_func called.\n");
+    write_to_console(0, 1, "socket_writer_thread_func called.");
     while (1)
     {
         pthread_mutex_lock(&socket_queue.lock);
