@@ -1349,7 +1349,7 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
 
 static void printConfigurationData(int level)
 {
-    //if (level <= console_output_level)
+    if (level <= console_output_level)
     {
         printf("nDPId Configuration Data:\n");
         printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
@@ -1367,8 +1367,13 @@ static void printConfigurationData(int level)
 }
 
 // Function to read and parse the JSON config
-static void readConfigurationData(const char * filename)
+static void readConfigurationData(const char * filename, int level)
 {
+    if (level <= console_output_level)
+    {
+        printf("Reading configuration data from JSON file: %s\n", filename);
+    }
+
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
@@ -7881,7 +7886,7 @@ int main(int argc, char ** argv)
 #endif
    
     /* Load default config first */
-    readConfigurationData(global_config_file_path);
+    readConfigurationData(global_config_file_path, 0);
 
     /* Parse all options including -x */
     if (nDPId_parse_options(argc, argv) != 0)
@@ -7897,12 +7902,12 @@ int main(int argc, char ** argv)
         if (fp)
         {
             fclose(fp);
-            readConfigurationData(global_config_file_path);
+            readConfigurationData(global_config_file_path, 1);
         }
         else
         {
             printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
-            readConfigurationData("Settings/nDPIdConfiguration.json");
+            readConfigurationData("Settings/nDPIdConfiguration.json", 1);
         }
     }
 
