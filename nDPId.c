@@ -7901,7 +7901,13 @@ int main(int argc, char ** argv)
 #endif
    
     /* 1. Parse ONLY -x first (if provided) */
+    int saved_optind = optind; // save getopt state
+    optind = 1;                // reset getopt before mini parse
     parse_config_file_option_only(argc, argv);
+
+    /* Reset getopt state so full parse works */
+    optind = 1;
+    opterr = 1; // ensure errors are printed for unknown options
 
     /* 2. Try loading the selected config file */
     FILE * test_fp = fopen(global_config_file_path, "r");
@@ -7921,6 +7927,7 @@ int main(int argc, char ** argv)
     {
         return 1;
     }
+
 
     printConfigurationData(1);
     ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json", console_output_level);
