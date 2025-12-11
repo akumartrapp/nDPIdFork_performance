@@ -206,6 +206,9 @@ static void * socket_writer_thread_func(void * arg);
 static void log_socket_buffer_stats();
 static void init_socket_buffer();
 
+/* Global config file path */
+static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
+
 /*--------------------------------------------------------------------------------------------------------------*/
 void write_to_console(int error, int level, const char * fmt, ...)
 {
@@ -7015,7 +7018,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("nDPID program version is 12.11.2025.01\n");
+    printf("nDPID program version is 12.11.2025.02\n");
 }
 
 static void print_usage(char const * const arg0)
@@ -7036,6 +7039,8 @@ static void print_usage(char const * const arg0)
         "[-a instance-alias] [-U instance-uuid] [-A]\n"
         "\t \t"
         "[-o subopt=value]\n"
+        "\t  \t"
+        "[-x json-config-file]\n"
         "\t  \t"
         "[-v] [-h]\n\n"
         "\t-f\tLoad nDPId/libnDPI options from a configuration file.\n"
@@ -7114,9 +7119,12 @@ static void print_usage(char const * const arg0)
         "\t-z\tEnable flow memory zLib compression.\n"
         "\t  \tDefault: disabled\n"
 #endif
+        "\t-x\tPath to the JSON configuration file (nDPIdConfiguration.json)\n"
+        "\t  \tDefault: Settings/nDPIdConfiguration.json\n"
         "\t-o\t(Carefully) Tune some daemon options. See subopts below.\n"
         "\t-v\tversion\n"
         "\t-h\tthis\n\n";
+
     fprintf(stderr,
             usage,
             arg0,
@@ -7124,6 +7132,7 @@ static void print_usage(char const * const arg0)
             nDPId_options.pidfile.string.default_value,
             nDPId_options.user.string.default_value);
 }
+
 
 static void nDPId_print_deps_version(FILE * const out)
 {
@@ -7198,7 +7207,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:k:K:F:edp:u:g:R:P:C:J:S:a:U:Azo:y:vh")) != -1)
+    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:k:K:F:edp:u:g:R:P:C:J:S:a:U:Azo:y:x:vh")) != -1)
     {
         switch (opt)
         {
@@ -7295,6 +7304,13 @@ static int nDPId_parse_options(int argc, char ** argv)
                 break;
             case 'J':
                 set_cmdarg_string(&nDPId_options.custom_ja4_file, optarg);
+                break;
+            case 'x': /* JSON config file path */
+                if (optarg && strlen(optarg) > 0)
+                {
+                    snprintf(global_config_file_path, sizeof(global_config_file_path), "%s", optarg);
+                }
+                
                 break;
             case 'y': /* console output level */
             {
@@ -7863,12 +7879,23 @@ int main(int argc, char ** argv)
     ncrypt_init();
     ncrypt_ctx(&ncrypt_ctx);
 #endif
-
-    readConfigurationData("Settings/nDPIdConfiguration.json");
    
     if (nDPId_parse_options(argc, argv) != 0)
     {
         return 1;
+    }
+
+    /* Attempt to use user-specified config file */
+    FILE * test_fp = fopen(global_config_file_path, "r");
+    if (test_fp)
+    {
+        fclose(test_fp);
+        readConfigurationData(global_config_file_path);
+    }
+    else
+    {
+        printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
+        readConfigurationData("Settings/nDPIdConfiguration.json");
     }
 
     printConfigurationData(1);
