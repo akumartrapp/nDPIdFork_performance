@@ -7866,6 +7866,23 @@ static void * socket_writer_thread_func()
     return NULL;
 }
 
+int is_valid_json_file(const char * filepath)
+{
+    if (filepath == NULL || strlen(filepath) == 0)
+    {
+        return 0;
+    }
+
+    // Optional: check extension
+    const char * ext = strrchr(filepath, '.');
+    if (!ext || strcmp(ext, ".json") != 0)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
 /*----------------------------------------------------------------------------*/
 
 
@@ -7897,24 +7914,32 @@ int main(int argc, char ** argv)
 
     /* If -x was provided, reload JSON config file */
     printf("global_config_file_path = %s\n", global_config_file_path);
+    bool read_from_default_config_file = true;
     if (strcmp(global_config_file_path, "Settings/nDPIdConfiguration.json") != 0)
     {
-        FILE * fp = fopen(global_config_file_path, "r");
-        if (fp)
+        if (is_valid_json_file(global_config_file_path))
         {
-            printf("Loading config file: %s\n", global_config_file_path);
-            fclose(fp);
-            readConfigurationData(global_config_file_path, 1);
+            readConfigurationData(global_config_file_path);
+            read_from_default_config_file = false
         }
-        //else
-        //{
-        //    printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
-        //    readConfigurationData("Settings/nDPIdConfiguration.json", 1);
-        //}
+        else
+        {
+            printf("WARNING: Config file '%s' is invalid or not found. Using default.\n", global_config_file_path);
+            readConfigurationData("Settings/nDPIdConfiguration.json");
+        }
     }
 
     printConfigurationData(1);
-    ReadNdpidConfigurationFilterFile(global_config_file_path, console_output_level);
+
+    if (read_from_default_config_file) 
+    {
+        ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json", console_output_level);
+    }
+    else
+    {
+        ReadNdpidConfigurationFilterFile(global_config_file_path, console_output_level);
+    }
+
     set_config_defaults(&general_config_map[0], nDPIsrvd_ARRAY_LENGTH(general_config_map));
     set_config_defaults(&tuning_config_map[0], nDPIsrvd_ARRAY_LENGTH(tuning_config_map));
     {
