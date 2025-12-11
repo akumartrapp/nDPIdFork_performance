@@ -1859,22 +1859,22 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
 /*--------------------------------------------------------------------------------------------------------------------------*/
 static void printParamsVector(const struct SkipParameters * paramsVector, int vectorSize)
 {
-    printf("Params Vector:\n");
+    printf("\tParams Vector:\n");
 
     int i = 0;
     for (i = 0; i < vectorSize; ++i)
     {
-        printf("Entry %d:\n", i + 1);
-        printf("  Source IP: %s\n", paramsVector[i].sourceIP);
-        printf("  Destination IP: %s\n", paramsVector[i].destinationIP);
+        printf("\tEntry %d:\n", i + 1);
+        printf("  \tSource IP: %s\n", paramsVector[i].sourceIP);
+        printf("  \tDestination IP: %s\n", paramsVector[i].destinationIP);
 
         if (paramsVector[i].destinationPort != -1)
         {
-            printf("  Destination Port: %d\n", paramsVector[i].destinationPort);
+            printf("  \tDestination Port: %d\n", paramsVector[i].destinationPort);
         }
         else
         {
-            printf("  Destination Port: NOT_SET\n");
+            printf("  \tDestination Port: NOT_SET\n");
         }
 
         printf("\n");
