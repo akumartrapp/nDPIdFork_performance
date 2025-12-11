@@ -7906,6 +7906,7 @@ int main(int argc, char ** argv)
     /* Parse all options including -x */
     if (nDPId_parse_options(argc, argv) != 0)
     {
+        printf("Error: Failed to parse options\n");
         return 1;
     }
 
