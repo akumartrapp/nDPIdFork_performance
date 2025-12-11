@@ -3642,8 +3642,9 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
        Step 2: Write header (with ONE retry on EAGAIN)
     ------------------------------------------------------- */
     errno = 0;
+
 #ifdef ENABLE_CRYPTO
-    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
         written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
     else
 #endif
@@ -3651,7 +3652,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 
     if (written != 4)
     {
-        saved_errno = errno;
+        saved_errno = errno; // <-- FIX #1 (assign here)
 
         /* Retry once ONLY for EAGAIN */
         if (saved_errno == EAGAIN)
@@ -3659,7 +3660,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
             write_to_console(0, 2, "Header write EAGAIN → retrying once...");
 
 #ifdef ENABLE_CRYPTO
-            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
                 written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
             else
 #endif
@@ -3691,7 +3692,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
     errno = 0;
 
 #ifdef ENABLE_CRYPTO
-    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
         written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
     else
 #endif
@@ -3699,7 +3700,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 
     if (written != length)
     {
-        saved_errno = errno;
+        saved_errno = errno; // <-- FIX #2
 
         /* Retry once ONLY for EAGAIN */
         if (saved_errno == EAGAIN)
@@ -3707,11 +3708,13 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
             write_to_console(0, 2, "Payload write EAGAIN → retrying once...");
 
 #ifdef ENABLE_CRYPTO
-            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
                 written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
             else
 #endif
                 written = write(reader_thread->collector_sockfd, newline_json_msg, length);
+
+            saved_errno = errno; // <-- update errno after retry
         }
 
         if (written != length)
@@ -3736,6 +3739,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 }
 
 
+
  
 static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
                            const char * const json_msg,
@@ -3743,11 +3747,13 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
 {
     write_to_console(0, 3, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
-    int saved_errno;
 
+    /* --------------------------------------------
+       1. Handle reconnection if last write failed
+    --------------------------------------------- */
     if (reader_thread->collector_sock_last_errno != 0)
     {
-        saved_errno = reader_thread->collector_sock_last_errno;
+        int saved_errno = reader_thread->collector_sock_last_errno;
 
         if (connect_to_collector(reader_thread, false) == 0)
         {
@@ -3756,32 +3762,39 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
                    workflow->packets_captured,
                    reader_thread->array_index,
                    GET_CMDARG_STR(nDPId_options.collector_address));
+
             jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
         }
         else
         {
+            /* Still failed – keep the queue entry so retry later */
             if (saved_errno != reader_thread->collector_sock_last_errno)
             {
                 logger(1,
-                       "[%8llu, %zu] Could not reconnect to nDPIsrvd Collector at %s, will try again later. Error: %s",
+                       "[%8llu, %zu] Could not reconnect to nDPIsrvd Collector at %s, "
+                       "will try again later. Error: %s",
                        workflow->packets_captured,
                        reader_thread->array_index,
                        GET_CMDARG_STR(nDPId_options.collector_address),
                        (reader_thread->collector_sock_last_errno != 0
                             ? strerror(reader_thread->collector_sock_last_errno)
-                            : "Internal Error."));
+                            : "Internal Error"));
             }
-            return -1;
+            return -1; // do NOT free json; writer thread will retry same entry
         }
     }
 
 #ifdef ENABLE_CRYPTO
+    /* --------------------------------------------
+       2. Perform TLS handshake if needed
+    --------------------------------------------- */
     if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
     {
         if (ncrypt_handshake_done(&workflow->ncrypt_entity) == 0)
         {
             set_collector_block(reader_thread);
             ncrypt_free_entity(&workflow->ncrypt_entity);
+
             int rv = ncrypt_on_connect(&ncrypt_ctx, reader_thread->collector_sockfd, &workflow->ncrypt_entity);
             if (rv != NCRYPT_SUCCESS)
             {
@@ -3790,83 +3803,84 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
                        workflow->packets_captured,
                        reader_thread->array_index,
                        rv);
+
                 reader_thread->collector_sock_last_errno = EPIPE;
                 return -1;
             }
+
             ncrypt_set_handshake(&workflow->ncrypt_entity);
             set_collector_nonblock(reader_thread);
         }
     }
 #endif
 
+    /* --------------------------------------------
+       3. Convert JSON to nDPI format
+    --------------------------------------------- */
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+
     if (converted_json_str == NULL)
-        return 0; /* nothing to send; treat as success */
+        return 0; // nothing to send → not an error
 
     int rc = 0;
     int length = strlen(converted_json_str);
-    if (length != 0)
-    {
-        if (flow_risk_count)
-        {
-            /* send each risk chunk; on any failure return -1 so caller retries same queue entry */
-            if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
-            {
-                rc = -1;
-                goto out_free;
-            }
 
-            for (int index = 1; index < flow_risk_count; index++)
+    if (length > 0)
+    {
+        /* ======================================================
+           4. If multiple risk chunks → send each independently
+              and if ANY fails, stop immediately (no free!)
+           ====================================================== */
+        if (flow_risk_count > 0)
+        {
+            for (int index = 0; index < flow_risk_count; index++)
             {
-                free(converted_json_str);
-                int dummy = 0;
-                ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &dummy);
+                if (index > 0)
+                {
+                    // Free previous chunk only because we will replace it
+                    free(converted_json_str);
+
+                    int dummy = 0;
+                    ConvertnDPIDataFormat(
+                        json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &dummy);
+                }
+
                 length = strlen(converted_json_str);
-                if (length != 0)
+
+                if (length > 0)
                 {
                     if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
                     {
                         rc = -1;
-                        goto out_free;
+                        goto out; // do NOT free → retry same message later
                     }
                 }
-            }
-
-            if (length == 0)
-            {
-                logger(1, "string length is 0");
-            }
-            else
-            {
-                char * converted_json_str_no_risk = NULL;
-                DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
-                int length_converted = strlen(converted_json_str_no_risk);
-                if (write_to_socket_2(reader_thread, converted_json_str_no_risk, length_converted) != 0)
-                {
-                    free(converted_json_str_no_risk);
-                    rc = -1;
-                    goto out_free;
-                }
-                free(converted_json_str_no_risk);
             }
         }
         else
         {
+            /* ======================================================
+               5. Single message case
+               ====================================================== */
             if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
             {
                 rc = -1;
-                goto out_free;
+                goto out; // do NOT free → message stays in queue
             }
         }
     }
 
-out_free:
-    free(converted_json_str);
+out:
+    /* Free ONLY on total success */
+    if (rc == 0)
+        free(converted_json_str);
+
     return rc;
 }
+
 
 
 static void write_to_socket_buffer(
@@ -7001,7 +7015,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("nDPID program version is 12.09.2025.04\n");
+    printf("nDPID program version is 12.11.2025.01\n");
 }
 
 static void print_usage(char const * const arg0)
