@@ -7930,7 +7930,6 @@ int main(int argc, char ** argv)
     }
 
     printConfigurationData(1);
-
     if (read_from_default_config_file) 
     {
         ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json", console_output_level);
