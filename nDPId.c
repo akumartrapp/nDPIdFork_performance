@@ -1371,7 +1371,7 @@ static void readConfigurationData(const char * filename, int level)
 {
     if (level <= console_output_level)
     {
-        printf("Reading configuration data from JSON file: %s\n", filename);
+        printf("\nReading configuration data from JSON file: %s\n", filename);
     }
 
     FILE * fp = fopen(filename, "r");
