@@ -1808,15 +1808,11 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
     {
         enum json_type type = json_object_get_type(val);
 
-        if (type == json_type_object)
-        {
-            traverseJsonObject(val, paramsVector, vectorSize);
-        }
-        else if (type == json_type_array)
+        // Look for the "skipParameters" array only
+        if (type == json_type_array && strcmp(key, "skipParameters") == 0)
         {
             int arrayLength = json_object_array_length(val);
-            int i = 0;
-            for (i = 0; i < arrayLength; ++i)
+            for (int i = 0; i < arrayLength; ++i)
             {
                 *vectorSize += 1;
                 *paramsVector = realloc(*paramsVector, (*vectorSize) * sizeof(struct SkipParameters));
@@ -1825,41 +1821,40 @@ static void traverseJsonObject(json_object * jsonObj, struct SkipParameters ** p
                 (*paramsVector)[*vectorSize - 1].destinationPort = -1;
 
                 json_object * arrayElement = json_object_array_get_idx(val, i);
-                traverseJsonObject(arrayElement, paramsVector, vectorSize);
+                // Populate each SkipParameters entry
+                json_object_object_foreach(arrayElement, k, v)
+                {
+                    enum json_type t = json_object_get_type(v);
+                    if (t == json_type_string)
+                    {
+                        if (strcmp(k, "sourceIP") == 0)
+                        {
+                            free((*paramsVector)[*vectorSize - 1].sourceIP);
+                            (*paramsVector)[*vectorSize - 1].sourceIP = strdup(json_object_get_string(v));
+                        }
+                        else if (strcmp(k, "destinationIP") == 0)
+                        {
+                            free((*paramsVector)[*vectorSize - 1].destinationIP);
+                            (*paramsVector)[*vectorSize - 1].destinationIP = strdup(json_object_get_string(v));
+                        }
+                    }
+                    else if (t == json_type_int)
+                    {
+                        if (strcmp(k, "destinationPort") == 0)
+                        {
+                            (*paramsVector)[*vectorSize - 1].destinationPort = json_object_get_int(v);
+                        }
+                    }
+                }
             }
         }
-        else
+        else if (type == json_type_object)
         {
-            if (type == json_type_string)
-            {
-                // Assume string key, add your own logic if it's different
-                const char * keyStr = key;
-                const char * valueStr = json_object_get_string(val);
-
-                // Check if key is one of the desired parameters
-                if (strcmp(keyStr, "sourceIP") == 0)
-                {
-                    char * sourceIP = strdup(valueStr);
-                    (*paramsVector)[*vectorSize - 1].sourceIP = sourceIP;
-                }
-
-                // Check if key is one of the desired parameters
-                if (strcmp(keyStr, "destinationIP") == 0)
-                {
-                    char * destinationIP = strdup(valueStr);
-                    (*paramsVector)[*vectorSize - 1].destinationIP = destinationIP;
-                }
-            }
-            else if (type == json_type_int)
-            {
-                // Assume string key, add your own logic if it's different
-                int destinationPort = json_object_get_int(val);
-
-                (*paramsVector)[*vectorSize - 1].destinationPort = destinationPort;
-            }
+            traverseJsonObject(val, paramsVector, vectorSize); // Recursively check inside nested objects
         }
     }
 }
+
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
 static void printParamsVector(const struct SkipParameters * paramsVector, int vectorSize)
@@ -1959,27 +1954,21 @@ void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_consol
         file_contents[file_size] = '\0';
         fclose(fp);
 
-        struct json_object * root_object = json_tokener_parse(file_contents);
+        struct json_object * parsed_json = json_tokener_parse(file_contents);
         free(file_contents);
 
-        if (!root_object)
+        if (!parsed_json)
         {
             printf("ERROR: Failed to parse JSON\n");
             return;
         }
 
-        json_object * nDPIdObject;
-        if (json_object_object_get_ex(root_object, "nDPId", &nDPIdObject))
+
+        traverseJsonObject(parsed_json, &paramsVector, &vectorSize);
+
+        if (print_to_console >= 1)
         {
-            json_object * skipParameters;
-            if (json_object_object_get_ex(nDPIdObject, "skipParameters", &skipParameters))
-            {
-                traverseJsonObject(skipParameters, &paramsVector, &vectorSize);
-                if (print_to_console >= 1)
-                {
-                    printParamsVector(paramsVector, vectorSize);
-                }
-            }
+            printParamsVector(paramsVector, vectorSize);
         }
 
         // Free the JSON object
