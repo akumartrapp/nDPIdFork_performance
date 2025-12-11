@@ -7896,6 +7896,7 @@ int main(int argc, char ** argv)
     }
 
     /* If -x was provided, reload JSON config file */
+    printf("global_config_file_path = %s"\n, global_config_file_path);
     if (strcmp(global_config_file_path, "Settings/nDPIdConfiguration.json") != 0)
     {
         FILE * fp = fopen(global_config_file_path, "r");
