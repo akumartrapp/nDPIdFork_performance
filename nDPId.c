@@ -7920,7 +7920,7 @@ int main(int argc, char ** argv)
         if (is_valid_json_file(global_config_file_path))
         {
             readConfigurationData(global_config_file_path, 1);
-            read_from_default_config_file = false
+            read_from_default_config_file = false;
         }
         else
         {
