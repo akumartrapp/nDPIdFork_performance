@@ -7904,11 +7904,11 @@ int main(int argc, char ** argv)
             fclose(fp);
             readConfigurationData(global_config_file_path, 1);
         }
-        else
-        {
-            printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
-            readConfigurationData("Settings/nDPIdConfiguration.json", 1);
-        }
+        //else
+        //{
+        //    printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
+        //    readConfigurationData("Settings/nDPIdConfiguration.json", 1);
+        //}
     }
 
     printConfigurationData(1);
