@@ -7922,11 +7922,11 @@ int main(int argc, char ** argv)
             readConfigurationData(global_config_file_path, 1);
             read_from_default_config_file = false;
         }
-        else
+       /* else
         {
             printf("WARNING: Config file '%s' is invalid or not found. Using default.\n", global_config_file_path);
             readConfigurationData("Settings/nDPIdConfiguration.json", 1);
-        }
+        }*/
     }
 
     printConfigurationData(1);

@@ -1922,6 +1922,11 @@ static bool matchEntryInParamsVector(const char* srcIP, const char* destIP, int 
 /*--------------------------------------------------------------------------------------------------------------------------*/
 void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_console)
 {
+    if (level <= console_output_level)
+    {
+        printf("Reading configuration filter data from JSON file: %s\n", filename);
+    }
+
     if (!hasAlreadyReadLogFile)
     {
         FILE * fp = fopen(filename, "r");
