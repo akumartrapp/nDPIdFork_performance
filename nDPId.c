@@ -7203,6 +7203,26 @@ static int read_uuid_from_file(char const * const path)
     return 0;
 }
 
+static void parse_config_file_option_only(int argc, char ** argv)
+{
+    int opt;
+
+    /* Reset getopt internal state */
+    optind = 1;
+
+    while ((opt = getopt(argc, argv, "x:")) != -1)
+    {
+        if (opt == 'x')
+        {
+            strncpy(global_config_file_path, optarg, sizeof(global_config_file_path) - 1);
+            global_config_file_path[sizeof(global_config_file_path) - 1] = '\0';
+        }
+    }
+
+    /* Reset getopt again for the real full parse */
+    optind = 1;
+}
+
 static int nDPId_parse_options(int argc, char ** argv)
 {
     int opt;
@@ -7880,12 +7900,10 @@ int main(int argc, char ** argv)
     ncrypt_ctx(&ncrypt_ctx);
 #endif
    
-    if (nDPId_parse_options(argc, argv) != 0)
-    {
-        return 1;
-    }
+    /* 1. Parse ONLY -x first (if provided) */
+    parse_config_file_option_only(argc, argv);
 
-    /* Attempt to use user-specified config file */
+    /* 2. Try loading the selected config file */
     FILE * test_fp = fopen(global_config_file_path, "r");
     if (test_fp)
     {
@@ -7896,6 +7914,12 @@ int main(int argc, char ** argv)
     {
         printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
         readConfigurationData("Settings/nDPIdConfiguration.json");
+    }
+
+    /* 3. Now parse ALL options normally */
+    if (nDPId_parse_options(argc, argv) != 0)
+    {
+        return 1;
     }
 
     printConfigurationData(1);
