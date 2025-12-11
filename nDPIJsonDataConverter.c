@@ -1865,16 +1865,16 @@ static void printParamsVector(const struct SkipParameters * paramsVector, int ve
     for (i = 0; i < vectorSize; ++i)
     {
         printf("\tEntry %d:\n", i + 1);
-        printf("     Source IP: %s\n", paramsVector[i].sourceIP);
-        printf("     Destination IP: %s\n", paramsVector[i].destinationIP);
+        printf("\t\tSource IP: %s\n", paramsVector[i].sourceIP);
+        printf("\t\tDestination IP: %s\n", paramsVector[i].destinationIP);
 
         if (paramsVector[i].destinationPort != -1)
         {
-            printf("     Destination Port: %d\n", paramsVector[i].destinationPort);
+            printf("\t\tDestination Port: %d\n", paramsVector[i].destinationPort);
         }
         else
         {
-            printf("     Destination Port: NOT_SET\n");
+            printf("\t\tDestination Port: NOT_SET\n");
         }
 
         printf("\n");
