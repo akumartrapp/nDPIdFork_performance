@@ -7923,7 +7923,7 @@ int main(int argc, char ** argv)
         }
         else
         {
-            printf("WARNING: Config file '%s' is invalid or not found. Using default.\n", global_config_file_path);           
+            printf("WARNING: Config file '%s' is invalid or not found. Using default configuration file %s.\n",global_config_file_path, "Settings/nDPIdConfiguration.json");           
         }
     }
 
