@@ -7902,6 +7902,7 @@ int main(int argc, char ** argv)
         FILE * fp = fopen(global_config_file_path, "r");
         if (fp)
         {
+            printf("Loading config file: %s\n", global_config_file_path);
             fclose(fp);
             readConfigurationData(global_config_file_path, 1);
         }
