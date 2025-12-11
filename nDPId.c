@@ -7900,34 +7900,30 @@ int main(int argc, char ** argv)
     ncrypt_ctx(&ncrypt_ctx);
 #endif
    
-    /* 1. Parse ONLY -x first (if provided) */
-    int saved_optind = optind; // save getopt state
-    optind = 1;                // reset getopt before mini parse
-    parse_config_file_option_only(argc, argv);
+    /* Load default config first */
+    readConfigurationData(global_config_file_path);
 
-    /* Reset getopt state so full parse works */
-    optind = 1;
-    opterr = 1; // ensure errors are printed for unknown options
-
-    /* 2. Try loading the selected config file */
-    FILE * test_fp = fopen(global_config_file_path, "r");
-    if (test_fp)
-    {
-        fclose(test_fp);
-        readConfigurationData(global_config_file_path);
-    }
-    else
-    {
-        printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
-        readConfigurationData("Settings/nDPIdConfiguration.json");
-    }
-
-    /* 3. Now parse ALL options normally */
+    /* Parse all options including -x */
     if (nDPId_parse_options(argc, argv) != 0)
     {
         return 1;
     }
 
+    /* If -x was provided, reload JSON config file */
+    if (strcmp(global_config_file_path, "Settings/nDPIdConfiguration.json") != 0)
+    {
+        FILE * fp = fopen(global_config_file_path, "r");
+        if (fp)
+        {
+            fclose(fp);
+            readConfigurationData(global_config_file_path);
+        }
+        else
+        {
+            printf("WARNING: Config file '%s' not found. Using default.\n", global_config_file_path);
+            readConfigurationData("Settings/nDPIdConfiguration.json");
+        }
+    }
 
     printConfigurationData(1);
     ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json", console_output_level);
