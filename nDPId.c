@@ -1349,7 +1349,7 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
 
 static void printConfigurationData(int level)
 {
-    if (level <= console_output_level)
+    //if (level <= console_output_level)
     {
         printf("nDPId Configuration Data:\n");
         printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
