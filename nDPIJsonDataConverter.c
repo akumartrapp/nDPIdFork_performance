@@ -1922,7 +1922,7 @@ static bool matchEntryInParamsVector(const char* srcIP, const char* destIP, int 
 /*--------------------------------------------------------------------------------------------------------------------------*/
 void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_console)
 {
-    if (level <= console_output_level)
+    if (print_to_console >= 1)
     {
         printf("Reading configuration filter data from JSON file: %s\n", filename);
     }
