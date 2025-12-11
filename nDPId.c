@@ -7913,7 +7913,6 @@ int main(int argc, char ** argv)
     }
 
     /* If -x was provided, reload JSON config file */
-    printf("global_config_file_path = %s\n", global_config_file_path);
     bool read_from_default_config_file = true;
     if (strcmp(global_config_file_path, "Settings/nDPIdConfiguration.json") != 0)
     {
@@ -7922,11 +7921,10 @@ int main(int argc, char ** argv)
             readConfigurationData(global_config_file_path, console_output_level);
             read_from_default_config_file = false;
         }
-       /* else
+        else
         {
-            printf("WARNING: Config file '%s' is invalid or not found. Using default.\n", global_config_file_path);
-            readConfigurationData("Settings/nDPIdConfiguration.json", 1);
-        }*/
+            printf("WARNING: Config file '%s' is invalid or not found. Using default.\n", global_config_file_path);           
+        }
     }
 
     printConfigurationData(1);
