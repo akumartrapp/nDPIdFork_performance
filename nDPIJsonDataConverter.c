@@ -1972,7 +1972,7 @@ void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_consol
         }
 
         // Free the JSON object
-        json_object_put(root_object);
+        json_object_put(parsed_json);
         hasAlreadyReadLogFile = true;     
     }
 }
