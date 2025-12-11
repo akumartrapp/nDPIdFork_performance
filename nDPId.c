@@ -1,4 +1,4 @@
-#if defined(__FreeBSD__) || defined(__APPLE__)
+﻿#if defined(__FreeBSD__) || defined(__APPLE__)
 #include <sys/types.h>
 #endif
 #include <arpa/inet.h>
@@ -3585,7 +3585,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         }
         else
         {
-            logger(0, "Successfully established connection with the socket");
+            write_to_console(0, 1, "Successfully established connection with the socket");
         }
 
         if (set_collector_nonblock(reader_thread) != 0)
@@ -3622,162 +3622,129 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
     return -1;
 }
 
-static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
-                              char const * const newline_json_msg,
-                              int length)
+static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
+                             const char * const newline_json_msg,
+                             int length)
 {
     write_to_console(0, 3, "write_to_socket_2 called");
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
-   
+    ssize_t written;
 
-    /* ---------------------------
-       Step 1: Send 4-byte header
-       --------------------------- */
+    /* -------------------------------------------------------
+       Step 1: Prepare 4-byte header
+    ------------------------------------------------------- */
     unsigned char len_hdr[4];
     encode_uint32_be((uint32_t)length, len_hdr);
 
+    /* -------------------------------------------------------
+       Step 2: Write header (with ONE retry on EAGAIN)
+    ------------------------------------------------------- */
     errno = 0;
-    ssize_t header_written = -1;
-
- #ifdef ENABLE_CRYPTO
+#ifdef ENABLE_CRYPTO
     if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
-    {
-        header_written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
-    }
+        written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
     else
 #endif
-    {
-        header_written = write(reader_thread->collector_sockfd, len_hdr, 4);
-    }
+        written = write(reader_thread->collector_sockfd, len_hdr, 4);
 
-    if (header_written != 4)
+    if (written != 4)
     {
         saved_errno = errno;
-        reader_thread->collector_sock_last_errno = saved_errno;
 
-        logger(1,
-               "[%8llu, %zu] Failed to send length header to nDPIsrvd Collector (header write). errno=%d",
-               workflow->packets_captured,
-               reader_thread->array_index,
-               saved_errno);
-        return;
-    }
-    else
-    {
-        write_to_console(0, 3, "Header written to socket successfully");
-    }
- 
+        /* Retry once ONLY for EAGAIN */
+        if (saved_errno == EAGAIN)
+        {
+            write_to_console(0, 2, "Header write EAGAIN → retrying once...");
 
-    /* ---------------------------
-       Step 2: Send JSON payload
-       --------------------------- */
-    ssize_t written;
-    errno = 0;
-    if (reader_thread->collector_sock_last_errno == 0)
-    {
 #ifdef ENABLE_CRYPTO
-        if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
-        {
-            written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
-        }
-        else
+            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+                written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
+            else
 #endif
+                written = write(reader_thread->collector_sockfd, len_hdr, 4);
+        }
+
+        /* Still not successful → mark error, return */
+        if (written != 4)
         {
-            written = write(reader_thread->collector_sockfd, newline_json_msg, length);
+            saved_errno = errno;
+            reader_thread->collector_sock_last_errno = saved_errno;
+
+            logger(1,
+                   "[%8llu, %zu] Failed to send length header to nDPIsrvd Collector "
+                   "(header write). errno=%d",
+                   workflow->packets_captured,
+                   reader_thread->array_index,
+                   saved_errno);
+
+            return -1;
+        }
+    }
+
+    write_to_console(0, 3, "Header written to socket successfully");
+
+    /* -------------------------------------------------------
+       Step 3: Write JSON payload (with ONE retry on EAGAIN)
+    ------------------------------------------------------- */
+    errno = 0;
+
+#ifdef ENABLE_CRYPTO
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+        written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
+    else
+#endif
+        written = write(reader_thread->collector_sockfd, newline_json_msg, length);
+
+    if (written != length)
+    {
+        saved_errno = errno;
+
+        /* Retry once ONLY for EAGAIN */
+        if (saved_errno == EAGAIN)
+        {
+            write_to_console(0, 2, "Payload write EAGAIN → retrying once...");
+
+#ifdef ENABLE_CRYPTO
+            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
+                written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
+            else
+#endif
+                written = write(reader_thread->collector_sockfd, newline_json_msg, length);
         }
 
         if (written != length)
         {
-            saved_errno = errno;
+            /* If pipe broken */
             if (saved_errno == EPIPE || written == 0)
             {
                 logger(1,
-                       "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
+                       "[%8llu, %zu] Lost connection to nDPIsrvd Collector (payload)",
                        workflow->packets_captured,
                        reader_thread->array_index);
             }
-            if (saved_errno != EAGAIN)
-            {
-                if (saved_errno == ECONNREFUSED)
-                {
-                    logger(1,
-                           "[%8llu, %zu] %s to %s refused by endpoint",
-                           workflow->packets_captured,
-                           reader_thread->array_index,
-                           (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection"
-                                                                                            : "Datagram"),
-                           GET_CMDARG_STR(nDPId_options.collector_address));
-                }
-                reader_thread->collector_sock_last_errno = saved_errno;
-            }
-            else 
-            {
-                write_to_console(0, 1, "<AF_UNIX blocking fallback triggered>");
 
-                size_t pos = (written < 0 ? 0 : written);
-                set_collector_block(reader_thread);
-                while (1)
-                {
-#ifdef ENABLE_CRYPTO
-                    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
-                    {
-                        written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg + pos, length - pos);
-                    }
-                    else
-#endif
-                    {
-                        written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos);
-                    }
-                    if ((size_t)written == length - pos)
-                    {
-                        break;
-                    }
-
-                    saved_errno = errno;
-                    if (saved_errno == EPIPE || written == 0)
-                    {
-                        logger(1,
-                               "[%8llu, %zu] Lost connection to nDPIsrvd Collector (3)",
-                               workflow->packets_captured,
-                               reader_thread->array_index);
-                        reader_thread->collector_sock_last_errno = saved_errno;
-                        break;
-                    }
-                    else if (written < 0)
-                    {
-                        logger(1,
-                               "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
-                               workflow->packets_captured,
-                               reader_thread->array_index,
-                               GET_CMDARG_STR(nDPId_options.collector_address),
-                               strerror(saved_errno));
-                        reader_thread->collector_sock_last_errno = saved_errno;
-                        break;
-                    }
-                    else
-                    {
-                        pos += written;
-                    }
-                }
-                set_collector_nonblock(reader_thread);
-            }
-        }
-        else
-        {
-            write_to_console(0, 3, "Data written to socket successfully");
+            /* Record error so next write_to_socket() reconnects */
+            reader_thread->collector_sock_last_errno = saved_errno;
+            return -1;
         }
     }
+
+    write_to_console(0, 3, "Data written to socket successfully");
+    return 0;
 }
+
+
  
-static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                            const char * const json_msg,
-                            const char * const json_string_with_http_or_tls_info)
+static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
+                           const char * const json_msg,
+                           const char * const json_string_with_http_or_tls_info)
 {
     write_to_console(0, 3, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
+
     if (reader_thread->collector_sock_last_errno != 0)
     {
         saved_errno = reader_thread->collector_sock_last_errno;
@@ -3789,7 +3756,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                    workflow->packets_captured,
                    reader_thread->array_index,
                    GET_CMDARG_STR(nDPId_options.collector_address));
-            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);           
+            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
         }
         else
         {
@@ -3804,11 +3771,11 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                             ? strerror(reader_thread->collector_sock_last_errno)
                             : "Internal Error."));
             }
-            return;
+            return -1;
         }
     }
 
- #ifdef ENABLE_CRYPTO
+#ifdef ENABLE_CRYPTO
     if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
     {
         if (ncrypt_handshake_done(&workflow->ncrypt_entity) == 0)
@@ -3824,7 +3791,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                        reader_thread->array_index,
                        rv);
                 reader_thread->collector_sock_last_errno = EPIPE;
-                return;
+                return -1;
             }
             ncrypt_set_handshake(&workflow->ncrypt_entity);
             set_collector_nonblock(reader_thread);
@@ -3836,48 +3803,71 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     int flow_risk_count = 0;
 
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
-    if (converted_json_str != NULL)
-    {
-        int length = strlen(converted_json_str);
-        if (length != 0)
-        {
-            if (flow_risk_count)
-            {
-                write_to_socket_2(reader_thread, converted_json_str, length);
-                for (int index = 1; index < flow_risk_count; index++)
-                {
-                    free(converted_json_str);
-                    int flow_risk_count_dummy = 0;
-                    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &flow_risk_count_dummy);
-                    length = strlen(converted_json_str);
-                    if (length != 0)
-                    {
-                        write_to_socket_2(reader_thread, converted_json_str, length);
-                    }                  
-                }
+    if (converted_json_str == NULL)
+        return 0; /* nothing to send; treat as success */
 
-                if (length == 0)
+    int rc = 0;
+    int length = strlen(converted_json_str);
+    if (length != 0)
+    {
+        if (flow_risk_count)
+        {
+            /* send each risk chunk; on any failure return -1 so caller retries same queue entry */
+            if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
+            {
+                rc = -1;
+                goto out_free;
+            }
+
+            for (int index = 1; index < flow_risk_count; index++)
+            {
+                free(converted_json_str);
+                int dummy = 0;
+                ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &dummy);
+                length = strlen(converted_json_str);
+                if (length != 0)
                 {
-                    logger(1, "string length is 0");
+                    if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
+                    {
+                        rc = -1;
+                        goto out_free;
+                    }
                 }
-                else
-                {
-                    char * converted_json_str_no_risk = NULL;
-                    DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
-                    int length_converted = strlen(converted_json_str_no_risk);
-                    write_to_socket_2(reader_thread, converted_json_str_no_risk, length_converted);
-                    free(converted_json_str_no_risk);
-                }
+            }
+
+            if (length == 0)
+            {
+                logger(1, "string length is 0");
             }
             else
             {
-                write_to_socket_2(reader_thread, converted_json_str, length);
+                char * converted_json_str_no_risk = NULL;
+                DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
+                int length_converted = strlen(converted_json_str_no_risk);
+                if (write_to_socket_2(reader_thread, converted_json_str_no_risk, length_converted) != 0)
+                {
+                    free(converted_json_str_no_risk);
+                    rc = -1;
+                    goto out_free;
+                }
+                free(converted_json_str_no_risk);
             }
         }
-
-        free(converted_json_str);
+        else
+        {
+            if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
+            {
+                rc = -1;
+                goto out_free;
+            }
+        }
     }
+
+out_free:
+    free(converted_json_str);
+    return rc;
 }
+
 
 static void write_to_socket_buffer(
                             const char * json_msg,
@@ -7790,10 +7780,11 @@ static void log_socket_buffer_stats()
 static void * socket_writer_thread_func()
 {
     write_to_console(0, 1, "socket_writer_thread_func called.");
+
     while (1)
     {
         pthread_mutex_lock(&socket_queue.lock);
-       
+
         while (socket_queue.count == 0 && socket_writer_running)
             pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
 
@@ -7804,20 +7795,37 @@ static void * socket_writer_thread_func()
             break;
         }
 
-        struct socket_message msg = socket_queue.queue[socket_queue.head];
+        // DO NOT pop the message yet — only PEEK.
+        struct socket_message * msg = &socket_queue.queue[socket_queue.head];
 
-        socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
-        socket_queue.count--;
-
-        pthread_cond_signal(&socket_queue.not_full);
         pthread_mutex_unlock(&socket_queue.lock);
 
-        // --- Call your existing function ---
-        write_to_socket(&reader_threads[0], msg.json_msg, msg.json_string_with_http_or_tls_info);
+        // Try to write the message
+        int rc = write_to_socket(&reader_threads[0], msg->json_msg, msg->json_string_with_http_or_tls_info);
 
-        free(msg.json_msg);
-        if (msg.json_string_with_http_or_tls_info)
-            free(msg.json_string_with_http_or_tls_info);
+        if (rc == 0)
+        {
+            // === SUCCESS === Now pop from queue.
+            pthread_mutex_lock(&socket_queue.lock);
+
+            socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
+            socket_queue.count--;
+
+            pthread_cond_signal(&socket_queue.not_full);
+            pthread_mutex_unlock(&socket_queue.lock);
+
+            // Free message after removal from queue
+            free(msg->json_msg);
+            if (msg->json_string_with_http_or_tls_info)
+                free(msg->json_string_with_http_or_tls_info);
+        }
+        else
+        {
+            // === FAILURE ===
+            // Write failed; reconnect already handled inside write_to_socket().
+            // Just sleep briefly and retry SAME MESSAGE again.
+            usleep(50000); // Prevent tight-loop (optional)
+        }
     }
 
     return NULL;
