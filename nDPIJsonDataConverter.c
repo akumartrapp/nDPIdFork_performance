@@ -1968,13 +1968,17 @@ void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_consol
             return;
         }
 
-        json_object * skipParameters;
-        if (json_object_object_get_ex(root_object, "skipParameters", &skipParameters))
+        json_object * nDPIdObject;
+        if (json_object_object_get_ex(root_object, "nDPId", &nDPIdObject))
         {
-            traverseJsonObject(skipParameters, &paramsVector, &vectorSize);
-            if (print_to_console >= 1)
+            json_object * skipParameters;
+            if (json_object_object_get_ex(nDPIdObject, "skipParameters", &skipParameters))
             {
-                printParamsVector(paramsVector, vectorSize);
+                traverseJsonObject(skipParameters, &paramsVector, &vectorSize);
+                if (print_to_console >= 1)
+                {
+                    printParamsVector(paramsVector, vectorSize);
+                }
             }
         }
 
