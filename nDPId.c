@@ -7203,26 +7203,6 @@ static int read_uuid_from_file(char const * const path)
     return 0;
 }
 
-static void parse_config_file_option_only(int argc, char ** argv)
-{
-    int opt;
-
-    /* Reset getopt internal state */
-    optind = 1;
-
-    while ((opt = getopt(argc, argv, "x:")) != -1)
-    {
-        if (opt == 'x')
-        {
-            strncpy(global_config_file_path, optarg, sizeof(global_config_file_path) - 1);
-            global_config_file_path[sizeof(global_config_file_path) - 1] = '\0';
-        }
-    }
-
-    /* Reset getopt again for the real full parse */
-    optind = 1;
-}
-
 static int nDPId_parse_options(int argc, char ** argv)
 {
     int opt;
