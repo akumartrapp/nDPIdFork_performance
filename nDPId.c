@@ -1433,7 +1433,11 @@ static void readConfigurationData(const char * filename, int level)
         {
             if (json_object_object_get_ex(consoleOutput_obj, "detail_level", &val))
             {
-                console_output_level = json_object_get_int(val);                
+                // Read this from configuration file if its not specified as command line argument. 
+                if (console_output_level == -1)
+                {
+                    console_output_level = json_object_get_int(val);
+                }
             }
         }
 
@@ -7329,6 +7333,12 @@ static int nDPId_parse_options(int argc, char ** argv)
                 }
 
                 console_output_level = (int)lvl;
+                if (console_output_level < 1 || console_output_level > 4)
+                    {
+                        logger_early(1, "Console output level must be between 1 and 4");
+                        console_output_level = -1;
+                        return 1;
+                    }
                 break;
             }
             case 'S':
