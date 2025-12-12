@@ -1438,6 +1438,12 @@ static void readConfigurationData(const char * filename, int level)
                 {
                     console_output_level = json_object_get_int(val);
                 }
+                else
+                {
+                    printf(
+                        "Note: console_output_level is set to %d from command line argument, ignoring JSON config value %d\n",  console_output_level,  json_object_get_int(val));
+                   
+                }
             }
         }
 
@@ -7027,7 +7033,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("nDPID program version is 12.11.2025.02\n");
+    printf("nDPID program version is 12.11.2025.03\n");
 }
 
 static void print_usage(char const * const arg0)
