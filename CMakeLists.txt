@@ -103,7 +103,7 @@ endif()
 # Ashwani: Turned ENABLE_PFRING and BUILD_NDPI ON from default value of OFF
 #
 option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" ON)
-option(BUILD_NDPI "Clone and build nDPI from github." OFF)
+option(BUILD_NDPI "Clone and build nDPI from github." ON)
 
 # Ashwani: Printing these two options value
 #
