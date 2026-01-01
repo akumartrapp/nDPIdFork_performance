@@ -450,7 +450,7 @@ if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI)
         if(EXISTS "${STATIC_LIBNDPI_INSTALLDIR}/lib32/libndpi.a")
             set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/lib32/libndpi.a")
         else()
-            set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/libnDPI/usr/lib/libndpi.a")
+            set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/usr/lib/libndpi.a")
         endif()
     endif()
 
