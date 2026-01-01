@@ -210,7 +210,7 @@ static void init_socket_buffer();
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
 
 /*--------------------------------------------------------------------------------------------------------------*/
-void write_to_console(int error, int level, const char * fmt, ...)
+extern void write_to_console(int error, int level, const char * fmt, ...)
 {
     if (console_output_level < level)
     {
