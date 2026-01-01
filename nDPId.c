@@ -210,7 +210,7 @@ static void init_socket_buffer();
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
 
 /*--------------------------------------------------------------------------------------------------------------*/
-extern void write_to_console(int error, int level, const char * fmt, ...)
+void write_to_console(int error, int level, const char * fmt, ...)
 {
     if (console_output_level < level)
     {
@@ -7033,7 +7033,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("nDPID program version is 12.11.2025.03\n");
+    printf("nDPID program version is 01.01.2026.01\n");
 }
 
 static void print_usage(char const * const arg0)
@@ -7997,7 +7997,10 @@ int main(int argc, char ** argv)
     }
 #endif
 
-    log_app_info();
+    if (console_output_level >= 1)
+    {
+        log_app_info();
+    }
 
     nDPId_print_deps_version(stdout);
 
