@@ -1,4 +1,4 @@
-﻿#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__APPLE__)
 #include <sys/types.h>
 #endif
 #include <arpa/inet.h>
@@ -34,9 +34,6 @@
 
 #include "config.h"
 #include "nDPIsrvd.h"
-#ifdef ENABLE_CRYPTO
-#include "ncrypt.h"
-#endif
 #include "nio.h"
 #ifdef ENABLE_PFRING
 #include "npfring.h"
@@ -141,15 +138,18 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #include "nDPIJsonDataConverter.h"
 #include "../json-c/include/json-c/json.h"
 
+#include <dirent.h>
+
 #define PATH_STR_LEN 4096
 #define PATH_MAX_LEN 1024
 #define MAX_FILENAME_LEN (PATH_STR_LEN + 512)
-#define SOCKET_BUFFER_CAPACITY 8192 // number of messages allowed in queue adjust based on memory
+
 
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
 const char * master_folder_name = "Master";
+
 char alerts_folder_full_path[PATH_STR_LEN];
 char events_folder_full_path[PATH_STR_LEN];
 char master_folder_full_path[PATH_STR_LEN];
@@ -159,17 +159,14 @@ char executable_directory[PATH_MAX_LEN];
 static FILE * event_log_fp = NULL;
 static FILE * alert_log_fp = NULL;
 static FILE * master_log_fp = NULL;
-static char current_event_filename[MAX_FILENAME_LEN] = {0};
-static char current_alert_filename[MAX_FILENAME_LEN] = {0};
+
 static char current_master_filename[MAX_FILENAME_LEN] = {0};
-static time_t event_file_start_time = 0;
-static time_t alert_file_start_time = 0;
 static time_t master_file_start_time = 0;
 
 // Variables to hold config values
 static int log_file_duration_in_seconds = 60; 
 static int log_file_size_in_mb = 5;
-static int console_output_level = -1; // no console output by default
+static bool detailed_console_output_enabled = false;
 static bool detailed_log_enabled = false;
 static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
@@ -179,40 +176,33 @@ static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 static int collector_reconnect_interval_sec = 5;
 static int collector_reconnect_timeout_sec = 60;
 
-/*----------------socket thread related code------------------------------------------------------------------*/
-struct socket_message
+// variable for p cap files
+/*---------------------------------------------------------------------------------------------------------/*/
+#define MAX_NUMBER_OF_FILES 5000 // Maximum number of files to handle
+
+char * pcap_files[MAX_NUMBER_OF_FILES];
+static int corrupt_files_count = 0;
+char * generated_tmp_json_files_events[MAX_NUMBER_OF_FILES];
+char * generated_tmp_json_files_alerts[MAX_NUMBER_OF_FILES];
+char * generated_json_files_events[MAX_NUMBER_OF_FILES];
+char * generated_json_files_alerts[MAX_NUMBER_OF_FILES];
+int number_of_valid_files_found = 0;
+int currentFileIndex = -1;
+
+
+/*---------------------------------------------------------------------------------------------------------*/
+
+static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
 {
-    char * json_msg;
-    char * json_string_with_http_or_tls_info;
-};
+    out[0] = (value >> 24) & 0xFF;
+    out[1] = (value >> 16) & 0xFF;
+    out[2] = (value >> 8) & 0xFF;
+    out[3] = value & 0xFF;
+}
 
-struct socket_buffer_queue
+void write_to_console(int error, const char * fmt, ...)
 {
-    struct socket_message queue[SOCKET_BUFFER_CAPACITY];
-
-    int head;  // index for consumer
-    int tail;  // index for producer
-    int count; // number of valid entries
-
-    pthread_mutex_t lock;
-    pthread_cond_t not_empty;
-    pthread_cond_t not_full;
-};
-
-static struct socket_buffer_queue socket_queue;
-static pthread_t socket_writer_thread;
-static int socket_writer_running = 1;
-static void * socket_writer_thread_func(void * arg);
-static void log_socket_buffer_stats();
-static void init_socket_buffer();
-
-/* Global config file path */
-static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
-
-/*--------------------------------------------------------------------------------------------------------------*/
-void write_to_console(int error, int level, const char * fmt, ...)
-{
-    if (console_output_level < level)
+    if (!detailed_console_output_enabled)
     {
         return;
     }
@@ -224,16 +214,6 @@ void write_to_console(int error, int level, const char * fmt, ...)
     va_end(args);
 
     logger(error, "%s", buffer);
-}
-
-
-/*---------------------------------------------------------------------------------------------------------*/
-static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
-{
-    out[0] = (value >> 24) & 0xFF;
-    out[1] = (value >> 16) & 0xFF;
-    out[2] = (value >> 8) & 0xFF;
-    out[3] = value & 0xFF;
 }
 
 bool is_file_larger_than_threshold(FILE * fp)
@@ -271,7 +251,7 @@ bool is_file_larger_than_threshold(FILE * fp)
     return file_size_bytes > threshold_bytes;
 }
 
-// Function to get current UTC ISO8601 time
+//Function to get current UTC ISO8601 time
 void get_current_utc_iso8601(char * buffer, size_t size)
 {
     time_t now = time(NULL);
@@ -297,17 +277,20 @@ void rotate_event_log_file()
         fclose(event_log_fp);
 
         // Rename .tmp to .json
-        char new_name[MAX_FILENAME_LEN];
-        snprintf( new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_event_filename) - 4), current_event_filename); // strip
-                                                                                                             // ".tmp"
-        if (rename(current_event_filename, new_name) != 0)
+                                                                                                         // ".tmp"
+        if (rename(generated_tmp_json_files_events[currentFileIndex], generated_json_files_events[currentFileIndex]) !=  0)
         {
-            logger(1, "ERROR (events log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
+            logger(1, "Error renaming - %s file\n", generated_tmp_json_files_events[currentFileIndex]);
+            remove(generated_json_files_events[currentFileIndex]);
+            logger(1, "deleted existing file - %s \n", generated_json_files_events[currentFileIndex]);
+
+            if (rename(generated_tmp_json_files_events[currentFileIndex], generated_json_files_events[currentFileIndex]) != 0)
+            {
+                logger(1, "Error renaming - %s file\n", generated_tmp_json_files_events[currentFileIndex]);
+            }
         }
 
         event_log_fp = NULL;
-        current_event_filename[0] = '\0';
-        event_file_start_time = 0;
     }
 }
 
@@ -318,18 +301,20 @@ void rotate_alert_log_file()
     {
         fclose(alert_log_fp);
 
-        // Rename .tmp to .json
-        char new_name[MAX_FILENAME_LEN];
-        snprintf(new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_alert_filename) - 4),  current_alert_filename); // strip
-                                          // ".tmp"
-        if (rename(current_alert_filename, new_name) != 0)
+         if (rename(generated_tmp_json_files_alerts[currentFileIndex], generated_json_files_alerts[currentFileIndex]) !=  0)
         {
-              logger(1, "ERROR (alerts log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
+            logger(1, "Error renaming - %s file\n", generated_tmp_json_files_alerts[currentFileIndex]);
+            remove(generated_json_files_alerts[currentFileIndex]);
+            logger(1, "deleted existing file - %s \n", generated_json_files_alerts[currentFileIndex]);
+
+            if (rename(generated_tmp_json_files_alerts[currentFileIndex], generated_json_files_alerts[currentFileIndex]) != 0)
+            {
+                logger(1, "Error renaming - %s file\n", generated_tmp_json_files_alerts[currentFileIndex]);
+            }
         }
 
         alert_log_fp = NULL;
-        current_alert_filename[0] = '\0';
-        alert_file_start_time = 0;
+        
     }
 }
 
@@ -350,12 +335,12 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_master_filename, sizeof(current_master_filename), "%s/nDPId_MASTER_log_%s.tmp", master_folder_full_path, timestamp);
+        snprintf(current_master_filename, sizeof(current_master_filename),"%s/nDPId_MASTER_log_%s.tmp", master_folder_full_path, timestamp);
 
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
         {
-            logger(1, "ERROR: Failed to open log file: %s (%s)", current_master_filename, strerror(errno));
+            printf("ERROR: Failed to open log file: %s (%s)\n", current_master_filename, strerror(errno));
             return;
         }
 
@@ -366,7 +351,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, master_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR: Partial write to '%s'", master_folder_full_path);
+        printf("ERROR: Partial write to '%s'\n", master_folder_full_path);
     }
 
     fwrite("\n", 1, 1, master_log_fp);
@@ -375,35 +360,24 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 {
-    write_to_console(0, 3, "write_to_event_file called");
-    time_t now = time(NULL);
-
     // Create new file if none open or time elapsed
-    if (event_log_fp == NULL || difftime(now, event_file_start_time) >= log_file_duration_in_seconds || is_file_larger_than_threshold(event_log_fp))
+    if (event_log_fp == NULL)
     {
         rotate_event_log_file();
 
-        // Create new file
-        char timestamp[32];
-        get_current_utc_iso8601(timestamp, sizeof(timestamp));
-
-        snprintf(current_event_filename, sizeof(current_event_filename), "%s/nDPId_Event_log_%s.tmp", events_folder_full_path, timestamp);
-
-        event_log_fp = fopen(current_event_filename, "a");
+        event_log_fp = fopen(generated_tmp_json_files_events[currentFileIndex], "a");
         if (!event_log_fp)
         {
-            logger(1, "ERROR (events): Failed to open log file: %s (%s)", current_event_filename, strerror(errno));            
+            printf("ERROR: Failed to open log file: %s (%s)\n", generated_tmp_json_files_events[currentFileIndex], strerror(errno));
             return;
         }
-
-        event_file_start_time = now;
     }
 
     // Write to current file
     size_t written = fwrite(json_msg, 1, json_msg_len, event_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR (events): Partial write to '%s'", events_folder_full_path);       
+        printf("ERROR: Partial write to '%s'\n", events_folder_full_path);
     }
 
     fwrite("\n", 1, 1, event_log_fp);
@@ -412,45 +386,32 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
 
 void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 {
-    write_to_console(0, 3, "write_to_alert_file called");
-    time_t now = time(NULL);
-
     // Create new file if none open or time elapsed
-    if (alert_log_fp == NULL || difftime(now, alert_file_start_time) >= log_file_duration_in_seconds || is_file_larger_than_threshold(alert_log_fp))
+    if (alert_log_fp == NULL )
     {
         rotate_alert_log_file();
 
-        // Create new file
-        char timestamp[32];
-        get_current_utc_iso8601(timestamp, sizeof(timestamp));
-
-        snprintf(current_alert_filename,  sizeof(current_alert_filename), "%s/nDPId_Alert_log_%s.tmp", alerts_folder_full_path, timestamp);
-
-        alert_log_fp = fopen(current_alert_filename, "a");
+        alert_log_fp = fopen(generated_tmp_json_files_alerts[currentFileIndex], "a");
         if (!alert_log_fp)
         {
-            logger(1, "ERROR (alerts): Failed to open log file: %s (%s)", current_alert_filename, strerror(errno));
+            printf("ERROR: Failed to open log file: %s (%s)\n", generated_tmp_json_files_alerts[currentFileIndex],  strerror(errno));
             return;
         }
-
-        alert_file_start_time = now;
     }
 
     // Write to current file
     size_t written = fwrite(json_msg, 1, json_msg_len, alert_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR: Partial write to '%s'", alerts_folder_full_path);   
+        printf("ERROR: Partial write to '%s'\n", alerts_folder_full_path);
     }
 
     fwrite("\n", 1, 1, alert_log_fp);
     fflush(alert_log_fp); // ensure data is written
 }
 
-
 static void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
-    write_to_console(0, 3, "write_to_file called");
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
@@ -467,12 +428,16 @@ static void write_to_file(const char * const json_msg, const char * const json_s
                 {
                     free(converted_json_str);
                     int flow_risk_count_dummy = 0;
-                    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &flow_risk_count_dummy);
+                    ConvertnDPIDataFormat(json_msg,
+                                          json_string_with_http_or_tls_info,
+                                          index,
+                                          &converted_json_str,
+                                          &flow_risk_count_dummy);
                     length = strlen(converted_json_str);
                     if (length != 0)
                     {
                         write_to_alert_file(converted_json_str, length);
-                    }                  
+                    }
                 }
 
                 if (length == 0)
@@ -491,7 +456,7 @@ static void write_to_file(const char * const json_msg, const char * const json_s
             else
             {
                 write_to_event_file(converted_json_str, length);
-            }            
+            }
         }
 
         free(converted_json_str);
@@ -504,27 +469,23 @@ static void write_to_file(const char * const json_msg, const char * const json_s
 void create_events_and_alerts_folders()
 {
     // Get path to executable
-    char stat_msg[256];
     ssize_t count = readlink("/proc/self/exe", executable_directory, PATH_MAX_LEN - 1);
     if (count != -1)
     {
         executable_directory[count] = '\0';
-      
-        snprintf(stat_msg, sizeof(stat_msg), "Executable path: [%.200s]", executable_directory);
-        write_to_console(0, 1, stat_msg);
+        printf("Executable path: [%s]\n", executable_directory);
 
         // Strip the filename to get directory
         char * last_slash = strrchr(executable_directory, '/');
         if (last_slash != NULL)
         {
             *last_slash = '\0';
-            snprintf(stat_msg, sizeof(stat_msg), "Executable directory : [%.200s]", executable_directory);
-            write_to_console(0, 1, stat_msg);
+            printf("Executable directory: [%s]\n", executable_directory);
         }
     }
     else
     {
-        logger(1, "readlink failed");
+        perror("readlink() failed");
         exit(EXIT_FAILURE);
     }
 
@@ -536,25 +497,19 @@ void create_events_and_alerts_folders()
         snprintf(master_folder_full_path, PATH_STR_LEN, "%s/%s", executable_directory, master_folder_name);
     }
 
-     snprintf(stat_msg, sizeof(stat_msg), "Alerts Folder Path is : [%.200s]", alerts_folder_full_path);
-     write_to_console(0, 1, stat_msg);
-
-     snprintf(stat_msg, sizeof(stat_msg), "Events Folder Path is : [%.200s]", events_folder_full_path);
-     write_to_console(0, 1, stat_msg);
-
+    printf("Alerts Folder Path is : [%s]\n", alerts_folder_full_path);
+    printf("Events Folder Path is : [%s]\n", events_folder_full_path);
     if (master_log_file_enabled)
     {
-        snprintf(stat_msg, sizeof(stat_msg), "Master Folder Path is : [%.200s]", master_folder_full_path);
-        write_to_console(0, 1, stat_msg);
+        printf("Master Folder Path is : [%s]\n", master_folder_full_path);
     }
   
-    snprintf(stat_msg, sizeof(stat_msg), "UID=%d, EUID=%d, GID=%d, EGID=%d", getuid(), geteuid(), getgid(), getegid());
-    write_to_console(0, 1, stat_msg);
+    printf("UID=%d, EUID=%d, GID=%d, EGID=%d\n", getuid(), geteuid(), getgid(), getegid());
 
     // Check write/execute access to parent directory
     if (access(executable_directory, W_OK | X_OK) != 0)
     {
-        logger(1, "ERROR: access() to executable_directory failed");
+        printf("ERROR: access() to executable_directory failed");
         exit(EXIT_FAILURE);
     }
 
@@ -562,36 +517,32 @@ void create_events_and_alerts_folders()
     if (mkdir(alerts_folder_full_path, 0777) == -1)
     {
         if (errno == EEXIST)
-        {
-            write_to_console(0, 1, "Alerts folder already exists");
-        }
+            printf("Alerts folder already exists.\n");
         else
         {
-            logger(1, "ERROR:mkdir('%s') failed: %s", alerts_folder_full_path, strerror(errno));
+            printf("ERROR:mkdir('%s') failed: %s\n", alerts_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        write_to_console(0, 1, "Alerts folder created successfully");
+        printf("Alerts folder created successfully.\n");
     }
 
     // Create Events folder
     if (mkdir(events_folder_full_path, 0777) == -1)
     {
         if (errno == EEXIST)
-        {
-            write_to_console(0, 1, "Events folder already exists");
-        }
+            printf("Events folder already exists.\n");
         else
         {
-            logger(1, "ERROR: mkdir('%s') failed: %s", events_folder_full_path, strerror(errno));
+            printf("ERROR: mkdir('%s') failed: %s\n", events_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        write_to_console(0, 1, "Events folder created successfully.");
+        printf("Events folder created successfully.\n");
     }
 
      // Create Master folder
@@ -600,18 +551,16 @@ void create_events_and_alerts_folders()
         if (mkdir(master_folder_full_path, 0777) == -1)
         {
             if (errno == EEXIST)
-            {
-                write_to_console(0, 1, "Master folder already exists");
-            }
+                printf("Master folder already exists.\n");
             else
             {
-                logger(1, "ERROR: mkdir('%s') failed: %s", master_folder_full_path, strerror(errno));
+                printf("ERROR: mkdir('%s') failed: %s\n", master_folder_full_path, strerror(errno));
                 exit(EXIT_FAILURE);
             }
         }
         else
         {
-            write_to_console(0, 1, "Master folder created successfully.");
+            printf("Master folder created successfully.\n");
         }
     }
 }
@@ -817,9 +766,6 @@ struct nDPId_workflow
     uint64_t total_compression_diff;
     uint64_t current_compression_diff;
 #endif
-#ifdef ENABLE_CRYPTO
-    struct ncrypt_entity ncrypt_entity;
-#endif
 
     uint64_t last_scan_time;
     uint64_t last_status_time;
@@ -1015,7 +961,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
 
             if (!map->entries[i].json_str)
             {
-                logger(1, "strdup failed in add_or_update_flow_entry 1");
+                printf("strdup failed in add_or_update_flow_entry 1\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -1028,7 +974,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->entries[map->size].json_str = strdup(json_str);
     if (!map->entries[map->size].json_str)
     {
-        logger(1, "strdup failed in add_or_update_flow_entry 2");
+        printf("strdup failed in add_or_update_flow_entry 2\n");
         exit(EXIT_FAILURE);
     }
 
@@ -1128,9 +1074,6 @@ static MT_VALUE(zlib_compression_diff, uint64_t) = MT_INIT(0);
 static MT_VALUE(zlib_compression_bytes, uint64_t) = MT_INIT(0);
 #endif
 
-#ifdef ENABLE_CRYPTO
-static struct ncrypt_ctx ncrypt_ctx;
-#endif
 static struct
 {
     /* options which are resolved automatically */
@@ -1165,11 +1108,6 @@ static struct
 #endif
 #ifdef ENABLE_PFRING
     struct cmdarg use_pfring;
-#endif
-#ifdef ENABLE_CRYPTO
-    struct cmdarg client_crt_pem_file;
-    struct cmdarg client_key_pem_file;
-    struct cmdarg server_ca_pem_file;
 #endif
     /* subopts */
     struct cmdarg max_flows_per_thread;
@@ -1220,11 +1158,6 @@ static struct
 #endif
 #ifdef ENABLE_PFRING
                    .use_pfring = CMDARG_BOOL(0),
-#endif
-#ifdef ENABLE_CRYPTO
-                   .client_crt_pem_file = CMDARG_STR(NULL),
-                   .client_key_pem_file = CMDARG_STR(NULL),
-                   .server_ca_pem_file = CMDARG_STR(NULL),
 #endif
                    .max_flows_per_thread = CMDARG_ULL(nDPId_MAX_FLOWS_PER_THREAD / 2),
                    .max_idle_flows_per_thread = CMDARG_ULL(nDPId_MAX_IDLE_FLOWS_PER_THREAD / 2),
@@ -1347,37 +1280,13 @@ static int set_collector_nonblock(struct nDPId_reader_thread * const reader_thre
     return 0;
 }
 
-static void printConfigurationData(int level)
-{
-    if (level <= console_output_level)
-    {
-        printf("nDPId Configuration Data:\n");
-        printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
-        printf("\tlog_file_size_in_mb: %d\n", log_file_size_in_mb);
-        printf("\tconsole_output_level: %d\n", console_output_level);
-        printf("\tdetailed_log_enabled: %s\n", detailed_log_enabled ? "TRUE" : "FALSE");
-        printf("\tmaster_log_file_enabled: %s\n", master_log_file_enabled ? "TRUE" : "FALSE");
-        printf("\tmaster_log_file_duration_in_minutes: %d\n", master_log_file_duration_in_minutes);
-        printf("\toutput_send_to_socket: %s\n", output_send_to_socket ? "TRUE" : "FALSE");
-        printf("\toutput_send_to_file: %s\n", output_send_to_file ? "TRUE" : "FALSE");
-        printf("\tcollector_unix_socket_location: %s\n", collector_unix_socket_location);
-        printf("\tcollector_reconnect_interval_sec: %d\n", collector_reconnect_interval_sec);
-        printf("\tcollector_reconnect_timeout_sec: %d\n", collector_reconnect_timeout_sec);
-    }  
-}
-
 // Function to read and parse the JSON config
-static void readConfigurationData(const char * filename, int level)
+void read_ndpid_config(const char * filename)
 {
-    if (level <= console_output_level)
-    {
-        printf("\nReading configuration data from JSON file: %s\n", filename);
-    }
-
     FILE * fp = fopen(filename, "r");
     if (!fp)
     {
-        printf("ERROR: while opening JSON config file %s: %s\n", filename, strerror(errno));
+        printf("ERROR: opening JSON config file %s: %s\n", filename, strerror(errno));
         return;
     }
 
@@ -1388,7 +1297,7 @@ static void readConfigurationData(const char * filename, int level)
     char * file_contents = malloc(file_size + 1);
     if (!file_contents)
     {
-        printf("ERROR (malloc): Memory allocation failed\n");
+        printf("ERROR: Memory allocation failed\n");
         fclose(fp);
         return;
     }
@@ -1420,30 +1329,20 @@ static void readConfigurationData(const char * filename, int level)
 
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInSeconds", &val))
         {
-            log_file_duration_in_seconds = json_object_get_int(val);           
+            log_file_duration_in_seconds = json_object_get_int(val);
         }
 
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
         {
-            log_file_size_in_mb = json_object_get_int(val);           
+            log_file_size_in_mb = json_object_get_int(val);
         }
 
         struct json_object * consoleOutput_obj;
         if (json_object_object_get_ex(ndpid_obj, "consoleOutput", &consoleOutput_obj))
         {
-            if (json_object_object_get_ex(consoleOutput_obj, "detail_level", &val))
+            if (json_object_object_get_ex(consoleOutput_obj, "detailed", &val))
             {
-                // Read this from configuration file if its not specified as command line argument. 
-                if (console_output_level == -1)
-                {
-                    console_output_level = json_object_get_int(val);
-                }
-                else
-                {
-                    printf(
-                        "Note: console_output_level is set to %d from command line argument, ignoring JSON config value %d\n",  console_output_level,  json_object_get_int(val));
-                   
-                }
+                detailed_console_output_enabled = json_object_get_boolean(val);
             }
         }
 
@@ -1452,7 +1351,7 @@ static void readConfigurationData(const char * filename, int level)
         {
             if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
             {
-                detailed_log_enabled = json_object_get_boolean(val);                
+                detailed_log_enabled = json_object_get_boolean(val);
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
@@ -1465,6 +1364,7 @@ static void readConfigurationData(const char * filename, int level)
                 master_log_file_duration_in_minutes = json_object_get_int(val);
             }
         }
+
 
         struct json_object * ouput_obj;
         if (json_object_object_get_ex(ndpid_obj, "output", &ouput_obj))
@@ -1494,12 +1394,12 @@ static void readConfigurationData(const char * filename, int level)
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_INTERVAL_SEC", &val))
             {
-                collector_reconnect_interval_sec = json_object_get_int(val);
+                collector_reconnect_interval_sec = json_object_get_int(val);              
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_TIMEOUT_SEC", &val))
             {
-                collector_reconnect_timeout_sec = json_object_get_int(val);
+                collector_reconnect_timeout_sec = json_object_get_int(val);             
             }
         }
     }
@@ -1851,7 +1751,7 @@ static void get_ip6_address_and_netmask(struct ifaddrs const * const ifaddr)
         void const * saddr = &nDPId_options.pcap_dev_ip6.v6.ip;
         void const * snetm = &nDPId_options.pcap_dev_netmask6.v6.ip;
         void const * ssubn = &nDPId_options.pcap_dev_subnet6.v6.ip;
-        write_to_console(0, 1,
+        logger(0,
                "%s IPv6 address netmask subnet: %s %s %s",
                GET_CMDARG_STR(nDPId_options.pcap_file_or_interface),
                inet_ntop(AF_INET6, saddr, addr, sizeof(addr)),
@@ -1959,11 +1859,6 @@ static void * ndpi_malloc_wrapper(size_t const size)
 
 static void ndpi_free_wrapper(void * const freeable)
 {
-    if (freeable == NULL)
-    {
-        return;
-    }
-
     void * p = (uint8_t *)freeable - sizeof(uint64_t);
 
     MT_GET_AND_ADD(ndpi_memory_free_count, 1);
@@ -1972,51 +1867,11 @@ static void ndpi_free_wrapper(void * const freeable)
     free(p);
 }
 
-static void * ndpi_calloc_wrapper(size_t nmemb, size_t size)
-{
-    void * p = ndpi_malloc_wrapper(nmemb * size);
-    if (p == NULL)
-    {
-        return NULL;
-    }
-    memset(p, 0x00, nmemb * size);
-
-    return p;
-}
-
-static void * ndpi_realloc_wrapper(void * const reallocable, size_t new_size)
-{
-    if (reallocable == NULL)
-    {
-        return ndpi_malloc_wrapper(new_size);
-    }
-
-    void * const p = (uint8_t *)reallocable - sizeof(uint64_t);
-    void * const new_ptr = realloc(p, sizeof(uint64_t) + new_size);
-
-    if (new_ptr == NULL)
-    {
-        return (uint8_t *)p + sizeof(uint64_t);
-    }
-
-    size_t old_size = *(uint64_t *)new_ptr;
-    *(uint64_t *)new_ptr = new_size;
-
-    if (old_size > new_size)
-    {
-        MT_GET_AND_SUB(ndpi_memory_alloc_bytes, old_size - new_size);
-    }
-    else
-    {
-        MT_GET_AND_ADD(ndpi_memory_alloc_bytes, new_size - old_size);
-    }
-
-    return (uint8_t *)new_ptr + sizeof(uint64_t);
-}
-
 #ifdef ENABLE_MEMORY_PROFILING
 static void log_memory_usage(struct nDPId_reader_thread const * const reader_thread)
 {
+    // Ashwani
+    return;
     if (reader_thread->array_index == 0)
     {
         uint64_t alloc_count = MT_GET_AND_ADD(ndpi_memory_alloc_count, 0);
@@ -2240,7 +2095,7 @@ static int libnDPI_parsed_config_line(
 
 static struct nDPId_workflow * init_workflow(char const * const file_or_device)
 {
-    write_to_console(0, 1, "init_workflow called");
+    write_to_console(0, "init_workflow called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
     struct nDPId_workflow * workflow;
 
@@ -2312,7 +2167,7 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         }
         else
         {
-            write_to_console(0, 1, "workflow->pcap_handle is not NULL");
+            write_to_console(0, "workflow->pcap_handle is not NULL");
         }
 
         if (workflow->is_pcap_file == 0 && pcap_setnonblock(workflow->pcap_handle, 1, pcap_error_buffer) == PCAP_ERROR)
@@ -2442,6 +2297,9 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
+    NDPI_PROTOCOL_BITMASK protos;
+    NDPI_BITMASK_SET_ALL(protos);
+    ndpi_set_protocol_detection_bitmask2(workflow->ndpi_struct, &protos);
     if (IS_CMDARG_SET(nDPId_options.custom_risk_domain_file) != 0)
     {
         ndpi_load_risk_domain_file(workflow->ndpi_struct, GET_CMDARG_STR(nDPId_options.custom_risk_domain_file));
@@ -2643,12 +2501,11 @@ static char * get_default_pcapdev(char * errbuf)
 
 static int setup_reader_threads(void)
 {
-    write_to_console(0, 1, "setup_reader_threads called");
+    write_to_console(0, "setup_reader_threads called");
     char pcap_error_buffer[PCAP_ERRBUF_SIZE];
 
-    char stat_msg[256];
-    snprintf(stat_msg, sizeof(stat_msg), "Number of Readers Thread = %lld", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
-    write_to_console(0, 1, stat_msg);
+    // Ashwani
+    //printf("Number of Readers Thread = %lld\n", GET_CMDARG_ULL(nDPId_options.reader_thread_count));
     if (GET_CMDARG_ULL(nDPId_options.reader_thread_count) > nDPId_MAX_READER_THREADS)
     {
         return 1;
@@ -2668,6 +2525,7 @@ static int setup_reader_threads(void)
                      "Capturing packets from default device: %s",
                      GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
     }
+
 
     errno = 0;
     if (access(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface), R_OK) != 0 && errno == ENOENT)
@@ -2857,7 +2715,7 @@ static int is_error_event_threshold(struct nDPId_workflow * const workflow)
 //static void ndpi_idle_scan_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
 //    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
-//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic * const *)A;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
 //
 //    (void)depth;
 //
@@ -2934,8 +2792,8 @@ static void ndpi_idle_scan_walker(struct nDPId_flow_basic * flow_basic, struct n
 
 //static int ndpi_workflow_node_cmp(void const * const A, void const * const B)
 //{
-//    struct nDPId_flow_basic const * const flow_basic_a = (struct nDPId_flow_basic const *)A;
-//    struct nDPId_flow_basic const * const flow_basic_b = (struct nDPId_flow_basic const *)B;
+//    struct nDPId_flow_basic const * const flow_basic_a = (struct nDPId_flow_basic *)A;
+//    struct nDPId_flow_basic const * const flow_basic_b = (struct nDPId_flow_basic *)B;
 //
 //    if (flow_basic_a->hashval < flow_basic_b->hashval)
 //    {
@@ -3021,15 +2879,21 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
 
                 if (flow->info.detection_completed == 0)
                 {
+                    uint8_t protocol_was_guessed = 0;
+
                     if (ndpi_is_protocol_detected(flow->info.detection_data->guessed_l7_protocol) == 0)
                     {
                         flow->info.detection_data->guessed_l7_protocol =
                             ndpi_detection_giveup(workflow->ndpi_struct,
-                                                  &flow->info.detection_data->flow);
+                                                  &flow->info.detection_data->flow,
+                                                  &protocol_was_guessed);
                     }
-                   
+                    else
+                    {
+                        protocol_was_guessed = 1;
+                    }
 
-                    if (flow->info.detection_data->flow.protocol_was_guessed != 0)
+                    if (protocol_was_guessed != 0)
                     {
                         workflow->total_guessed_flows++;
                         jsonize_flow_detection_event(reader_thread, flow, FLOW_EVENT_GUESSED);
@@ -3103,7 +2967,7 @@ static void check_for_idle_flows(struct nDPId_reader_thread * const reader_threa
 //{
 //    struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)user_data;
 //    struct nDPId_workflow * const workflow = reader_thread->workflow;
-//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic * const *)A;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
 //
 //    (void)depth;
 //
@@ -3335,7 +3199,6 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
     }
 
     jsonize_basic(reader_thread, 1);
-#ifndef NO_MAIN
 #ifndef PKG_VERSION
     ndpi_serialize_string_string(&workflow->ndpi_serializer, "version", "unknown");
 #else
@@ -3343,11 +3206,6 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
 #endif
     ndpi_serialize_string_string(&workflow->ndpi_serializer, "ndpi_version", ndpi_revision());
     ndpi_serialize_string_uint32(&workflow->ndpi_serializer, "ndpi_api_version", ndpi_get_api_version());
-#else
-    ndpi_serialize_string_string(&workflow->ndpi_serializer, "version", "");
-    ndpi_serialize_string_string(&workflow->ndpi_serializer, "ndpi_version", "");
-    ndpi_serialize_string_uint32(&workflow->ndpi_serializer, "ndpi_api_version", 0);
-#endif    
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
                                  "size_per_flow",
                                  (uint64_t)(sizeof(struct nDPId_flow) + sizeof(struct nDPId_detection_data)));
@@ -3553,9 +3411,8 @@ static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_fl
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "thread_ts_usec", workflow->last_thread_time);
 }
 
-static int connect_to_collector(struct nDPId_reader_thread * const reader_thread, bool initial)
+static int connect_to_collector(struct nDPId_reader_thread * const reader_thread)
 {
-    write_to_console(0, 3, "connect_to_collector called");
     time_t start_time = time(NULL);
 
     while (1)
@@ -3563,12 +3420,9 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         if (reader_thread->collector_sockfd >= 0)
         {
             close(reader_thread->collector_sockfd);
-#ifdef ENABLE_CRYPTO
-            ncrypt_clear_handshake(&reader_thread->workflow->ncrypt_entity);
-#endif
         }
 
-        int sock_type = SOCK_STREAM;
+        int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
         reader_thread->collector_sockfd = socket(nDPId_options.parsed_collector_address.raw.sa_family, sock_type, 0);
         if (reader_thread->collector_sockfd < 0 || set_fd_cloexec(reader_thread->collector_sockfd) < 0)
         {
@@ -3583,10 +3437,7 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
             goto retry_or_fail;
         }
 
-        struct timeval sock_read;
-        sock_read.tv_sec = 5;
-        sock_read.tv_usec = 0;
-        if (setsockopt(reader_thread->collector_sockfd, SOL_SOCKET, SO_RCVTIMEO, &sock_read, sizeof(sock_read)) < 0)
+        if (set_collector_nonblock(reader_thread) != 0)
         {
             reader_thread->collector_sock_last_errno = errno;
             goto retry_or_fail;
@@ -3597,15 +3448,15 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
                     nDPId_options.parsed_collector_address.size) < 0)
         {
             reader_thread->collector_sock_last_errno = errno;
-            logger(1, "Failed to establish connection with the socket");
+            logger(0, "Failed to establish connection with the socket");
             goto retry_or_fail;
         }
         else
         {
-            write_to_console(0, 1, "Successfully established connection with the socket");
+            logger(0, "Successfully established connection with the socket");
         }
 
-        if (set_collector_nonblock(reader_thread) != 0)
+        if (shutdown(reader_thread->collector_sockfd, SHUT_RD) != 0)
         {
             reader_thread->collector_sock_last_errno = errno;
             goto retry_or_fail;
@@ -3615,11 +3466,6 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         return 0;
 
     retry_or_fail:
-        if (initial)
-        {
-            break;
-        }
-
         if (reader_thread->collector_sockfd >= 0)
         {
             close(reader_thread->collector_sockfd);
@@ -3635,312 +3481,213 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         sleep(collector_reconnect_interval_sec);
         // retry again by falling through to next loop iteration
     }
-
-    return -1;
 }
 
-static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
-                             const char * const newline_json_msg,
-                             int length)
+
+static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
+                              char const * const newline_json_msg,
+                              int length)
 {
-    write_to_console(0, 3, "write_to_socket_2 called");
+    write_to_console(0, "write_to_socket_2 called");
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     int saved_errno;
     ssize_t written;
 
-    /* -------------------------------------------------------
-       Step 1: Prepare 4-byte header
-    ------------------------------------------------------- */
+    /* ---------------------------
+       Step 1: Send 4-byte header
+       --------------------------- */
     unsigned char len_hdr[4];
     encode_uint32_be((uint32_t)length, len_hdr);
 
-    /* -------------------------------------------------------
-       Step 2: Write header (with ONE retry on EAGAIN)
-    ------------------------------------------------------- */
     errno = 0;
+    ssize_t header_written = write(reader_thread->collector_sockfd, len_hdr, 4);
 
-#ifdef ENABLE_CRYPTO
-    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
-        written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
-    else
-#endif
-        written = write(reader_thread->collector_sockfd, len_hdr, 4);
-
-    if (written != 4)
+    if (header_written != 4)
     {
-        saved_errno = errno; // <-- FIX #1 (assign here)
+        saved_errno = errno;
+        reader_thread->collector_sock_last_errno = saved_errno;
 
-        /* Retry once ONLY for EAGAIN */
-        if (saved_errno == EAGAIN)
-        {
-            write_to_console(0, 2, "Header write EAGAIN → retrying once...");
-
-#ifdef ENABLE_CRYPTO
-            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
-                written = ncrypt_write(&workflow->ncrypt_entity, len_hdr, 4);
-            else
-#endif
-                written = write(reader_thread->collector_sockfd, len_hdr, 4);
-        }
-
-        /* Still not successful → mark error, return */
-        if (written != 4)
-        {
-            saved_errno = errno;
-            reader_thread->collector_sock_last_errno = saved_errno;
-
-            logger(1,
-                   "[%8llu, %zu] Failed to send length header to nDPIsrvd Collector "
-                   "(header write). errno=%d",
-                   workflow->packets_captured,
-                   reader_thread->array_index,
-                   saved_errno);
-
-            return -1;
-        }
+        logger(1,
+               "[%8llu, %zu] Failed to send length header to nDPIsrvd Collector (header write). errno=%d",
+               workflow->packets_captured,
+               reader_thread->array_index,
+               saved_errno);
+        return;
     }
 
-    write_to_console(0, 3, "Header written to socket successfully");
-
-    /* -------------------------------------------------------
-       Step 3: Write JSON payload (with ONE retry on EAGAIN)
-    ------------------------------------------------------- */
+    /* ---------------------------
+       Step 2: Send JSON payload
+       --------------------------- */
     errno = 0;
-
-#ifdef ENABLE_CRYPTO
-    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
-        written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
-    else
-#endif
-        written = write(reader_thread->collector_sockfd, newline_json_msg, length);
-
-    if (written != length)
+    if (reader_thread->collector_sock_last_errno == 0 &&
+        (written = write(reader_thread->collector_sockfd, newline_json_msg, length)) != length)
     {
-        saved_errno = errno; // <-- FIX #2
-
-        /* Retry once ONLY for EAGAIN */
-        if (saved_errno == EAGAIN)
+        saved_errno = errno;
+        if (saved_errno == EPIPE || written == 0)
         {
-            write_to_console(0, 2, "Payload write EAGAIN → retrying once...");
-
-#ifdef ENABLE_CRYPTO
-            if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file))
-                written = ncrypt_write(&workflow->ncrypt_entity, newline_json_msg, length);
-            else
-#endif
-                written = write(reader_thread->collector_sockfd, newline_json_msg, length);
-
-            saved_errno = errno; // <-- update errno after retry
+            logger(1,
+                   "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
+                   workflow->packets_captured,
+                   reader_thread->array_index);
         }
-
-        if (written != length)
+        if (saved_errno != EAGAIN)
         {
-            /* If pipe broken */
-            if (saved_errno == EPIPE || written == 0)
+            if (saved_errno == ECONNREFUSED)
             {
                 logger(1,
-                       "[%8llu, %zu] Lost connection to nDPIsrvd Collector (payload)",
+                       "[%8llu, %zu] %s to %s refused by endpoint",
                        workflow->packets_captured,
-                       reader_thread->array_index);
+                       reader_thread->array_index,
+                       (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection" : "Datagram"),
+                       GET_CMDARG_STR(nDPId_options.collector_address));
             }
-
-            /* Record error so next write_to_socket() reconnects */
             reader_thread->collector_sock_last_errno = saved_errno;
-            return -1;
+        }
+        else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
+        {
+            write_to_console(0, "<AF_UNIX blocking fallback triggered>");
+
+            size_t pos = (written < 0 ? 0 : written);
+            set_collector_block(reader_thread);
+            while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, length - pos)) !=
+                   (length - pos))
+            {
+                saved_errno = errno;
+                if (saved_errno == EPIPE || written == 0)
+                {
+                    logger(1,
+                           "[%8llu, %zu] Lost connection to nDPIsrvd Collector (3)",
+                           workflow->packets_captured,
+                           reader_thread->array_index);
+                    reader_thread->collector_sock_last_errno = saved_errno;
+                    break;
+                }
+                else if (written < 0)
+                {
+                    logger(1,
+                           "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
+                           workflow->packets_captured,
+                           reader_thread->array_index,
+                           GET_CMDARG_STR(nDPId_options.collector_address),
+                           strerror(saved_errno));
+                    reader_thread->collector_sock_last_errno = saved_errno;
+                    break;
+                }
+                else
+                {
+                    pos += written;
+                }
+            }
+            set_collector_nonblock(reader_thread);
         }
     }
-
-    write_to_console(0, 3, "Data written to socket successfully");
-    return 0;
 }
 
-
-
- 
-static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                           const char * const json_msg,
-                           const char * const json_string_with_http_or_tls_info)
+static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
+                     const char * const json_msg,
+                            const char * const json_string_with_http_or_tls_info)
 {
-    write_to_console(0, 3, "write_to_socket called");
+    write_to_console(0, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
-
-    /* --------------------------------------------
-       1. Handle reconnection if last write failed
-    --------------------------------------------- */
+    int saved_errno;
     if (reader_thread->collector_sock_last_errno != 0)
     {
-        int saved_errno = reader_thread->collector_sock_last_errno;
+        saved_errno = reader_thread->collector_sock_last_errno;
 
-        if (connect_to_collector(reader_thread, false) == 0)
+        if (connect_to_collector(reader_thread) == 0)
         {
-            logger(1,
-                   "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s (1)",
-                   workflow->packets_captured,
-                   reader_thread->array_index,
-                   GET_CMDARG_STR(nDPId_options.collector_address));
-
-            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
+            if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
+            {
+                logger(1,
+                       "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s (1)",
+                       workflow->packets_captured,
+                       reader_thread->array_index,
+                       GET_CMDARG_STR(nDPId_options.collector_address));
+                jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
+            }
         }
         else
         {
-            /* Still failed – keep the queue entry so retry later */
             if (saved_errno != reader_thread->collector_sock_last_errno)
             {
                 logger(1,
-                       "[%8llu, %zu] Could not reconnect to nDPIsrvd Collector at %s, "
-                       "will try again later. Error: %s",
+                       "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
                        workflow->packets_captured,
                        reader_thread->array_index,
                        GET_CMDARG_STR(nDPId_options.collector_address),
                        (reader_thread->collector_sock_last_errno != 0
                             ? strerror(reader_thread->collector_sock_last_errno)
-                            : "Internal Error"));
+                            : "Internal Error."));
             }
-            return -1; // do NOT free json; writer thread will retry same entry
+            return;
         }
     }
 
-#ifdef ENABLE_CRYPTO
-    /* --------------------------------------------
-       2. Perform TLS handshake if needed
-    --------------------------------------------- */
-    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0)
-    {
-        if (ncrypt_handshake_done(&workflow->ncrypt_entity) == 0)
-        {
-            set_collector_block(reader_thread);
-            ncrypt_free_entity(&workflow->ncrypt_entity);
-
-            int rv = ncrypt_on_connect(&ncrypt_ctx, reader_thread->collector_sockfd, &workflow->ncrypt_entity);
-            if (rv != NCRYPT_SUCCESS)
-            {
-                logger(1,
-                       "[%8llu, %zu] TLS handshake failed with: %d",
-                       workflow->packets_captured,
-                       reader_thread->array_index,
-                       rv);
-
-                reader_thread->collector_sock_last_errno = EPIPE;
-                return -1;
-            }
-
-            ncrypt_set_handshake(&workflow->ncrypt_entity);
-            set_collector_nonblock(reader_thread);
-        }
-    }
-#endif
-
-    /* --------------------------------------------
-       3. Convert JSON to nDPI format
-    --------------------------------------------- */
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
-
-    if (converted_json_str == NULL)
-        return 0; // nothing to send → not an error
-
-    int rc = 0;
-    int length = strlen(converted_json_str);
-
-    if (length > 0)
+    if (converted_json_str != NULL)
     {
-        /* ======================================================
-           4. If multiple risk chunks → send each independently
-              and if ANY fails, stop immediately (no free!)
-           ====================================================== */
-        if (flow_risk_count > 0)
+        int length = strlen(converted_json_str);
+        if (length != 0)
         {
-            for (int index = 0; index < flow_risk_count; index++)
+            if (flow_risk_count)
             {
-                if (index > 0)
+                write_to_socket_2(reader_thread, converted_json_str, length);
+                for (size_t index = 1; index < flow_risk_count; index++)
                 {
-                    // Free previous chunk only because we will replace it
                     free(converted_json_str);
-
-                    int dummy = 0;
-                    ConvertnDPIDataFormat(
-                        json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &dummy);
-                }
-
-                length = strlen(converted_json_str);
-
-                if (length > 0)
-                {
-                    if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
+                    size_t flow_risk_count_dummy = 0;
+                    ConvertnDPIDataFormat(json_msg,
+                                          json_string_with_http_or_tls_info,
+                                          index,
+                                          &converted_json_str,
+                                          &flow_risk_count_dummy);
+                    length = strlen(converted_json_str);
+                    if (length != 0)
                     {
-                        rc = -1;
-                        goto out; // do NOT free → retry same message later
+                        write_to_socket_2(reader_thread, converted_json_str, length);
                     }
                 }
+
+                if (length == 0)
+                {
+                    logger(1, "string length is 0");
+                }
+                else
+                {
+                    char * converted_json_str_no_risk = NULL;
+                    DeletenDPIRisk(converted_json_str, &converted_json_str_no_risk);
+                    int length_converted = strlen(converted_json_str_no_risk);
+                    write_to_socket_2(reader_thread, converted_json_str_no_risk, length_converted);
+                    free(converted_json_str_no_risk);
+                }
             }
-        }
-        else
-        {
-            /* ======================================================
-               5. Single message case
-               ====================================================== */
-            if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
+            else
             {
-                rc = -1;
-                goto out; // do NOT free → message stays in queue
+                write_to_socket_2(reader_thread, converted_json_str, length);
             }
         }
-    }
 
-out:
-    /* Free ONLY on total success */
-    if (rc == 0)
         free(converted_json_str);
-
-    return rc;
+    }
 }
 
-
-
-static void write_to_socket_buffer(
-                            const char * json_msg,
-                            const char * json_string_with_http_or_tls_info)
+static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
 {
-    write_to_console(0, 3, "write_to_socket_buffer called");
-    pthread_mutex_lock(&socket_queue.lock);
-
-    while (socket_queue.count == SOCKET_BUFFER_CAPACITY)
-        pthread_cond_wait(&socket_queue.not_full, &socket_queue.lock);
-
-    struct socket_message * msg = &socket_queue.queue[socket_queue.tail];
-
-    msg->json_msg = strdup(json_msg);
-
-    if (json_string_with_http_or_tls_info)
-        msg->json_string_with_http_or_tls_info = strdup(json_string_with_http_or_tls_info);
-    else
-        msg->json_string_with_http_or_tls_info = NULL;
-
-    socket_queue.tail = (socket_queue.tail + 1) % SOCKET_BUFFER_CAPACITY;
-    socket_queue.count++;
-
-    pthread_cond_signal(&socket_queue.not_empty);
-    pthread_mutex_unlock(&socket_queue.lock);
-    write_to_console(0, 3, "write_to_socket_buffer exiting");
-}
-
-
-static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
-{
-    write_to_console(0, 3, "send_to_collector called");
+    write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
-
+ 
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
     int s_ret = snprintf(newline_json_msg,
-                         sizeof(newline_json_msg),
-                         "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
-                         json_msg_len + 1,
-                         (int)json_msg_len,
-                         json_msg);
+                     sizeof(newline_json_msg),
+                     "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
+                     json_msg_len + 1,
+                     (int)json_msg_len,
+                     json_msg);
 
     if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
     {
@@ -3958,7 +3705,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                    reader_thread->array_index,
                    ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
                    newline_json_msg);
-        }
+        }       
         return;
     }
 
@@ -3969,46 +3716,144 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
-
-    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
+ 
+    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE)) 
     {
         add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        write_to_console(0, 3, "send_to_collector returning for [event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE]");
-        return;
+        return; 
     }
-    else
+    else 
     {
         json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
     }
 
-    // Ashwani
-    // We are not using socket so no need to connect just return from here. vv
+    // Ashwani 
+    // We are not using socket so no need to connect just return from here.
 
-    if (output_send_to_file)
+    if (workflow->is_pcap_file && output_send_to_file)
     {
         write_to_file(json_msg, json_string_with_http_or_tls_info);
     }
 
     if (output_send_to_socket)
     {
-        write_to_socket_buffer(json_msg, json_string_with_http_or_tls_info);
-        log_socket_buffer_stats();        
+        write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
     }
-
+    
     free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
+
+
+    return;
+
+    //--------------------------------------------- Not Used-----------------------------------
+    //if (reader_thread->collector_sock_last_errno != 0)
+    //{
+    //    saved_errno = reader_thread->collector_sock_last_errno;
+
+    //    if (connect_to_collector(reader_thread) == 0)
+    //    {
+    //        if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
+    //        {
+    //            logger(1,
+    //                   "[%8llu, %zu] Reconnected to nDPIsrvd Collector at %s",
+    //                   workflow->packets_captured,
+    //                   reader_thread->array_index,
+    //                   GET_CMDARG_STR(nDPId_options.collector_address));
+    //            jsonize_daemon(reader_thread, DAEMON_EVENT_RECONNECT);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        if (saved_errno != reader_thread->collector_sock_last_errno)
+    //        {
+    //            logger(1,
+    //                   "[%8llu, %zu] Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s",
+    //                   workflow->packets_captured,
+    //                   reader_thread->array_index,
+    //                   GET_CMDARG_STR(nDPId_options.collector_address),
+    //                   (reader_thread->collector_sock_last_errno != 0
+    //                        ? strerror(reader_thread->collector_sock_last_errno)
+    //                        : "Internal Error."));
+    //        }
+    //        return;
+    //    }
+    //}
+
+    //errno = 0;
+    //ssize_t written;
+    //if (reader_thread->collector_sock_last_errno == 0 &&
+    //    (written = write(reader_thread->collector_sockfd, newline_json_msg, s_ret)) != s_ret)
+    //{
+    //    saved_errno = errno;
+    //    if (saved_errno == EPIPE || written == 0)
+    //    {
+    //        logger(1,
+    //               "[%8llu, %zu] Lost connection to nDPIsrvd Collector (1)",
+    //               workflow->packets_captured,
+    //               reader_thread->array_index);
+    //    }
+    //    if (saved_errno != EAGAIN)
+    //    {
+    //        if (saved_errno == ECONNREFUSED)
+    //        {
+    //            logger(1,
+    //                   "[%8llu, %zu] %s to %s refused by endpoint",
+    //                   workflow->packets_captured,
+    //                   reader_thread->array_index,
+    //                   (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? "Connection" : "Datagram"),
+    //                   GET_CMDARG_STR(nDPId_options.collector_address));
+    //        }
+    //        reader_thread->collector_sock_last_errno = saved_errno;
+    //    }
+    //    else if (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX)
+    //    {
+    //        size_t pos = (written < 0 ? 0 : written);
+    //        set_collector_block(reader_thread);
+    //        while ((size_t)(written = write(reader_thread->collector_sockfd, newline_json_msg + pos, s_ret - pos)) !=
+    //               s_ret - pos)
+    //        {
+    //            saved_errno = errno;
+    //            if (saved_errno == EPIPE || written == 0)
+    //            {
+    //                logger(1,
+    //                       "[%8llu, %zu] Lost connection to nDPIsrvd Collector (2)",
+    //                       workflow->packets_captured,
+    //                       reader_thread->array_index);
+    //                reader_thread->collector_sock_last_errno = saved_errno;
+    //                break;
+    //            }
+    //            else if (written < 0)
+    //            {
+    //                logger(1,
+    //                       "[%8llu, %zu] Send data (blocking I/O) to nDPIsrvd Collector at %s failed: %s",
+    //                       workflow->packets_captured,
+    //                       reader_thread->array_index,
+    //                       GET_CMDARG_STR(nDPId_options.collector_address),
+    //                       strerror(saved_errno));
+    //                reader_thread->collector_sock_last_errno = saved_errno;
+    //                break;
+    //            }
+    //            else
+    //            {
+    //                pos += written;
+    //            }
+    //        }
+    //        set_collector_nonblock(reader_thread);
+    //    }
+    //}
 }
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
 {
-    write_to_console(0, 3, "serialize_and_send called");
+    write_to_console(0, "serialize_and_send called");
     char * json_msg;
     uint32_t json_msg_len;
 
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
     // Ashwani: This prints json output to console log.
-    //printf("%s\n", json_msg);
+    printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
@@ -4313,7 +4158,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
-    write_to_console(0, 3, "jsonize_flow_event called");
+    write_to_console(0, "jsonize_flow_event called");
     if (skipEventsFromLogging(event))
     {       
         return -1;
@@ -4795,6 +4640,14 @@ static uint32_t calculate_ndpi_flow_struct_hash(struct ndpi_flow_struct const * 
                                                                       // future)
     hash += ndpi_flow->confidence;
 
+    const size_t protocol_bitmask_size = sizeof(ndpi_flow->excluded_protocol_bitmask.fds_bits) /
+                                         sizeof(ndpi_flow->excluded_protocol_bitmask.fds_bits[0]);
+    for (size_t i = 0; i < protocol_bitmask_size; ++i)
+    {
+        hash += ndpi_flow->excluded_protocol_bitmask.fds_bits[i];
+        hash += ndpi_flow->excluded_protocol_bitmask.fds_bits[i];
+    }
+
     size_t host_server_name_len =
         strnlen((const char *)ndpi_flow->host_server_name, sizeof(ndpi_flow->host_server_name));
     hash += host_server_name_len;
@@ -5079,7 +4932,7 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
                 return 1;
             }
 
-            ethernet = (struct ndpi_ethhdr const *)&packet[eth_offset];
+            ethernet = (struct ndpi_ethhdr *)&packet[eth_offset];
             *ip_offset = sizeof(struct ndpi_ethhdr) + eth_offset;
             *layer3_type = ntohs(ethernet->h_proto);
 
@@ -5171,7 +5024,7 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
                                      UNKNOWN_DATALINK_LAYER,
                                      "%s%u",
                                      "layer_type",
-                                     ntohl(*((uint32_t const *)&packet[eth_offset])));
+                                     ntohl(*((uint32_t *)&packet[eth_offset])));
                 jsonize_packet_event(reader_thread, header, packet, 0, 0, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
             return 1;
@@ -5337,7 +5190,7 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
         return 0; /* Too short for GRE header*/
     }
     uint32_t offset = (l4_ptr - packet);
-    struct ndpi_gre_basehdr const * const grehdr = (struct ndpi_gre_basehdr const *)&packet[offset];
+    struct ndpi_gre_basehdr * grehdr = (struct ndpi_gre_basehdr *)&packet[offset];
     offset += sizeof(struct ndpi_gre_basehdr);
 
     /*
@@ -5443,6 +5296,7 @@ static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
 {
+    //write_to_console(0, "\tndpi_process_packet called");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)args;
     struct nDPId_workflow * workflow;
     struct nDPId_flow_basic flow_basic = {.vlan_id = USHRT_MAX};
@@ -5457,7 +5311,7 @@ static void ndpi_process_packet(uint8_t * const args,
     uint8_t is_new_flow = 0;
 
     const struct ndpi_iphdr * ip;
-    const struct ndpi_ipv6hdr * ip6;
+    struct ndpi_ipv6hdr * ip6;
     const struct ndpi_tcphdr * tcp = NULL;
 
     uint64_t time_us;
@@ -5505,7 +5359,7 @@ static void ndpi_process_packet(uint8_t * const args,
 process_layer3_again:
     if (type == ETH_P_IP)
     {
-        ip = (struct ndpi_iphdr const *)&packet[ip_offset];
+        ip = (struct ndpi_iphdr *)&packet[ip_offset];
         ip6 = NULL;
         if (header->caplen < ip_offset + sizeof(*ip))
         {
@@ -5526,7 +5380,7 @@ process_layer3_again:
     else if (type == ETH_P_IPV6)
     {
         ip = NULL;
-        ip6 = (struct ndpi_ipv6hdr const *)&packet[ip_offset];
+        ip6 = (struct ndpi_ipv6hdr *)&packet[ip_offset];
         if (header->caplen < ip_offset + sizeof(*ip6))
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
@@ -5573,7 +5427,7 @@ process_layer3_again:
         flow_basic.l3_type = L3_IP;
 
         if (ndpi_detection_get_l4(
-                (uint8_t const *)ip, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV4) != 0)
+                (uint8_t *)ip, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV4) != 0)
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
             {
@@ -5593,7 +5447,7 @@ process_layer3_again:
     {
         flow_basic.l3_type = L3_IP6;
         if (ndpi_detection_get_l4(
-                (uint8_t const*)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
+                (uint8_t *)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
             {
@@ -5732,7 +5586,7 @@ process_layer3_again:
             }
             return;
         }
-        tcp = (struct ndpi_tcphdr const *)l4_ptr;
+        tcp = (struct ndpi_tcphdr *)l4_ptr;
         l4_payload_len = ndpi_max(0, l4_len - 4 * tcp->doff);
         flow_basic.tcp_fin_rst_seen = (tcp->fin == 1 || tcp->rst == 1 ? 1 : 0);
         flow_basic.tcp_is_midstream_flow = (tcp->syn == 0 ? 1 : 0);
@@ -5766,7 +5620,7 @@ process_layer3_again:
             }
             return;
         }
-        udp = (struct ndpi_udphdr const *)l4_ptr;
+        udp = (struct ndpi_udphdr *)l4_ptr;
         l4_payload_len = (l4_len > sizeof(struct ndpi_udphdr)) ? l4_len - sizeof(struct ndpi_udphdr) : 0;
         flow_basic.src_port = ntohs(udp->source);
         flow_basic.dst_port = ntohs(udp->dest);
@@ -6150,7 +6004,7 @@ process_layer3_again:
                      1);
         flow_to_process->flow_extended.flow_analysis
             ->entropies[(total_flow_packets - 1) % GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse)] =
-            ndpi_entropy((ip != NULL ? (uint8_t const *)ip : (uint8_t const *)ip6), ip_size);
+            ndpi_entropy((ip != NULL ? (uint8_t *)ip : (uint8_t *)ip6), ip_size);
 
         if (total_flow_packets == GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse))
         {
@@ -6178,13 +6032,12 @@ process_layer3_again:
     flow_to_process->flow_extended.detected_l7_protocol =
         ndpi_detection_process_packet(workflow->ndpi_struct,
                                       &flow_to_process->info.detection_data->flow,
-                                      ip != NULL ? (uint8_t const *)ip : (uint8_t const *)ip6,
+                                      ip != NULL ? (uint8_t *)ip : (uint8_t *)ip6,
                                       ip_size,
                                       workflow->last_thread_time / 1000,
                                       NULL);
 
     if (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) != 0 &&
-        flow_to_process->info.detection_data->flow.protocol_was_guessed == 0 &&
         flow_to_process->info.detection_completed == 0)
     {
         flow_to_process->info.detection_completed = 1;
@@ -6216,17 +6069,17 @@ process_layer3_again:
         }
     }
 
-   if ((flow_to_process->info.detection_data->flow.num_processed_pkts ==
-             GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) &&
-         flow_to_process->info.detection_completed == 0) ||
-        (flow_to_process->flow_extended.detected_l7_protocol.state == NDPI_STATE_CLASSIFIED &&
-         (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) == 0 ||
-          flow_to_process->info.detection_data->flow.protocol_was_guessed != 0)))
+    if (flow_to_process->info.detection_data->flow.num_processed_pkts ==
+            GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) &&
+        flow_to_process->info.detection_completed == 0)
     {
         /* last chance to guess something, better then nothing */
+        uint8_t protocol_was_guessed = 0;
         flow_to_process->info.detection_data->guessed_l7_protocol =
-            ndpi_detection_giveup(workflow->ndpi_struct, &flow_to_process->info.detection_data->flow);
-        if (flow_to_process->info.detection_data->flow.protocol_was_guessed != 0)
+            ndpi_detection_giveup(workflow->ndpi_struct,
+                                  &flow_to_process->info.detection_data->flow,
+                                  &protocol_was_guessed);
+        if (protocol_was_guessed != 0)
         {
             workflow->total_guessed_flows++;
             jsonize_flow_detection_event(reader_thread, flow_to_process, FLOW_EVENT_GUESSED);
@@ -6240,7 +6093,8 @@ process_layer3_again:
 
     if (flow_to_process->info.detection_data->flow.num_processed_pkts ==
             GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) ||
-        flow_to_process->flow_extended.detected_l7_protocol.state == NDPI_STATE_CLASSIFIED)
+        (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) != 0 &&
+         ndpi_extra_dissection_possible(workflow->ndpi_struct, &flow_to_process->info.detection_data->flow) == 0))
     {
         struct ndpi_proto detected_l7_protocol = flow_to_process->flow_extended.detected_l7_protocol;
         if (ndpi_is_protocol_detected(detected_l7_protocol) == 0)
@@ -6288,8 +6142,8 @@ static void get_current_time(struct timeval * const tval)
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 //static void ndpi_log_flow_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
-//    struct nDPId_reader_thread const * const reader_thread = (struct nDPId_reader_thread const *)user_data;
-//    struct nDPId_flow_basic const * const flow_basic = *(struct nDPId_flow_basic const * const *)A;
+//    struct nDPId_reader_thread const * const reader_thread = (struct nDPId_reader_thread *)user_data;
+//    struct nDPId_flow_basic const * const flow_basic = *(struct nDPId_flow_basic **)A;
 //
 //    (void)depth;
 //    (void)user_data;
@@ -6314,7 +6168,7 @@ static void get_current_time(struct timeval * const tval)
 //
 //            case FS_FINISHED:
 //            {
-//                struct nDPId_flow const * const flow = (struct nDPId_flow const *)flow_basic;
+//                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
 //
 //                uint64_t last_seen = get_last_pkt_time(flow_basic);
 //                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
@@ -6334,7 +6188,7 @@ static void get_current_time(struct timeval * const tval)
 //
 //            case FS_INFO:
 //            {
-//                struct nDPId_flow const * const flow = (struct nDPId_flow const *)flow_basic;
+//                struct nDPId_flow const * const flow = (struct nDPId_flow *)flow_basic;
 //
 //                uint64_t last_seen = get_last_pkt_time(flow_basic);
 //                uint64_t idle_time = get_l4_protocol_idle_time_external(flow->flow_extended.flow_basic.l4_protocol);
@@ -6438,7 +6292,7 @@ static void log_all_flows(struct nDPId_reader_thread const * const reader_thread
 
 static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 {
-    write_to_console(0, 1, "run_capture_loop called");
+    write_to_console(0, "run_capture_loop called");
     if (reader_thread->workflow == NULL || (reader_thread->workflow->pcap_handle == NULL
 #ifdef ENABLE_PFRING
                                             && reader_thread->workflow->npf.pfring_desc == NULL
@@ -6477,7 +6331,6 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 
         sigaddset(&thread_signal_set, SIGINT);
         sigaddset(&thread_signal_set, SIGTERM);
-        sigaddset(&thread_signal_set, SIGPIPE);
         sigaddset(&thread_signal_set, SIGUSR1);
         int signal_fd = signalfd(-1, &thread_signal_set, SFD_NONBLOCK);
         if (signal_fd < 0 || set_fd_cloexec(signal_fd) < 0)
@@ -6597,7 +6450,6 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                     }
                     else
                     {
-                        int silenced = 0;
                         int is_valid_signal = 0;
                         char const * signame = "unknown";
                         switch (fdsi.ssi_signo)
@@ -6612,25 +6464,19 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
                                 signame = "SIGTERM";
                                 sighandler(SIGTERM);
                                 break;
-                            case SIGPIPE:
-                                silenced = 1;
-                                break;
                             case SIGUSR1:
                                 is_valid_signal = 1;
                                 signame = "SIGUSR1";
                                 log_all_flows(reader_thread);
                                 break;
                         }
-                        if (silenced == 0)
+                        if (is_valid_signal != 0)
                         {
-                            if (is_valid_signal != 0)
-                            {
-                                logger(1, "Received signal %d (%s)", fdsi.ssi_signo, signame);
-                            }
-                            else
-                            {
-                                logger(1, "Received signal %d (%s), ignored", fdsi.ssi_signo, signame);
-                            }
+                            logger(1, "Received signal %d (%s)", fdsi.ssi_signo, signame);
+                        }
+                        else
+                        {
+                            logger(1, "Received signal %d (%s), ignored", fdsi.ssi_signo, signame);
                         }
                     }
                 }
@@ -6698,14 +6544,14 @@ static void break_pcap_loop(struct nDPId_reader_thread * const reader_thread)
 
 static void * processing_thread(void * const ndpi_thread_arg)
 {
-    write_to_console(0, 1, "processing_thread called");
+    write_to_console(0, "processing_thread called");
     struct nDPId_reader_thread * const reader_thread = (struct nDPId_reader_thread *)ndpi_thread_arg;
 
     reader_thread->collector_sockfd = -1;
 
-    if (connect_to_collector(reader_thread, true) != 0)
+    if (connect_to_collector(reader_thread) != 0)
     {
-        logger (1, "Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s\n",
+        printf ("Thread %zu: Could not connect to nDPIsrvd Collector at %s, will try again later. Error: %s\n",
                reader_thread->array_index,
                GET_CMDARG_STR(nDPId_options.collector_address),
                (reader_thread->collector_sock_last_errno != 0 ? strerror(reader_thread->collector_sock_last_errno)
@@ -6713,7 +6559,7 @@ static void * processing_thread(void * const ndpi_thread_arg)
     }
     else
     {
-        write_to_console(0, 1, "connect_to_collector : Success");
+        logger(0, "connect_to_collector : Success\n");
         jsonize_daemon(reader_thread, DAEMON_EVENT_INIT);
     }
 
@@ -6737,7 +6583,7 @@ static WARN_UNUSED int processing_threads_error_or_eof(void)
 
 static int start_reader_threads(void)
 {
-    write_to_console(0, 1, "start_reader_threads called");
+    write_to_console(0, "start_reader_threads called");
     sigset_t thread_signal_set, old_signal_set;
 
     sigfillset(&thread_signal_set);
@@ -6804,7 +6650,7 @@ static int start_reader_threads(void)
 //static void ndpi_shutdown_walker(void const * const A, ndpi_VISIT which, int depth, void * const user_data)
 //{
 //    struct nDPId_workflow * const workflow = (struct nDPId_workflow *)user_data;
-//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic * const *)A;
+//    struct nDPId_flow_basic * const flow_basic = *(struct nDPId_flow_basic **)A;
 //
 //    (void)depth;
 //
@@ -6927,7 +6773,7 @@ static int stop_reader_threads(void)
         break_pcap_loop(&reader_threads[i]);
     }
 
-    printf("------------------------------------ Stopping reader threads\n");
+    //printf("------------------------------------ Stopping reader threads\n");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -6941,10 +6787,12 @@ static int stop_reader_threads(void)
         }
     }
 
-    printf("------------------------------------ Processing remaining flows\n");
+   // printf("------------------------------------ Processing remaining flows\n");
     process_remaining_flows();
 
-    printf("------------------------------------ Results\n");
+    //printf("------------------------------------ Results\n");
+    // Ashwani
+    return 0;
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -7029,15 +6877,8 @@ static void print_subopt_usage(void)
     }
 }
 
-static void printVersion()
-{
-    // MM.DD.YYYY
-    printf("nDPID program version is 01.01.2026.01\n");
-}
-
 static void print_usage(char const * const arg0)
 {
-    printVersion();
     static char const usage[] =
         "Usage: %s "
         "[-f config-file]\n"
@@ -7053,8 +6894,6 @@ static void print_usage(char const * const arg0)
         "[-a instance-alias] [-U instance-uuid] [-A]\n"
         "\t \t"
         "[-o subopt=value]\n"
-        "\t  \t"
-        "[-x json-config-file]\n"
         "\t  \t"
         "[-v] [-h]\n\n"
         "\t-f\tLoad nDPId/libnDPI options from a configuration file.\n"
@@ -7081,14 +6920,6 @@ static void print_usage(char const * const arg0)
         "\t  \tDefault: disabled\n"
         "\t-c\tPath to a UNIX socket (nDPIsrvd Collector) or a custom UDP endpoint.\n"
         "\t  \tDefault: `%s'\n"
-#ifdef ENABLE_CRYPTO
-        "\t-k\tPath to the client certificate file (PEM format)\n"
-        "\t  \tDefault: disabled\n"
-        "\t-K\tPath to the client key file (PEM format)\n"
-        "\t  \tDefault: disabled\n"
-        "\t-F\tPath to the server CA file (PEM format)\n"
-        "\t  \tDefault: disabled\n"
-#endif
 #ifdef ENABLE_EPOLL
         "\t-e\tUse poll() instead of epoll().\n"
         "\t  \tDefault: epoll() on Linux, poll() otherwise\n"
@@ -7109,9 +6940,6 @@ static void print_usage(char const * const arg0)
         "\t  \tDefault: disabled\n"
         "\t-J\tLoad a nDPI JA4 hash blacklist file.\n"
         "\t  \tDefault: disabled\n"
-        "\t-y\tSet the console output level from 1 to 4.\n"
-        "\t  \t1 = critical only, 4 = detailed output.\n"
-        "\t  \tDefault: 1\n"
         "\t-S\tLoad a nDPI SSL SHA1 hash blacklist file.\n"
         "\t  \tSee: https://sslbl.abuse.ch/blacklist/sslblacklist.csv\n"
         "\t  \tDefault: disabled\n"
@@ -7133,12 +6961,9 @@ static void print_usage(char const * const arg0)
         "\t-z\tEnable flow memory zLib compression.\n"
         "\t  \tDefault: disabled\n"
 #endif
-        "\t-x\tPath to the JSON configuration file (nDPIdConfiguration.json)\n"
-        "\t  \tDefault: Settings/nDPIdConfiguration.json\n"
         "\t-o\t(Carefully) Tune some daemon options. See subopts below.\n"
         "\t-v\tversion\n"
         "\t-h\tthis\n\n";
-
     fprintf(stderr,
             usage,
             arg0,
@@ -7147,16 +6972,8 @@ static void print_usage(char const * const arg0)
             nDPId_options.user.string.default_value);
 }
 
-
 static void nDPId_print_deps_version(FILE * const out)
 {
-    if (console_output_level < 1)
-    {
-        return;
-    }
-    // MM.DD.YYYY
-    printVersion();
-
     fprintf(out,
             "-------------------------------------------------------\n"
             "package version: %s\n"
@@ -7221,7 +7038,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:k:K:F:edp:u:g:R:P:C:J:S:a:U:Azo:y:x:vh")) != -1)
+    while ((opt = getopt(argc, argv, "f:i:rIEB:tlL:c:edp:u:g:R:P:C:J:S:a:U:Azo:vh")) != -1)
     {
         switch (opt)
         {
@@ -7263,30 +7080,6 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'c':
                 set_cmdarg_string(&nDPId_options.collector_address, optarg);
                 break;
-            case 'k':
-#ifdef ENABLE_CRYPTO
-                set_cmdarg_string(&nDPId_options.client_crt_pem_file, optarg);
-                break;
-#else
-                logger(1, "Client cert PEM file: %s", "nDPId was built w/o OpenSSL/Crypto support");
-                return 1;
-#endif
-            case 'K':
-#ifdef ENABLE_CRYPTO
-                set_cmdarg_string(&nDPId_options.client_key_pem_file, optarg);
-                break;
-#else
-                logger(1, "Client key PEM file: %s", "nDPId was built w/o OpenSSL/Crypto support");
-                return 1;
-#endif
-            case 'F':
-#ifdef ENABLE_CRYPTO
-                set_cmdarg_string(&nDPId_options.server_ca_pem_file, optarg);
-                break;
-#else
-                logger(1, "Server CA PEM file: %s", "nDPId was built w/o OpenSSL/Crypto support");
-                return 1;
-#endif
             case 'e':
 #ifdef ENABLE_EPOLL
                 set_cmdarg_boolean(&nDPId_options.use_poll, 1);
@@ -7319,33 +7112,6 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'J':
                 set_cmdarg_string(&nDPId_options.custom_ja4_file, optarg);
                 break;
-            case 'x': /* JSON config file path */
-                if (optarg && strlen(optarg) > 0)
-                {
-                    snprintf(global_config_file_path, sizeof(global_config_file_path), "%s", optarg);
-                }
-                
-                break;
-            case 'y': /* console output level */
-            {
-                char * endptr = NULL;
-                long lvl = strtol(optarg, &endptr, 10);
-
-                if (endptr == optarg || *endptr != '\0')
-                {
-                    logger_early(1, "Invalid integer for -k: %s", optarg);
-                    return 1;
-                }
-
-                console_output_level = (int)lvl;
-                if (console_output_level < 1 || console_output_level > 4)
-                    {
-                        logger_early(1, "Console output level must be between 1 and 4");
-                        console_output_level = -1;
-                        return 1;
-                    }
-                break;
-            }
             case 'S':
                 set_cmdarg_string(&nDPId_options.custom_sha1_file, optarg);
                 break;
@@ -7549,7 +7315,7 @@ static int validate_options(void)
         else
         {
             set_cmdarg_string(&nDPId_options.instance_alias, hname);
-            write_to_console(0, 1,
+            logger_early(1,
                          "No instance alias given, using your hostname `%s'",
                          GET_CMDARG_STR(nDPId_options.instance_alias));
             if (IS_CMDARG_SET(nDPId_options.instance_alias) == 0)
@@ -7672,55 +7438,6 @@ static int validate_options(void)
     {
         logger_early(1, "%s", "Higher values of max-packets-per-flow-to-send may cause superfluous network usage.");
     }
-#ifdef ENABLE_CRYPTO
-    if ((IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 &&
-         IS_CMDARG_SET(nDPId_options.client_key_pem_file) == 0) ||
-        (IS_CMDARG_SET(nDPId_options.client_crt_pem_file) == 0 &&
-         IS_CMDARG_SET(nDPId_options.client_key_pem_file) != 0) ||
-        (IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 && IS_CMDARG_SET(nDPId_options.server_ca_pem_file) == 0))
-    {
-        logger_early(1,
-                     "%s",
-                     "Encryption requires a client certificate, key and a server CA file to be set. See `-k', `-K' and "
-                     "`-F'.");
-        retval = 1;
-    }
-
-    if ((IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 ||
-         IS_CMDARG_SET(nDPId_options.client_key_pem_file) != 0 ||
-         IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0) &&
-        (IS_CMDARG_SET(nDPId_options.collector_address) == 0 ||
-         nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX))
-    {
-        logger_early(1, "%s", "Encryption requires an TCP endpoint set with `-c'.");
-        retval = 1;
-    }
-#endif
-
-    #ifdef ENABLE_CRYPTO
-    if ((IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 &&
-         IS_CMDARG_SET(nDPId_options.client_key_pem_file) == 0) ||
-        (IS_CMDARG_SET(nDPId_options.client_crt_pem_file) == 0 &&
-         IS_CMDARG_SET(nDPId_options.client_key_pem_file) != 0) ||
-        (IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 && IS_CMDARG_SET(nDPId_options.server_ca_pem_file) == 0))
-    {
-        logger_early(1,
-                     "%s",
-                     "Encryption requires a client certificate, key and a server CA file to be set. See `-k', `-K' and "
-                     "`-F'.");
-        retval = 1;
-    }
-
-    if ((IS_CMDARG_SET(nDPId_options.client_crt_pem_file) != 0 ||
-         IS_CMDARG_SET(nDPId_options.client_key_pem_file) != 0 ||
-         IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0) &&
-        (IS_CMDARG_SET(nDPId_options.collector_address) == 0 ||
-         nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX))
-    {
-        logger_early(1, "%s", "Encryption requires an TCP endpoint set with `-c'.");
-        retval = 1;
-    }
-#endif
 
     return retval;
 }
@@ -7800,180 +7517,207 @@ static int nDPId_parsed_config_line(
     return 1;
 }
 
-
-/*----------------------------------------------------------------------------*/
-static void init_socket_buffer()
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+static void fetch_files_to_process(const char * pcap_files_folder_path)
 {
-    write_to_console(0, 1, "init_socket_buffer called\n");
-    socket_queue.head = 0;
-    socket_queue.tail = 0;
-    socket_queue.count = 0;
+    DIR * dir = NULL;
+    struct dirent * entry;
 
-    pthread_mutex_init(&socket_queue.lock, NULL);
-    pthread_cond_init(&socket_queue.not_empty, NULL);
-    pthread_cond_init(&socket_queue.not_full, NULL);
-
-    socket_writer_running = 1;
-
-    pthread_create(&socket_writer_thread, NULL, socket_writer_thread_func, NULL);
-}
-
-static void shutdown_socket_buffer()
-{
-    write_to_console(0, 1, "shutdown_socket_buffer called\n");
-    pthread_mutex_lock(&socket_queue.lock);
-    socket_writer_running = 0;
-    pthread_cond_signal(&socket_queue.not_empty);
-    pthread_mutex_unlock(&socket_queue.lock);
-
-    pthread_join(socket_writer_thread, NULL);
-}
-
-static void log_socket_buffer_stats()
-{
-    pthread_mutex_lock(&socket_queue.lock);
-
-    int count = socket_queue.count;
-    int head = socket_queue.head;
-    int tail = socket_queue.tail;
-
-    pthread_mutex_unlock(&socket_queue.lock);
-
-    char stat_msg[256];
-    snprintf(stat_msg,
-             sizeof(stat_msg),
-             "Socket buffer stats: count=%d, head=%d, tail=%d, capacity=%d",
-             count,
-             head,
-             tail,
-             SOCKET_BUFFER_CAPACITY);
-
-    write_to_console(0, 2, stat_msg);
-}
-
-static void * socket_writer_thread_func()
-{
-    write_to_console(0, 1, "socket_writer_thread_func called.");
-
-    while (1)
+    int index = 0;
+    for (index = 0; index < number_of_valid_files_found; index++)
     {
-        pthread_mutex_lock(&socket_queue.lock);
+        free(generated_tmp_json_files_events[index]);
+        free(generated_tmp_json_files_alerts[index]);
+        free(generated_json_files_events[index]);
+        free(generated_json_files_alerts[index]);
+    }
 
-        while (socket_queue.count == 0 && socket_writer_running)
-            pthread_cond_wait(&socket_queue.not_empty, &socket_queue.lock);
+    number_of_valid_files_found = 0;
 
-        if (!socket_writer_running && socket_queue.count == 0)
+    // Open the directory
+    if ((dir = opendir(pcap_files_folder_path)) == NULL)
+    {
+        logger(1, "Error opening directory: %s", pcap_files_folder_path);
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        logger(0, "pcap folder directory opened successfully");
+    }
+
+    // Read directory entries
+    int counter = 0;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (entry->d_type == DT_REG)
         {
-            pthread_mutex_unlock(&socket_queue.lock);
-            write_to_console(0, 1, "Breaking from socket_writer_thread_func");
-            break;
-        }
+            counter++;
+            char * filename = entry->d_name;
+            if (strstr(filename, ".pcap") != NULL || strstr(filename, ".pcapng") != NULL)
+            {
 
-        // DO NOT pop the message yet — only PEEK.
-        struct socket_message * msg = &socket_queue.queue[socket_queue.head];
+                logger(0, "%d. found a pcap/pcapng file %s", counter, filename);
+                // Allocate and construct the complete path of pcap file
+                char * complete_path_of_pcap = malloc(strlen(pcap_files_folder_path) + strlen(filename) + 2);
+                if (complete_path_of_pcap == NULL)
+                {
+                    logger(1, "Memory allocation failed");
+                    closedir(dir);
+                    exit(EXIT_FAILURE);
+                }
 
-        pthread_mutex_unlock(&socket_queue.lock);
+                snprintf(complete_path_of_pcap,
+                         strlen(pcap_files_folder_path) + strlen(filename) + 2,
+                         "%s%s",
+                         pcap_files_folder_path,
+                         filename);
 
-        // Try to write the message
-        int rc = write_to_socket(&reader_threads[0], msg->json_msg, msg->json_string_with_http_or_tls_info);
+                pcap_files[number_of_valid_files_found] = complete_path_of_pcap;
 
-        if (rc == 0)
-        {
-            // === SUCCESS === Now pop from queue.
-            pthread_mutex_lock(&socket_queue.lock);
+                // Remove the file extension
+                char * dot = strrchr(filename, '.');
+                if (dot != NULL)
+                {
+                    *dot = '\0'; // Replace the dot with the null terminator
+                }
 
-            socket_queue.head = (socket_queue.head + 1) % SOCKET_BUFFER_CAPACITY;
-            socket_queue.count--;
+                // Allocate and construct alert and event file paths
+                char * alert_file_path =
+                    malloc(strlen(executable_directory) + strlen(alerts_folder_name) + strlen(filename) + 8);
+                char * event_file_path =
+                    malloc(strlen(executable_directory) + strlen(events_folder_name) + strlen(filename) + 8);
+                if (alert_file_path == NULL || event_file_path == NULL)
+                {
+                    logger(1, "Memory allocation failed");
+                    free(complete_path_of_pcap);
+                    free(alert_file_path);
+                    free(event_file_path);
+                    closedir(dir);
+                    exit(EXIT_FAILURE);
+                }
 
-            pthread_cond_signal(&socket_queue.not_full);
-            pthread_mutex_unlock(&socket_queue.lock);
+                snprintf(alert_file_path,
+                         strlen(executable_directory) + strlen(alerts_folder_name) + strlen(filename) + 8,
+                         "%s/%s/%s.json",
+                         executable_directory,
+                         alerts_folder_name,
+                         filename);
+                snprintf(event_file_path,
+                         strlen(executable_directory) + strlen(events_folder_name) + strlen(filename) + 8,
+                         "%s/%s/%s.json",
+                         executable_directory,
+                         events_folder_name,
+                         filename);
 
-            // Free message after removal from queue
-            free(msg->json_msg);
-            if (msg->json_string_with_http_or_tls_info)
-                free(msg->json_string_with_http_or_tls_info);
-        }
-        else
-        {
-            // === FAILURE ===
-            // Write failed; reconnect already handled inside write_to_socket().
-            // Just sleep briefly and retry SAME MESSAGE again.
-            usleep(50000); // Prevent tight-loop (optional)
+                generated_json_files_alerts[number_of_valid_files_found] = alert_file_path;
+                generated_json_files_events[number_of_valid_files_found] = event_file_path;
+
+                // Allocate and construct temporary alert and event file paths
+                char * tmp_alert_file_path = malloc(strlen(alert_file_path) + 5);
+                char * tmp_event_file_path = malloc(strlen(event_file_path) + 5);
+                if (tmp_alert_file_path == NULL || tmp_event_file_path == NULL)
+                {
+                    logger(1, "Memory allocation failed");
+                    free(complete_path_of_pcap);
+                    free(alert_file_path);
+                    free(event_file_path);
+                    free(tmp_alert_file_path);
+                    free(tmp_event_file_path);
+                    closedir(dir);
+                    exit(EXIT_FAILURE);
+                }
+
+                snprintf(tmp_alert_file_path, strlen(alert_file_path) + 5, "%s.tmp", alert_file_path);
+                snprintf(tmp_event_file_path, strlen(event_file_path) + 5, "%s.tmp", event_file_path);
+
+                generated_tmp_json_files_alerts[number_of_valid_files_found] = tmp_alert_file_path;
+                generated_tmp_json_files_events[number_of_valid_files_found] = tmp_event_file_path;
+
+                number_of_valid_files_found++;
+            }
         }
     }
 
-    return NULL;
+    closedir(dir);
 }
 
-int is_valid_json_file(const char * filepath)
+/*-----------------------------------------------------------------------------------------------------*/
+// Ashwani:
+// This gets all the valid pcap and pcapng files and also set options like where data should be recorded.
+//
+static void fetch_files_to_process_and_set_default_options(const char * pcap_files_folder_path)
 {
-    if (filepath == NULL || strlen(filepath) == 0)
+    do
     {
-        return 0;
+        fetch_files_to_process(pcap_files_folder_path);
+        if (number_of_valid_files_found == 0)
+        {
+            logger(0, "No file to process. Sleeping for 15 secondss");
+            sleep(15);
+        }
+    } while (number_of_valid_files_found == 0);
+
+    // Print the full paths of the .pcap files
+    logger(0, "Total number of pcap/pcapng files found = %d", number_of_valid_files_found);
+
+    int length_of_longest_file = 0;
+    int index = 0;
+    for (index = 0; index < number_of_valid_files_found; index++)
+    {
+        int length = strlen(pcap_files[index]);
+        if (length > length_of_longest_file)
+        {
+            length_of_longest_file = length;
+        }
     }
 
-    // Optional: check extension
-    const char * ext = strrchr(filepath, '.');
-    if (!ext || strcmp(ext, ".json") != 0)
-    {
-        return 0;
-    }
-
-    return 1;
+    index = 0;
+    //int distance = length_of_longest_file + 5;
+    //int distance_plus_10 = distance + 10;
+    //for (index = 0; index < number_of_valid_files_found; index++)
+    //{
+    //    logger(0,
+    //           "%3d.  %-*s| %-*s| %-*s| %-*s| %-*s\n",
+    //           index + 1,
+    //           distance,
+    //           pcap_files[index],
+    //           length_of_longest_file,
+    //           generated_json_files_events[index],
+    //           distance_plus_10,
+    //           generated_tmp_json_files_events[index],
+    //           distance_plus_10,
+    //           generated_json_files_alerts[index],
+    //           distance_plus_10,
+    //           generated_tmp_json_files_alerts[index]);
+    //}
 }
 
-/*----------------------------------------------------------------------------*/
+static void dummy_packet_handler(u_char * user, const struct pcap_pkthdr * header, const u_char * packet)
+{
+    // logger(0, "dummy_packet_handler called");
+}
 
-
-#ifndef NO_MAIN
 int main(int argc, char ** argv)
 {
+    corrupt_files_count = 0;
     if (argc == 0 || stdout == NULL || stderr == NULL)
     {
         return 1;
     }
 
-    ndpi_set_memory_alloction_functions(ndpi_malloc_wrapper, ndpi_free_wrapper, ndpi_calloc_wrapper, ndpi_realloc_wrapper, NULL, NULL, NULL, NULL);
+    set_ndpi_malloc(ndpi_malloc_wrapper);
+    set_ndpi_free(ndpi_free_wrapper);
+    set_ndpi_flow_malloc(NULL);
+    set_ndpi_flow_free(NULL);
 
     init_logging("nDPId");
-#ifdef ENABLE_CRYPTO
-    ncrypt_init();
-    ncrypt_ctx(&ncrypt_ctx);
-#endif
-   
-    /* Load default config first */
-    readConfigurationData(global_config_file_path, 0);
 
-    /* Parse all options including -x */
+    read_ndpid_config("Settings/nDPIdConfiguration.json");
+    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
+   
     if (nDPId_parse_options(argc, argv) != 0)
     {
-        printf("Error: Failed to parse options\n");
         return 1;
-    }
-
-    /* If -x was provided, reload JSON config file */
-    bool read_from_default_config_file = true;
-    if (strcmp(global_config_file_path, "Settings/nDPIdConfiguration.json") != 0)
-    {
-        if (is_valid_json_file(global_config_file_path))
-        {
-            readConfigurationData(global_config_file_path, console_output_level);
-            read_from_default_config_file = false;
-        }
-        else
-        {
-            printf("WARNING: Config file '%s' is invalid or not found. Using default configuration file %s.\n",global_config_file_path, "Settings/nDPIdConfiguration.json");           
-        }
-    }
-
-    printConfigurationData(1);
-    if (read_from_default_config_file) 
-    {
-        ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration.json", console_output_level);
-    }
-    else
-    {
-        ReadNdpidConfigurationFilterFile(global_config_file_path, console_output_level);
     }
 
     set_config_defaults(&general_config_map[0], nDPIsrvd_ARRAY_LENGTH(general_config_map));
@@ -8008,22 +7752,7 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-#ifdef ENABLE_CRYPTO
-    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0 &&
-        ncrypt_init_client(&ncrypt_ctx,
-                           GET_CMDARG_STR(nDPId_options.server_ca_pem_file),
-                           GET_CMDARG_STR(nDPId_options.client_key_pem_file),
-                           GET_CMDARG_STR(nDPId_options.client_crt_pem_file)) != NCRYPT_SUCCESS)
-    {
-        logger_early(1, "%s", "Could not initialize crypto.");
-        return 1;
-    }
-#endif
-
-    if (console_output_level >= 1)
-    {
-        log_app_info();
-    }
+    log_app_info();
 
     nDPId_print_deps_version(stdout);
 
@@ -8054,54 +7783,114 @@ int main(int argc, char ** argv)
         logger_early(1, "Could not initialize libnDPI global context.");
     }
 
-    if (setup_reader_threads() != 0)
-    {
-        return 1;
-    }
-
-    if (start_reader_threads() != 0)
-    {
-        return 1;
-    }
-
-    init_socket_buffer();
-
     create_events_and_alerts_folders();
-    init_flow_map(&flow_map, 10000);   
 
-    signal(SIGINT, sighandler);
-    signal(SIGTERM, sighandler);
-    signal(SIGPIPE, SIG_IGN);
+    // MM.DD.YYYY
+    logger(0, "nDPID_pcap program version is 11.23.2025.02\n");
 
-    while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
+    fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
+
+    currentFileIndex = 0;
+    for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
     {
-        sleep(1);
+
+        global_context = ndpi_global_init();
+        if (global_context == NULL)
+        {
+            logger_early(1, "Could not initialize libnDPI global context.");
+        }
+
+        set_cmdarg_string(&nDPId_options.pcap_file_or_interface, pcap_files[currentFileIndex]);
+        logger(0, "%d. processing of %s file started------------------------------------------------", currentFileIndex+1,pcap_files[currentFileIndex]);
+
+        char pcap_error_buffer[PCAP_ERRBUF_SIZE];
+        pcap_t *handle = pcap_open_offline_with_tstamp_precision(pcap_files[currentFileIndex], PCAP_TSTAMP_PRECISION_NANO, pcap_error_buffer);
+
+        if (handle == NULL) 
+        {
+            corrupt_files_count++;
+            logger(1, "Error opening file: %s\n", pcap_error_buffer);
+            remove(pcap_files[currentFileIndex]);
+            continue;
+        }
+        else
+        {
+            write_to_console(0, "pcap_open_offline_with_tstamp_precision is SUCCESSFUL");
+            switch (pcap_loop(handle, -1, &dummy_packet_handler, NULL))
+            {
+                case PCAP_ERROR:
+                    logger(1, "Error while reading pcap file");
+                    corrupt_files_count++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                case PCAP_ERROR_BREAK:
+                    corrupt_files_count++;
+                    pcap_close(handle);
+                    remove(pcap_files[currentFileIndex]);
+                    continue;
+                default:
+                    ;
+            }
+        }
+
+        pcap_close(handle);
+
+        if (setup_reader_threads() != 0)
+        {
+            return 1;
+        }
+
+        if (start_reader_threads() != 0)
+        {
+            return 1;
+        }
+     
+        init_flow_map(&flow_map, 10000);
+
+
+        signal(SIGINT, sighandler);
+        signal(SIGTERM, sighandler);
+        signal(SIGPIPE, SIG_IGN);
+
+        while (MT_GET_AND_ADD(nDPId_main_thread_shutdown, 0) == 0 && processing_threads_error_or_eof() == 0)
+        {
+            sleep(1);
+        }
+
+        if (stop_reader_threads() != 0)
+        {
+            return 1;
+        }
+
+        free_reader_threads();
+
+        if (global_context != NULL)
+        {
+            ndpi_global_deinit(global_context);
+        }
+        global_context = NULL;
+
+        daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
+        rotate_event_log_file();
+        rotate_alert_log_file();
+        logger(0, "%d. processing of %s file completed------------------------------------------------\n\n", currentFileIndex+1,pcap_files[currentFileIndex]);
+        remove(pcap_files[currentFileIndex]);
+        free(pcap_files[currentFileIndex]);
+        pcap_files[currentFileIndex] = NULL;
+        free(generated_tmp_json_files_events[currentFileIndex]);
+        free(generated_tmp_json_files_alerts[currentFileIndex]);
+        free(generated_json_files_events[currentFileIndex]);
+        free(generated_json_files_alerts[currentFileIndex]);
+        free_flow_map(&flow_map);        
     }
 
-    if (stop_reader_threads() != 0)
-    {
-        return 1;
-    }
-    free_reader_threads();
+    logger(0, "nDPID_pcap program version is 11.11.2025.01\n");
+    logger(0, "Number of corrupt files %d", corrupt_files_count);
+    logger(0, "Total number of files %d", number_of_valid_files_found);
 
-    if (global_context != NULL)
-    {
-        ndpi_global_deinit(global_context);
-    }
-    global_context = NULL;
-
-    daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
-    rotate_event_log_file();
-    rotate_alert_log_file();
-    logger(0, "%s", "Bye.");
-    free_flow_map(&flow_map);
-    shutdown_socket_buffer();
     shutdown_logging();
-
-#ifdef ENABLE_CRYPTO
-    ncrypt_free_ctx(&ncrypt_ctx);
-#endif
 
     return 0;
 }
-#endif
+

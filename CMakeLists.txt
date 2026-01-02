@@ -101,8 +101,16 @@ if(BUILD_EXAMPLES)
 option(ENABLE_DBUS "Build DBus notification example." OFF)
 option(ENABLE_CURL "Build influxdb data write example." OFF)
 endif()
-option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" OFF)
-option(BUILD_NDPI "Clone and build nDPI from github." OFF)
+
+# Ashwani: Turned ENABLE_PFRING and BUILD_NDPI ON from default value of OFF
+#
+option(ENABLE_PFRING "Enable PF_RING support for nDPId (experimental)" ON)
+option(BUILD_NDPI "Clone and build nDPI from github." ON)
+
+# Ashwani: Printing these two options value
+#
+message(STATUS "BUILD_NDPI = ${BUILD_NDPI}")
+message(STATUS "ENABLE_PFRING = ${ENABLE_PFRING}")
 
 if(ENABLE_PFRING)
     option(PFRING_LINK_STATIC "Link against a static version of pfring." ON)
@@ -116,8 +124,17 @@ if(ENABLE_PFRING)
         message(FATAL_ERROR "Expected to find <linux/pf_ring.h> below ${PFRING_KERNEL_INC}, but none found.")
     endif()
 
-    set(PFRING_INSTALLDIR "/opt/PF_RING/usr" CACHE STRING "")
-    set(PFRING_INC "${PFRING_INSTALLDIR}/include")
+    # Ashwani: Commenting out next two lines.
+    # 
+    # set(PFRING_INSTALLDIR "/opt/PF_RING/usr" CACHE STRING "")
+    # set(PFRING_INC "${PFRING_INSTALLDIR}/include")
+
+    # Ashwani: Setting PF_RING paths to local respositories.
+    # 
+    message(STATUS "Ashwani: PFRING_INSTALLDIR path is set to /home/anssetup/repositories/PF_RING_Fork/userland")
+    message(STATUS "Ashwani: PFRING lib folder path is set to /home/anssetup/repositories/PF_RING_Fork/userland/lib")
+    set(PFRING_INSTALLDIR "/home/anssetup/repositories/PF_RING_Fork/userland" CACHE STRING "")
+    set(PFRING_INC "${PFRING_INSTALLDIR}/lib")
 
     if(NOT EXISTS "${PFRING_INC}")
         message(FATAL_ERROR "Include directory \"${PFRING_INC}\" does not exist!")
@@ -160,8 +177,14 @@ if(ENABLE_PFRING)
         endif()
     endif()
 
-    if(NOT EXISTS "${PFRING_INSTALLDIR}/include/pfring.h")
-        message(FATAL_ERROR "Expected to find <include/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
+    # Ashwani: Next 3 lines are commented out
+    #if(NOT EXISTS "${PFRING_INSTALLDIR}/include/pfring.h")
+    #    message(FATAL_ERROR "Expected to find <include/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
+    #endif()
+
+    # Ashwani: Change the path to where it exists in local repository.
+    if(NOT EXISTS "${PFRING_INSTALLDIR}/lib/pfring.h")
+        message(FATAL_ERROR "Expected to find <lib/pfring.h> inside ${PFRING_INSTALLDIR}, but none found.")
     endif()
 else()
     unset(PFRING_INSTALLDIR CACHE)
@@ -169,6 +192,7 @@ else()
     unset(STATIC_PFRING_LIB CACHE)
     unset(PFRING_LINK_STATIC CACHE)
 endif()
+
 
 if(BUILD_NDPI)
     option(BUILD_NDPI_FORCE_GIT_UPDATE "Forcefully instruments nDPI build script to update the git submodule." OFF)
@@ -202,9 +226,11 @@ endif()
 if(ENABLE_CRYPTO)
     set(CRYPTO_SRCS ncrypt.c)
 endif()
-add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} ${CRYPTO_SRCS} nio.c utils.c)
+
+add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c ${CRYPTO_SRCS} nDPIJsonDataConverter.c)
 add_executable(nDPIsrvd nDPIsrvd.c nio.c utils.c)
-add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS} ${CRYPTO_SRCS})
+add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS} ${CRYPTO_SRCS} nDPIJsonDataConverter.c)
+add_executable(nDPId_pcap nDPId_pcap.c ${NDPID_PFRING_SRCS}  ${CRYPTO_SRCS} nio.c utils.c nDPIJsonDataConverter.c)
 
 add_custom_target(umask_check)
 add_custom_command(
@@ -333,6 +359,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(NDPID_DEFS -DJSMN_STATIC=1 -DJSMN_STRICT=1 -DJSMN_PARENT_LINKS=1)
 set(NDPID_DEPS_INC "${CMAKE_SOURCE_DIR}"
                    "${CMAKE_SOURCE_DIR}/dependencies"
+                   "${CMAKE_SOURCE_DIR}/dependencies/json-c"
+                   "${CMAKE_SOURCE_DIR}/dependencies/json-c/include"
+                   "${CMAKE_SOURCE_DIR}/dependencies/json-c/include/json-c"
                    "${CMAKE_SOURCE_DIR}/dependencies/jsmn"
                    "${CMAKE_SOURCE_DIR}/dependencies/uthash/src")
 if(CMAKE_CROSSCOMPILING)
@@ -355,6 +384,15 @@ endif()
 
 if(ENABLE_SANITIZER AND ENABLE_SANITIZER_THREAD)
     message(FATAL_ERROR "ENABLE_SANITIZER and ENABLE_SANITIZER_THREAD can not be used together!")
+endif()
+
+find_library(JSON_C_LIB NAMES json-c PATHS /home/anssetup/repositories/json-c/build/ NO_DEFAULT_PATH)
+
+# Ensure the library was found
+if(NOT JSON_C_LIB)
+    message(FATAL_ERROR "Could not find libjson-c.a")
+else()
+    message(STATUS "Found libjson-c.a at ${JSON_C_LIB}")
 endif()
 
 if(BUILD_NDPI)
@@ -390,6 +428,7 @@ if(BUILD_NDPI)
     set(STATIC_LIBNDPI_INSTALLDIR "${CMAKE_BINARY_DIR}/libnDPI")
     add_dependencies(nDPId libnDPI)
     add_dependencies(nDPId-test libnDPI)
+    add_dependencies(nDPId_pcap libnDPI)
 endif()
 
 if(ENABLE_CRYPTO)
@@ -414,18 +453,18 @@ endif()
 
 if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI)
     add_definitions("-DLIBNDPI_STATIC=1")
-    set(STATIC_LIBNDPI_INC "${STATIC_LIBNDPI_INSTALLDIR}/include/ndpi")
+    set(STATIC_LIBNDPI_INC "${STATIC_LIBNDPI_INSTALLDIR}/usr/include/ndpi")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         if(EXISTS "${STATIC_LIBNDPI_INSTALLDIR}/lib64/libndpi.a")
             set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/lib64/libndpi.a")
         else()
-            set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/lib/libndpi.a")
+            set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/usr/lib/libndpi.a")
         endif()
     else()
         if(EXISTS "${STATIC_LIBNDPI_INSTALLDIR}/lib32/libndpi.a")
             set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/lib32/libndpi.a")
         else()
-            set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/lib/libndpi.a")
+            set(STATIC_LIBNDPI_LIB "${STATIC_LIBNDPI_INSTALLDIR}/usr/lib/libndpi.a")
         endif()
     endif()
 
@@ -444,13 +483,13 @@ else()
         if(NOT pkgcfg_lib_NDPI_ndpi)
             find_package(NDPI "5.0.0" REQUIRED)
         endif()
-
         unset(STATIC_LIBNDPI_INC CACHE)
         unset(STATIC_LIBNDPI_LIB CACHE)
     endif()
-
     set(DEFAULT_NDPI_INCLUDE ${NDPI_INCLUDE_DIRS})
 endif()
+
+
 
 pkg_check_modules(PCAP libpcap>=1.9.0) # no *.pc file before 1.9.0
 if(NOT pkgcfg_lib_PCAP_pcap)
@@ -466,8 +505,8 @@ target_compile_definitions(nDPId PRIVATE -D_GNU_SOURCE=1 -DPKG_VERSION=\"${PKG_V
 target_include_directories(nDPId PRIVATE "${STATIC_LIBNDPI_INC}" "${DEFAULT_NDPI_INCLUDE}" ${NDPID_DEPS_INC} ${PFRING_KERNEL_INC} ${PFRING_INC})
 target_link_libraries(nDPId "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" "${pkgcfg_lib_PCAP_pcap}" "${pkgcfg_lib_NDPI_ndpi}"
                             "${pkgcfg_lib_PCRE_pcre2-8}" "${pkgcfg_lib_MAXMINDDB_maxminddb}" "${pkgcfg_lib_ZLIB_z}"
-                            "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}"
-                            "${OSSL_LIBRARY}" "-pthread")
+                            "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}" "${JSON_C_LIB}"
+                            "${OSSL_LIBRARY}" "-pthread")                            
 
 target_compile_definitions(nDPIsrvd PRIVATE -D_GNU_SOURCE=1 -DPKG_VERSION=\"${PKG_VERSION}\" -DGIT_VERSION=\"${GIT_VERSION}\" ${NDPID_DEFS} ${EPOLL_DEFS})
 target_include_directories(nDPIsrvd PRIVATE ${NDPID_DEPS_INC})
@@ -479,7 +518,17 @@ target_include_directories(nDPId-test PRIVATE
                            "${STATIC_LIBNDPI_INC}" "${DEFAULT_NDPI_INCLUDE}" ${NDPID_DEPS_INC} ${PFRING_KERNEL_INC} ${PFRING_INC})
 target_link_libraries(nDPId-test "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" "${pkgcfg_lib_PCAP_pcap}" "${pkgcfg_lib_NDPI_ndpi}"
                                  "${pkgcfg_lib_PCRE_pcre2-8}" "${pkgcfg_lib_MAXMINDDB_maxminddb}" "${pkgcfg_lib_ZLIB_z}"
-                                 "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}"
+                                 "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}" "${JSON_C_LIB}"
+                                 "${OSSL_LIBRARY}" "-pthread")
+
+target_compile_options(nDPId_pcap PRIVATE "-Wno-unused-function" "-pthread")
+target_compile_definitions(nDPId_pcap PRIVATE -D_GNU_SOURCE=1 -DNO_MAIN=1 -DPKG_VERSION=\"${PKG_VERSION}\" -DGIT_VERSION=\"${GIT_VERSION}\"
+                                              ${NDPID_DEFS} ${EPOLL_DEFS} ${ZLIB_DEFS} ${PFRING_DEFS} ${NDPID_TEST_MPROF_DEFS})
+target_include_directories(nDPId_pcap PRIVATE
+                           "${STATIC_LIBNDPI_INC}" "${DEFAULT_NDPI_INCLUDE}" ${NDPID_DEPS_INC} ${PFRING_KERNEL_INC} ${PFRING_INC})
+target_link_libraries(nDPId_pcap "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" "${pkgcfg_lib_PCAP_pcap}" "${pkgcfg_lib_NDPI_ndpi}"
+                                 "${pkgcfg_lib_PCRE_pcre2-8}" "${pkgcfg_lib_MAXMINDDB_maxminddb}" "${pkgcfg_lib_ZLIB_z}"
+                                 "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}" "${JSON_C_LIB}"
                                  "${OSSL_LIBRARY}" "-pthread")
 
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -602,8 +651,24 @@ install(FILES config.h
               dependencies/uthash/src/utringbuffer.h
               dependencies/uthash/src/utstack.h
               dependencies/uthash/src/utstring.h
+              dependencies/json-c/include/json-c/arraylist.h
+              dependencies/json-c/include/json-c/debug.h
+              dependencies/json-c/include/json-c/json.h
+              dependencies/json-c/include/json-c/json_c_version.h
+              dependencies/json-c/include/json-c/json_config.h
+              dependencies/json-c/include/json-c/json_inttypes.h
+              dependencies/json-c/include/json-c/json_object.h
+              dependencies/json-c/include/json-c/json_object_iterator.h
+              dependencies/json-c/include/json-c/json_pointer.h
+              dependencies/json-c/include/json-c/json_tokener.h
+              dependencies/json-c/include/json-c/json_types.h
+              dependencies/json-c/include/json-c/json_util.h
+              dependencies/json-c/include/json-c/json_visit.h
+              dependencies/json-c/include/json-c/linkhash.h
+              dependencies/json-c/include/json-c/printbuf.h
         DESTINATION include/nDPId)
 install(TARGETS nDPId DESTINATION sbin)
+install(TARGETS nDPId_pcap DESTINATION sbin)
 install(TARGETS nDPIsrvd nDPId-test DESTINATION bin)
 if(BUILD_EXAMPLES)
     install(FILES dependencies/nDPIsrvd.py
@@ -670,6 +735,8 @@ endif()
 if(STATIC_LIBNDPI_INSTALLDIR OR BUILD_NDPI OR NDPI_NO_PKGCONFIG)
 message(STATUS "- STATIC_LIBNDPI_INC.....: ${STATIC_LIBNDPI_INC}")
 message(STATUS "- STATIC_LIBNDPI_LIB.....: ${STATIC_LIBNDPI_LIB}")
+message(STATUS "- CMAKE_CURRENT_SOURCE_DIR....: ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "- CMAKE_BINARY_DIR............: ${CMAKE_BINARY_DIR}")
 message(STATUS "- NDPI_WITH_GCRYPT.......: ${NDPI_WITH_GCRYPT}")
 message(STATUS "- NDPI_WITH_PCRE.........: ${NDPI_WITH_PCRE}")
 message(STATUS "- NDPI_WITH_MAXMINDDB....: ${NDPI_WITH_MAXMINDDB}")
