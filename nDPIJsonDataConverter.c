@@ -12,6 +12,7 @@
 #define INVALID_TIMESTAMP UINT64_MAX
 
 
+
 static bool matchEntryInParamsVector(const char * srcIP, const char * destIP, int destPort);
 
     // Array to store SkipParameters
@@ -589,14 +590,14 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson, const char * const json
     return result;
 }
 
-unsigned long long int GetFlowId(const char* json_str)
+uint64_t GetFlowId(const char * json_str)
 {
-    uint64_t flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
+    uint64_t flow_id = INVALID_FLOW_ID;
     json_object * root = json_tokener_parse(json_str);
     if (root == NULL)
     {
         fprintf(stderr, "Error parsing JSON\n");
-        return RANDOM_UNINITIALIZED_INT_VALUE;
+        return INVALID_FLOW_ID;
     }
 
     json_object * flow_id_object;
@@ -629,7 +630,7 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     result.l4_proto = NULL;
     result.proto = NULL;
     result.breed = NULL;
-    result.flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
+    result.flow_id = INVALID_FLOW_ID;
     result.flow_event_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.packet_id = RANDOM_UNINITIALIZED_NUMBER_VALUE;
     result.event_start = NULL;
@@ -1388,7 +1389,7 @@ static void add_Root_Data(json_object ** root_object,
     json_object_object_add(*root_object, "event", event_object);
     
     // Flow starts here
-    if (rootDataStructure.flow_id != RANDOM_UNINITIALIZED_INT_VALUE)
+    if (rootDataStructure.flow_id != INVALID_FLOW_ID)
     {
         json_object* flow_id_object = json_object_new_object();
         json_object_object_add(flow_id_object, "id", json_object_get_uint64(rootDataStructure.flow_id));
@@ -1439,6 +1440,7 @@ void ConvertnDPIDataFormat(const char * originalJsonStr,
 
 void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, uint64_t* flow_id)
 {
+    *flow_id = INVALID_FLOW_ID; 
     // Parse JSON string to JSON object
     *flow_risk_array_size = 0;
     struct json_object * parsed_json_object = json_tokener_parse(alertStringWithFlowRiskArray);
@@ -1473,6 +1475,8 @@ void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * fl
     {
         *flow_id = json_object_get_uint64(flow_id_object);
     }
+
+    json_object_put(parsed_json_object);
 }
 
 void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char ** converted_json_str, int flow_risk_index)

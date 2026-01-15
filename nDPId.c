@@ -713,7 +713,7 @@ struct nDPId_flow_extended
 {
     struct nDPId_flow_basic flow_basic; // Do not move this element!
 
-    unsigned long long int flow_id;
+    uint64_t flow_id;
 
     uint16_t min_l4_payload_len[FD_COUNT];
     uint16_t max_l4_payload_len[FD_COUNT];
@@ -944,7 +944,7 @@ enum daemon_event
 // Define a structure to hold the flow id and JSON string
 typedef struct
 {
-    unsigned long long int flow_id;
+    uint64_t flow_id;
     char * json_str;
 } flow_entry_t;
 
@@ -997,7 +997,7 @@ void ensure_capacity(flow_map_t * map)
 
 
 // Add or update an entry in the FlowMap
-void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, const char * json_str)
+void add_or_update_flow_entry(flow_map_t * map, uint64_t flow_id, const char * json_str)
 {
     if (map == NULL || json_str == NULL)
     {
@@ -1037,7 +1037,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->size++;
 }
 
-static char * get_json_string_from_map(flow_map_t * map, unsigned long long int flow_id)
+static char * get_json_string_from_map(flow_map_t * map, uint64_t flow_id)
 {
     char * json_string = NULL;
     for (size_t i = 0; i < map->size; ++i)
@@ -3970,9 +3970,9 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     char * json_string_with_http_or_tls_info = NULL;
-    unsigned long long int flow_id = GetFlowId(json_msg);
+    uint64_t flow_id = GetFlowId(json_msg);
 
-    if (flow_id == RANDOM_UNINITIALIZED_INT_VALUE)
+    if (flow_id == INVALID_FLOW_ID)
     {
         logger(1,
                "[%8llu, %zu] Could not extract flow ID from JSON message",
@@ -5454,10 +5454,6 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
     write_to_console(0, 3, "generate_ndpid_flow_id called");
-    static long long int index = 1;
-    printf("[nDPId Debug] Generated Flow ID: %" PRIu64 "\n", index);
-    return index++;
-
     
     // 1. Safety Check: If flow is NULL, return 0 to avoid Segfault
     if (flow == NULL)

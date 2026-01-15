@@ -5,6 +5,7 @@ extern "C" {
 #include <stdint.h>
 #define RANDOM_UNINITIALIZED_NUMBER_VALUE 0xFFFFFFFF // UINT_MAX (4294967295)
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
+#define INVALID_FLOW_ID UINT64_MAX
 
 void ConvertnDPIDataFormat(const char * json_str, const char * const json_string_with_http_or_tls_info, int flowRiskIndex, char ** converted_json_str, int * create_alert);
 void DeletenDPIRisk(char* jsonStr, char** converted_json_str);
