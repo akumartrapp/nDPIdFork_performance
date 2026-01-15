@@ -5439,6 +5439,54 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
+static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
+{
+    uint64_t flow_id;
+    uint32_t low_ip, high_ip;
+    uint16_t low_port, high_port;
+
+    // 1. Handle IP Symmetry (IPv4 example)
+    // For IPv6, you would use memcmp on the 16-byte address
+    if (flow->l3_type == nDPId_L3_IPV4)
+    {
+        if (flow->src.ipv4 < flow->dst.ipv4)
+        {
+            low_ip = flow->src.ipv4;
+            high_ip = flow->dst.ipv4;
+        }
+        else
+        {
+            low_ip = flow->dst.ipv4;
+            high_ip = flow->src.ipv4;
+        }
+    }
+    else
+    {
+        // Fallback or IPv6 logic: use existing hashval if L3 is complex
+        return flow->hashval;
+    }
+
+    // 2. Handle Port Symmetry
+    if (flow->src_port < flow->dst_port)
+    {
+        low_port = flow->src_port;
+        high_port = flow->dst_port;
+    }
+    else
+    {
+        low_port = flow->dst_port;
+        high_port = flow->src_port;
+    }
+
+    // 3. Construct 64-bit Flow ID
+    // Combine IPs, Ports, Protocol, and VLAN to create a unique fingerprint
+    flow_id = ((uint64_t)low_ip << 32) | high_ip;
+    flow_id ^=
+        ((uint64_t)low_port << 48) | ((uint64_t)high_port << 32) | ((uint64_t)flow->vlan_id << 16) | flow->l4_protocol;
+
+    return flow_id;
+}
+
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
@@ -6025,8 +6073,10 @@ process_layer3_again:
             return;
         }
 
+
+        flow_to_process->flow_extended.flow_id = generate_ndpid_flow_id(&flow_to_process->flow_extended.flow_basic);
         workflow->total_active_flows++;
-        flow_to_process->flow_extended.flow_id = MT_GET_AND_ADD(global_flow_id, 1);
+       
 
         if (alloc_detection_data(flow_to_process) != 0)
         {
