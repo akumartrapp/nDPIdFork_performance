@@ -97,7 +97,7 @@ struct Root_data
     int ip;
     char* proto;
     char* breed;
-    int flow_id;
+    uint64_t flow_id;
     unsigned int flow_event_id;
     unsigned int packet_id;
     char* event_start;
@@ -591,7 +591,7 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson, const char * const json
 
 unsigned long long int GetFlowId(const char* json_str)
 {
-    long long int flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
+    uint64_t flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
     json_object * root = json_tokener_parse(json_str);
     if (root == NULL)
     {
@@ -754,7 +754,7 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     json_object* flow_id;
     if (json_object_object_get_ex(root, "flow_id", &flow_id))
     {
-        result.flow_id = json_object_get_int(flow_id);
+        result.flow_id = json_object_get_uint64(flow_id);
     }
 
     json_object * flow_event_id;
@@ -1391,7 +1391,7 @@ static void add_Root_Data(json_object ** root_object,
     if (rootDataStructure.flow_id != RANDOM_UNINITIALIZED_INT_VALUE)
     {
         json_object* flow_id_object = json_object_new_object();
-        json_object_object_add(flow_id_object, "id", json_object_new_int(rootDataStructure.flow_id));
+        json_object_object_add(flow_id_object, "id", json_object_get_uint64(rootDataStructure.flow_id));
         json_object_object_add(*root_object, "flow", flow_id_object);
     }
 
@@ -1437,7 +1437,7 @@ void ConvertnDPIDataFormat(const char * originalJsonStr,
     FreeConvertRootDataFormat(&rootData);
 }
 
-void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, int* flow_id)
+void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, uint64_t* flow_id)
 {
     // Parse JSON string to JSON object
     *flow_risk_array_size = 0;
@@ -1471,7 +1471,7 @@ void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * fl
     json_object * flow_id_object;
     if (json_object_object_get_ex(parsed_json_object, "flow_id", &flow_id_object))
     {
-        *flow_id = json_object_get_int(flow_id_object);
+        *flow_id = json_object_get_uint64(flow_id_object);
     }
 }
 
