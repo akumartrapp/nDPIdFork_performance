@@ -2,6 +2,7 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 #define RANDOM_UNINITIALIZED_NUMBER_VALUE 0xFFFFFFFF // UINT_MAX (4294967295)
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 
