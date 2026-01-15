@@ -450,11 +450,13 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 
 static void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
-    write_to_console(0, 3, "write_to_file called");
+    write_to_console(0, 3, "write_to_file called new ");
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
+    printf("%s", json_msg);
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+    printf("after");
     if (converted_json_str != NULL)
     {
         int length = strlen(converted_json_str);
@@ -5452,6 +5454,11 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
     write_to_console(0, 3, "generate_ndpid_flow_id called");
+    static long long int index = 1;
+    printf("[nDPId Debug] Generated Flow ID: %" PRIu64 "\n", index);
+    return index++;
+
+    
     // 1. Safety Check: If flow is NULL, return 0 to avoid Segfault
     if (flow == NULL)
     {
