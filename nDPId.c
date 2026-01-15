@@ -3987,16 +3987,16 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
 
-    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
-    {
-        add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        write_to_console(0, 3, "send_to_collector returning for [event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE]");
-        return;
-    }
-    else
-    {
-        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
-    }
+    //if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
+    //{
+    //    add_or_update_flow_entry(&flow_map, flow_id, json_msg);
+    //    write_to_console(0, 3, "send_to_collector returning for [event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE]");
+    //    return;
+    //}
+    //else
+    //{
+    //    json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
+    //}
 
     // Ashwani
     // We are not using socket so no need to connect just return from here. vv
