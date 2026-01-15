@@ -454,7 +454,9 @@ static void write_to_file(const char * const json_msg, const char * const json_s
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
+    printf("%s", json_msg);
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+    printf("after");
     if (converted_json_str != NULL)
     {
         int length = strlen(converted_json_str);
