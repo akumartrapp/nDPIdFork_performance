@@ -5504,12 +5504,16 @@ static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
     flow_id ^= ((uint64_t)low_port << 48) | ((uint64_t)high_port << 32);
     flow_id ^= ((uint64_t)flow->vlan_id << 16) | (uint64_t)flow->l4_protocol;
 
+     logger(0, flow_id);
+
     // Optional: Final 64-bit mix (MurmurHash3 style) to improve distribution
     flow_id ^= (flow_id >> 33);
     flow_id *= 0xff51afd7ed558ccdULL;
     flow_id ^= (flow_id >> 33);
     flow_id *= 0xc4ceb9fe1a85ec53ULL;
     flow_id ^= (flow_id >> 33);
+
+    logger(0, flow_id);
 
     return flow_id;
 }
