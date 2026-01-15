@@ -5442,52 +5442,57 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
     write_to_console(0, 3, "generate_ndpid_flow_id called");
-    uint64_t flow_id = 0;
+    // 1. Safety Check: If flow is NULL, return 0 to avoid Segfault
+    if (flow == NULL)
+    {
+        printf("[nDPId Debug] Flow is null\n");
+        return 0;
+    }
 
-    // Temporary variables for sorting to ensure symmetry (A->B == B->A)
-    union nDPId_ip low_ip, high_ip;
+    // Debug: Print state to console to see where it's failing
+     printf("[nDPId Debug] Flow State: %d, L3 Type: %d\n", flow->state, flow->l3_type);
+
+    uint64_t flow_id = 0;
+    uint32_t low_ip = 0, high_ip = 0;
     uint16_t low_port, high_port;
 
-    // 1. Handle IP Symmetry based on L3 type
+    // 2. Handle IP Symmetry
     if (flow->l3_type == L3_IP)
     {
-        // IPv4 Logic
         if (flow->src.v4.ip < flow->dst.v4.ip)
         {
-            low_ip.v4.ip = flow->src.v4.ip;
-            high_ip.v4.ip = flow->dst.v4.ip;
+            low_ip = flow->src.v4.ip;
+            high_ip = flow->dst.v4.ip;
         }
         else
         {
-            low_ip.v4.ip = flow->dst.v4.ip;
-            high_ip.v4.ip = flow->src.v4.ip;
+            low_ip = flow->dst.v4.ip;
+            high_ip = flow->src.v4.ip;
         }
-        // Hash IPv4 pair
-        flow_id = ((uint64_t)low_ip.v4.ip << 32) | high_ip.v4.ip;
+        flow_id = ((uint64_t)low_ip << 32) | high_ip;
     }
     else if (flow->l3_type == L3_IP6)
     {
-        // IPv6 Logic: Compare the two 128-bit addresses (2x64-bit array)
-        if (memcmp(flow->src.v6.ip, flow->dst.v6.ip, 16) < 0)
+        // Use XOR folding for IPv6 to avoid complex pointer math
+        uint64_t src_xor = flow->src.v6.ip[0] ^ flow->src.v6.ip[1];
+        uint64_t dst_xor = flow->dst.v6.ip[0] ^ flow->dst.v6.ip[1];
+
+        if (src_xor < dst_xor)
         {
-            low_ip = flow->src;
-            high_ip = flow->dst;
+            flow_id = src_xor ^ dst_xor;
         }
         else
         {
-            low_ip = flow->dst;
-            high_ip = flow->src;
+            flow_id = dst_xor ^ src_xor;
         }
-        // Hash IPv6: XOR the two halves of the sorted IPs to fit in 64-bit base
-        flow_id = (low_ip.v6.ip[0] ^ low_ip.v6.ip[1]) ^ (high_ip.v6.ip[0] ^ high_ip.v6.ip[1]);
     }
     else
     {
-        // Fallback: If L3 is unknown, use the existing hashval
+        // If L3 type is invalid/uninitialized, use hashval or 0
         return flow->hashval;
     }
 
-    // 2. Handle Port Symmetry
+    // 3. Handle Port Symmetry
     if (flow->src_port < flow->dst_port)
     {
         low_port = flow->src_port;
@@ -5499,25 +5504,13 @@ static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
         high_port = flow->src_port;
     }
 
-    // 3. Construct Final 64-bit Flow ID
-    // We mix in the Ports, VLAN, and L4 Protocol
-    // Shift ports to ensure they don't overlap with small protocol/vlan values
+    // 4. Mix in Ports, VLAN, and Protocol
     flow_id ^= ((uint64_t)low_port << 48) | ((uint64_t)high_port << 32);
     flow_id ^= ((uint64_t)flow->vlan_id << 16) | (uint64_t)flow->l4_protocol;
 
-     logger(0, flow_id);
-
-    // Optional: Final 64-bit mix (MurmurHash3 style) to improve distribution
-    flow_id ^= (flow_id >> 33);
-    flow_id *= 0xff51afd7ed558ccdULL;
-    flow_id ^= (flow_id >> 33);
-    flow_id *= 0xc4ceb9fe1a85ec53ULL;
-    flow_id ^= (flow_id >> 33);
-
-    logger(0, flow_id);
-
     return flow_id;
 }
+
 
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
