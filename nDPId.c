@@ -3964,18 +3964,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         return;
     }
 
-    printf("json data = \n%s\n", json_msg);
     if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
     }
 
     char * json_string_with_http_or_tls_info = NULL;
-    //uint64_t flow_id = GetFlowId(json_msg);
-
-    static uint64_t flow_id = 1;
-    flow_id++;
-
+    uint64_t flow_id = GetFlowId(json_msg);
     printf("[nDPId Debug] GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
     if (flow_id == INVALID_FLOW_ID)
     {
