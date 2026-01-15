@@ -97,7 +97,7 @@ struct Root_data
     int ip;
     char* proto;
     char* breed;
-    unsigned long long int flow_id;
+    long long int flow_id;
     unsigned int flow_event_id;
     unsigned int packet_id;
     char* event_start;
@@ -591,7 +591,7 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson, const char * const json
 
 unsigned long long int GetFlowId(const char* json_str)
 {
-    unsigned long long int flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
+    long long int flow_id = RANDOM_UNINITIALIZED_INT_VALUE;
     json_object * root = json_tokener_parse(json_str);
     if (root == NULL)
     {
@@ -1437,7 +1437,7 @@ void ConvertnDPIDataFormat(const char * originalJsonStr,
     FreeConvertRootDataFormat(&rootData);
 }
 
-void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, int* flow_id)
+void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, long long int* flow_id)
 {
     // Parse JSON string to JSON object
     *flow_risk_array_size = 0;
