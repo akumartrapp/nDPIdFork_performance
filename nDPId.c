@@ -4506,8 +4506,8 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
         case FLOW_EVENT_ANALYSE:
             logger(1,
                    "[%8" PRIu64 ", %4" PRIu64 "] internal error / invalid function call",
-                   workflow->packets_captured,
-                   flow->flow_extended.flow_id);
+                   (uint64_t)workflow->packets_captured,
+                   (uint64_t)flow->flow_extended.flow_id);
             break;
 
         case FLOW_EVENT_NOT_DETECTED:
@@ -4519,8 +4519,8 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
             {
                 logger(1,
                        "[%8" PRIu64 ", %4" PRIu64 "] ndpi_dpi2json failed for not-detected/guessed flow",
-                       workflow->packets_captured,
-                       flow->flow_extended.flow_id);
+                       (uint64_t)workflow->packets_captured,
+                       (uint64_t)flow->flow_extended.flow_id);
             }
             break;
 
@@ -4533,8 +4533,8 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
             {
                 logger(1,
                        "[%8" PRIu64 ", %4" PRIu64 "] ndpi_dpi2json failed for detected/detection-update flow",
-                       workflow->packets_captured,
-                       flow->flow_extended.flow_id);
+                       (uint64_t)workflow->packets_captured,
+                       (uint64_t)flow->flow_extended.flow_id);
             }
             break;
     }
