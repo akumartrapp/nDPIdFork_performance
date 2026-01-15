@@ -5453,6 +5453,9 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 
 static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
+    static long long int index = 1;
+    return index++;
+
     write_to_console(0, 3, "generate_ndpid_flow_id called");
     // 1. Safety Check: If flow is NULL, return 0 to avoid Segfault
     if (flow == NULL)
