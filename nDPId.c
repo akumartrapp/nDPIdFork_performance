@@ -6480,13 +6480,15 @@ static void ndpi_log_flow_walker(struct nDPId_flow_basic const * flow_basic,
                 time_until_timeout = last_seen + idle_time - last_thread_time;
 
             logger(0,
-                   "[%2zu][%4" PRIu64 "][last-seen: %13" PRIu64 "][last-update: %13" PRIu64 "][idle-time: %7" PRIu64 "][time-until-timeout: %7" PRIu64 "]",
+                   "[%2zu][%4" PRIu64 "][last-seen: %13" PRIu64 "][last-update: %13" PRIu64 "][idle-time: %7" PRIu64
+                   "][time-until-timeout: %7" PRIu64 "]",
                    reader_thread->array_index,
-                   flow->flow_extended.flow_id,
-                   (unsigned long long int)last_seen,
-                   (unsigned long long int)flow->flow_extended.last_flow_update,
-                   (unsigned long long int)idle_time,
-                   (unsigned long long int)time_until_timeout);
+                   (uint64_t)flow->flow_extended.flow_id,
+                   (uint64_t)last_seen,
+                   (uint64_t)flow->flow_extended.last_flow_update,
+                   (uint64_t)idle_time,
+                   (uint64_t)time_until_timeout);
+
             break;
         }
     }
