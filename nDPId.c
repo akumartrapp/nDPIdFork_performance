@@ -5441,10 +5441,50 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 
 static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
-    uint64_t flow_id;
-    uint32_t low_ip, high_ip;
+    uint64_t flow_id = 0;
+
+    // Temporary variables for sorting to ensure symmetry (A->B == B->A)
+    union nDPId_ip low_ip, high_ip;
     uint16_t low_port, high_port;
 
+    // 1. Handle IP Symmetry based on L3 type
+    if (flow->l3_type == L3_IP)
+    {
+        // IPv4 Logic
+        if (flow->src.v4.ip < flow->dst.v4.ip)
+        {
+            low_ip.v4.ip = flow->src.v4.ip;
+            high_ip.v4.ip = flow->dst.v4.ip;
+        }
+        else
+        {
+            low_ip.v4.ip = flow->dst.v4.ip;
+            high_ip.v4.ip = flow->src.v4.ip;
+        }
+        // Hash IPv4 pair
+        flow_id = ((uint64_t)low_ip.v4.ip << 32) | high_ip.v4.ip;
+    }
+    else if (flow->l3_type == L3_IP6)
+    {
+        // IPv6 Logic: Compare the two 128-bit addresses (2x64-bit array)
+        if (memcmp(flow->src.v6.ip, flow->dst.v6.ip, 16) < 0)
+        {
+            low_ip = flow->src;
+            high_ip = flow->dst;
+        }
+        else
+        {
+            low_ip = flow->dst;
+            high_ip = flow->src;
+        }
+        // Hash IPv6: XOR the two halves of the sorted IPs to fit in 64-bit base
+        flow_id = (low_ip.v6.ip[0] ^ low_ip.v6.ip[1]) ^ (high_ip.v6.ip[0] ^ high_ip.v6.ip[1]);
+    }
+    else
+    {
+        // Fallback: If L3 is unknown, use the existing hashval
+        return flow->hashval;
+    }
 
     // 2. Handle Port Symmetry
     if (flow->src_port < flow->dst_port)
@@ -5458,11 +5498,18 @@ static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
         high_port = flow->src_port;
     }
 
-    // 3. Construct 64-bit Flow ID
-    // Combine IPs, Ports, Protocol, and VLAN to create a unique fingerprint
-    flow_id = ((uint64_t)low_ip << 32) | high_ip;
-    flow_id ^=
-        ((uint64_t)low_port << 48) | ((uint64_t)high_port << 32) | ((uint64_t)flow->vlan_id << 16) | flow->l4_protocol;
+    // 3. Construct Final 64-bit Flow ID
+    // We mix in the Ports, VLAN, and L4 Protocol
+    // Shift ports to ensure they don't overlap with small protocol/vlan values
+    flow_id ^= ((uint64_t)low_port << 48) | ((uint64_t)high_port << 32);
+    flow_id ^= ((uint64_t)flow->vlan_id << 16) | (uint64_t)flow->l4_protocol;
+
+    // Optional: Final 64-bit mix (MurmurHash3 style) to improve distribution
+    flow_id ^= (flow_id >> 33);
+    flow_id *= 0xff51afd7ed558ccdULL;
+    flow_id ^= (flow_id >> 33);
+    flow_id *= 0xc4ceb9fe1a85ec53ULL;
+    flow_id ^= (flow_id >> 33);
 
     return flow_id;
 }
