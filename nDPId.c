@@ -5455,7 +5455,7 @@ static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
     write_to_console(0, 3, "generate_ndpid_flow_id called");
     static long long int index = 1;
-    printf("[nDPId Debug] Generated Flow ID: %" PRIu64 "\n", flow_id);
+    printf("[nDPId Debug] Generated Flow ID: %" PRIu64 "\n", index);
     return index++;
 
     
