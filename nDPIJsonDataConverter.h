@@ -13,7 +13,7 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
 void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, uint64_t * flow_id);
 int CheckSRCIPField(const char * json_str);
 void UpdateXferIfGreater(char * json_str1, const char * json_str2, char ** converted_json_str);
-unsigned long long int GetFlowId(const char * json_str);
+uint64_t GetFlowId(const char * json_str);
 void ReadNdpidConfigurationFilterFile(const char * filename, int print_to_console);
 
 #ifdef __cplusplus

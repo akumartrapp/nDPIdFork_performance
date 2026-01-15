@@ -4453,7 +4453,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         case FLOW_EVENT_DETECTED:
         case FLOW_EVENT_DETECTION_UPDATE:
             logger(1,
-                   "[%8llu, %4llu] internal error / invalid function call",
+                   "[%8" PRIu64 ", %4" PRIu64 "] internal error / invalid function call",
                    workflow->packets_captured,
                    flow_ext->flow_id);
             break;
@@ -4500,7 +4500,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
         case FLOW_EVENT_UPDATE:
         case FLOW_EVENT_ANALYSE:
             logger(1,
-                   "[%8llu, %4llu] internal error / invalid function call",
+                   "[%8" PRIu64 ", %4" PRIu64 "] internal error / invalid function call",
                    workflow->packets_captured,
                    flow->flow_extended.flow_id);
             break;
@@ -4513,7 +4513,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                               &workflow->ndpi_serializer) != 0)
             {
                 logger(1,
-                       "[%8llu, %4llu] ndpi_dpi2json failed for not-detected/guessed flow",
+                       "[%8" PRIu64 ", %4" PRIu64 "] ndpi_dpi2json failed for not-detected/guessed flow",
                        workflow->packets_captured,
                        flow->flow_extended.flow_id);
             }
@@ -4527,7 +4527,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                               &workflow->ndpi_serializer) != 0)
             {
                 logger(1,
-                       "[%8llu, %4llu] ndpi_dpi2json failed for detected/detection-update flow",
+                       "[%8" PRIu64 ", %4" PRIu64 "] ndpi_dpi2json failed for detected/detection-update flow",
                        workflow->packets_captured,
                        flow->flow_extended.flow_id);
             }
@@ -6475,7 +6475,7 @@ static void ndpi_log_flow_walker(struct nDPId_flow_basic const * flow_basic,
                 time_until_timeout = last_seen + idle_time - last_thread_time;
 
             logger(0,
-                   "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: %7llu]",
+                   "[%2zu][%4" PRIu64 "][last-seen: %13" PRIu64 "][last-update: %13" PRIu64 "][idle-time: %7" PRIu64 "][time-until-timeout: %7" PRIu64 "]",
                    reader_thread->array_index,
                    flow->flow_extended.flow_id,
                    (unsigned long long int)last_seen,
