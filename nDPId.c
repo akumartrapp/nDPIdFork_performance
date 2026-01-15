@@ -3969,6 +3969,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     char * json_string_with_http_or_tls_info = NULL;
     unsigned long long int flow_id = GetFlowId(json_msg);
+    logger(0, "Flow ID extracted: %llu", flow_id);
 
     if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
     {
