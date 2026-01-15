@@ -5508,6 +5508,9 @@ static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
     flow_id ^= ((uint64_t)low_port << 48) | ((uint64_t)high_port << 32);
     flow_id ^= ((uint64_t)flow->vlan_id << 16) | (uint64_t)flow->l4_protocol;
 
+
+    printf("[nDPId Debug] Generated Flow ID: %llu\n", flow_id);
+
     return flow_id;
 }
 
