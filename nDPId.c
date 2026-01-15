@@ -3973,6 +3973,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     char * json_string_with_http_or_tls_info = NULL;
     uint64_t flow_id = GetFlowId(json_msg);
 
+    printf("[nDPId Debug] GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
     if (flow_id == INVALID_FLOW_ID)
     {
         logger(1,
