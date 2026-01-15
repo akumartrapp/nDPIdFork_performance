@@ -5441,7 +5441,7 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
 
 static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
 {
-    write_to_console(3, "generate_ndpid_flow_id called");
+    write_to_console(0, 3, "generate_ndpid_flow_id called");
     uint64_t flow_id = 0;
 
     // Temporary variables for sorting to ensure symmetry (A->B == B->A)
