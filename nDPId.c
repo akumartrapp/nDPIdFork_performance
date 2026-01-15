@@ -5445,26 +5445,6 @@ static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
     uint32_t low_ip, high_ip;
     uint16_t low_port, high_port;
 
-    // 1. Handle IP Symmetry (IPv4 example)
-    // For IPv6, you would use memcmp on the 16-byte address
-    if (flow->l3_type == nDPId_L3_IPV4)
-    {
-        if (flow->src.ipv4 < flow->dst.ipv4)
-        {
-            low_ip = flow->src.ipv4;
-            high_ip = flow->dst.ipv4;
-        }
-        else
-        {
-            low_ip = flow->dst.ipv4;
-            high_ip = flow->src.ipv4;
-        }
-    }
-    else
-    {
-        // Fallback or IPv6 logic: use existing hashval if L3 is complex
-        return flow->hashval;
-    }
 
     // 2. Handle Port Symmetry
     if (flow->src_port < flow->dst_port)
