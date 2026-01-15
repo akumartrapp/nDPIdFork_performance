@@ -3964,6 +3964,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         return;
     }
 
+    printf("json data = \n%s\n", json_msg);
     if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
