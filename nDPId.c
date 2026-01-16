@@ -3975,6 +3975,12 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         printf("[nDPId Debug] GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
     }
 
+    if (flow_id <= 0)
+    {
+        printf("Error: Flow id not found in \n%s\n", json_msg);
+        return;
+    }
+
     if (flow_id == INVALID_FLOW_ID)
     {
         logger(1,
