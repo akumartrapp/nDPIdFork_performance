@@ -1,6 +1,7 @@
 #include "nDPIJsonDataConverter.h"
 #include "ndpi_typedefs.h"
 #include "../json-c/include/json-c/json.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
