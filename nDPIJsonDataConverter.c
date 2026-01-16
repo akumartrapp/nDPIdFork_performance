@@ -597,6 +597,7 @@ uint64_t GetFlowId(const char * json_str)
     if (root == NULL)
     {
         fprintf(stderr, "Error parsing JSON\n");
+        logger(1, "Error parsing JSON to get flow_id\n");
         return INVALID_FLOW_ID;
     }
 
@@ -604,6 +605,10 @@ uint64_t GetFlowId(const char * json_str)
     if (json_object_object_get_ex(root, "flow_id", &flow_id_object))
     {
         flow_id = json_object_get_uint64(flow_id_object);
+    }
+    else
+    {
+        logger(1, "flow_id field not found in JSON\n");
     }
 
     json_object_put(root);
@@ -756,6 +761,10 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     if (json_object_object_get_ex(root, "flow_id", &flow_id))
     {
         result.flow_id = json_object_get_uint64(flow_id);
+    }
+    else
+    {
+        logger(1, "getRootDataStructure(): flow_id field not found in JSON\n");
     }
 
     json_object * flow_event_id;

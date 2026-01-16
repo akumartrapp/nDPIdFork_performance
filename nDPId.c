@@ -6093,6 +6093,20 @@ process_layer3_again:
 
 
         flow_to_process->flow_extended.flow_id = generate_ndpid_flow_id(&flow_to_process->flow_extended.flow_basic);
+
+        if (flow_to_process->flow_extended.flow_id <= 0)
+        {
+            logger(1,
+                   "Failed to generate valid flow ID for new flow. src_ip: %u dst_ip: %u src_port: %u dst_port: %u "
+                   "l4_proto: %u",
+                   flow_basic.src.v4.ip,
+                   flow_basic.dst.v4.ip,
+                   flow_basic.src_port,
+                   flow_basic.dst_port,
+                   flow_basic.l4_protocol);
+            return;
+        }   
+
         workflow->total_active_flows++;
        
 
