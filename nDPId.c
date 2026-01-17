@@ -460,6 +460,7 @@ static void write_to_file(const char * const json_msg, const char * const json_s
         int length = strlen(converted_json_str);
         if (length != 0)
         {
+            printf("Calling GetFlowId from write_to_file\n");
             uint64_t flow_id = GetFlowId(converted_json_str);
 
             if (console_output_level > 1)
@@ -3982,6 +3983,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     char * json_string_with_http_or_tls_info = NULL;
+    printf("Calling GetFlowId from send_to_collector\n");
     uint64_t flow_id = GetFlowId(json_msg);
 
     if (console_output_level > 1)
