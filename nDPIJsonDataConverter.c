@@ -1417,13 +1417,17 @@ static void add_Root_Data(json_object ** root_object,
     // Flow starts here
     if (rootDataStructure.flow_id != INVALID_FLOW_ID)
     {
-        json_object * flow_id_object = json_object_new_object();
+        //json_object * flow_id_object = json_object_new_object();
 
-        // Create a JSON number from a uint64_t
-        json_object * id_obj = json_object_new_int64((int64_t)rootDataStructure.flow_id);
+        //// Create a JSON number from a uint64_t
+        //json_object * id_obj = json_object_new_int64((int64_t)rootDataStructure.flow_id);
 
-        json_object_object_add(flow_id_object, "id", id_obj);
-        json_object_object_add(*root_object, "flow", flow_id_object);
+        //json_object_object_add(flow_id_object, "id", id_obj);
+        //json_object_object_add(*root_object, "flow", flow_id_object);
+
+        json_object * id_object = json_object_new_object();
+        json_object_object_add(id_object, "id", json_object_new_uint64(rootDataStructure.flow_id));
+        json_object_object_add(*root_object, "flow", id_object);
     }
 
     // hostname
