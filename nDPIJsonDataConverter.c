@@ -609,7 +609,15 @@ uint64_t GetFlowId(const char * json_str)
     }
     else
     {
-        logger(1, "flow_id field not found in JSON\n");
+        json_object * flow_object;
+        if (json_object_object_get_ex(root, "flow", &flow_object))
+        {
+            flow_id = json_object_get_uint64(flow_object);
+        }
+        else
+        {
+            logger(1, "flow id not found in JSON\n");
+        }
     }
 
     json_object_put(root);
