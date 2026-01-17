@@ -471,6 +471,7 @@ static void write_to_file(const char * const json_msg, const char * const json_s
             if (flow_id <= 0)
             {
                 printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", json_msg);
+                printf("[nDPId Error2] write_to_file: Flow id not found in \n%s\n", converted_json_str);
             }
 
             if (flow_risk_count)
