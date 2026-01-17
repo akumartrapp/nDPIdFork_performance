@@ -462,6 +462,18 @@ static void write_to_file(const char * const json_msg, const char * const json_s
         {
             if (flow_risk_count)
             {
+                uint64_t flow_id = GetFlowId(converted_json_str);
+
+                if (console_output_level > 1)
+                {
+                    printf("[nDPId Debug] write_to_file: GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
+                }
+
+                if (flow_id <= 0)
+                {
+                    printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", json_msg);
+                }
+
                 write_to_alert_file(converted_json_str, length);
                 for (int index = 1; index < flow_risk_count; index++)
                 {
@@ -3840,7 +3852,9 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
 
     if (converted_json_str == NULL)
+    {
         return 0; // nothing to send → not an error
+    }
 
     int rc = 0;
     int length = strlen(converted_json_str);
