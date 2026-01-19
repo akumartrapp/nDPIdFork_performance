@@ -459,21 +459,18 @@ static void write_to_file(const char * const json_msg, const char * const json_s
     {
         int length = strlen(converted_json_str);
         if (length != 0)
-        {
-            printf("Calling GetFlowId from write_to_file\n");
-            uint64_t flow_id = GetFlowId(converted_json_str);
-
+        {                      
             if (console_output_level > 1)
             {
+                uint64_t flow_id = GetFlowId(converted_json_str);
                 printf("[nDPId Debug] write_to_file: GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
+                if (flow_id <= 0)
+                {
+                    printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", json_msg);
+                    printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", converted_json_str);
+                }
             }
-
-            if (flow_id <= 0)
-            {
-                printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", json_msg);
-                printf("[nDPId Error2] write_to_file: Flow id not found in \n%s\n", converted_json_str);
-            }
-
+           
             if (flow_risk_count)
             {
                 write_to_alert_file(converted_json_str, length);
@@ -3984,7 +3981,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     char * json_string_with_http_or_tls_info = NULL;
-    printf("Calling GetFlowId from send_to_collector\n");
     uint64_t flow_id = GetFlowId(json_msg);
 
     if (console_output_level > 1)
@@ -7139,7 +7135,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("nDPID program version is 01.16.2026.01\n");
+    printf("nDPID program version is 01.19.2026.01\n");
 }
 
 static void print_usage(char const * const arg0)
