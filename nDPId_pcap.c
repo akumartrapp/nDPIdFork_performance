@@ -4350,9 +4350,9 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         case FLOW_EVENT_DETECTED:
         case FLOW_EVENT_DETECTION_UPDATE:
             logger(1,
-                   "[%8llu, %4llu] internal error / invalid function call",
-                   workflow->packets_captured,
-                   flow_ext->flow_id);
+                   "[%8" PRIu64 ", %4" PRIu64 "] ...",
+                   (uint64_t)workflow->packets_captured,
+                   (uint64_t)flow_ext->flow_id);
             break;
     }
 
@@ -4397,9 +4397,9 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
         case FLOW_EVENT_UPDATE:
         case FLOW_EVENT_ANALYSE:
             logger(1,
-                   "[%8llu, %4llu] internal error / invalid function call",
-                   workflow->packets_captured,
-                   flow->flow_extended.flow_id);
+                   "[%8" PRIu64 ", %4" PRIu64 "] internal error / invalid function call",
+                   (uint64_t)workflow->packets_captured,
+                   (uint64_t)flow->flow_extended.flow_id);
             break;
 
         case FLOW_EVENT_NOT_DETECTED:
@@ -4410,9 +4410,9 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                               &workflow->ndpi_serializer) != 0)
             {
                 logger(1,
-                       "[%8llu, %4llu] ndpi_dpi2json failed for not-detected/guessed flow",
-                       workflow->packets_captured,
-                       flow->flow_extended.flow_id);
+                       "[%8" PRIu64 ", %4" PRIu64 "] ndpi_dpi2json failed for not-detected/guessed flow",
+                       (uint64_t)workflow->packets_captured,
+                       (uint64_t)flow->flow_extended.flow_id);
             }
             break;
 
@@ -4424,9 +4424,9 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                               &workflow->ndpi_serializer) != 0)
             {
                 logger(1,
-                       "[%8llu, %4llu] ndpi_dpi2json failed for detected/detection-update flow",
-                       workflow->packets_captured,
-                       flow->flow_extended.flow_id);
+                       "[%8" PRIu64 ", %4" PRIu64 "] ndpi_dpi2json failed for detected/detection-update flow",
+                       (uint64_t)workflow->packets_captured,
+                       (uint64_t)flow->flow_extended.flow_id);
             }
             break;
     }
@@ -4703,14 +4703,6 @@ static uint32_t calculate_ndpi_flow_struct_hash(struct ndpi_flow_struct const * 
     hash += (ndpi_flow->risk & 0xFFFFFFFF) + (ndpi_flow->risk >> 32); // nDPI Risks are u64's (might change in the
                                                                       // future)
     hash += ndpi_flow->confidence;
-
-    const size_t protocol_bitmask_size = sizeof(ndpi_flow->excluded_protocol_bitmask.fds_bits) /
-                                         sizeof(ndpi_flow->excluded_protocol_bitmask.fds_bits[0]);
-    for (size_t i = 0; i < protocol_bitmask_size; ++i)
-    {
-        hash += ndpi_flow->excluded_protocol_bitmask.fds_bits[i];
-        hash += ndpi_flow->excluded_protocol_bitmask.fds_bits[i];
-    }
 
     size_t host_server_name_len =
         strnlen((const char *)ndpi_flow->host_server_name, sizeof(ndpi_flow->host_server_name));
@@ -4996,7 +4988,7 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
                 return 1;
             }
 
-            ethernet = (struct ndpi_ethhdr *)&packet[eth_offset];
+           ethernet = (struct ndpi_ethhdr const *)&packet[eth_offset];
             *ip_offset = sizeof(struct ndpi_ethhdr) + eth_offset;
             *layer3_type = ntohs(ethernet->h_proto);
 
@@ -5088,7 +5080,7 @@ static int process_datalink_layer(struct nDPId_reader_thread * const reader_thre
                                      UNKNOWN_DATALINK_LAYER,
                                      "%s%u",
                                      "layer_type",
-                                     ntohl(*((uint32_t *)&packet[eth_offset])));
+                                     ntohl(*((uint32_t const *)&packet[eth_offset])));
                 jsonize_packet_event(reader_thread, header, packet, 0, 0, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
             return 1;
@@ -5254,7 +5246,7 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
         return 0; /* Too short for GRE header*/
     }
     uint32_t offset = (l4_ptr - packet);
-    struct ndpi_gre_basehdr * grehdr = (struct ndpi_gre_basehdr *)&packet[offset];
+    struct ndpi_gre_basehdr const * const grehdr = (struct ndpi_gre_basehdr const *)&packet[offset];
     offset += sizeof(struct ndpi_gre_basehdr);
 
     /*
