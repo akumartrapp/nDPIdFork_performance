@@ -230,7 +230,7 @@ endif()
 add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c ${CRYPTO_SRCS} nDPIJsonDataConverter.c)
 add_executable(nDPIsrvd nDPIsrvd.c nio.c utils.c)
 add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS} ${CRYPTO_SRCS} nDPIJsonDataConverter.c)
-# add_executable(nDPId_pcap nDPId_pcap.c ${NDPID_PFRING_SRCS}  ${CRYPTO_SRCS} nio.c utils.c nDPIJsonDataConverter.c)
+add_executable(nDPId_pcap nDPId_pcap.c ${NDPID_PFRING_SRCS}  ${CRYPTO_SRCS} nio.c utils.c nDPIJsonDataConverter.c)
 
 add_custom_target(umask_check)
 add_custom_command(
@@ -428,7 +428,7 @@ if(BUILD_NDPI)
     set(STATIC_LIBNDPI_INSTALLDIR "${CMAKE_BINARY_DIR}/libnDPI")
     add_dependencies(nDPId libnDPI)
     add_dependencies(nDPId-test libnDPI)
-   # add_dependencies(nDPId_pcap libnDPI)
+    add_dependencies(nDPId_pcap libnDPI)
 endif()
 
 if(ENABLE_CRYPTO)
@@ -521,12 +521,12 @@ target_link_libraries(nDPId-test "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" 
                                  "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}" "${JSON_C_LIB}"
                                  "${OSSL_LIBRARY}" "-pthread")
 
-# target_compile_options(nDPId_pcap PRIVATE "-Wno-unused-function" "-pthread")
-# target_compile_definitions(nDPId_pcap PRIVATE -D_GNU_SOURCE=1 -DNO_MAIN=1 -DPKG_VERSION=\"${PKG_VERSION}\" -DGIT_VERSION=\"${GIT_VERSION}\"
+target_compile_options(nDPId_pcap PRIVATE "-Wno-unused-function" "-pthread")
+target_compile_definitions(nDPId_pcap PRIVATE -D_GNU_SOURCE=1 -DNO_MAIN=1 -DPKG_VERSION=\"${PKG_VERSION}\" -DGIT_VERSION=\"${GIT_VERSION}\"
                                               # ${NDPID_DEFS} ${EPOLL_DEFS} ${ZLIB_DEFS} ${PFRING_DEFS} ${NDPID_TEST_MPROF_DEFS})
-# target_include_directories(nDPId_pcap PRIVATE
+target_include_directories(nDPId_pcap PRIVATE
                            # "${STATIC_LIBNDPI_INC}" "${DEFAULT_NDPI_INCLUDE}" ${NDPID_DEPS_INC} ${PFRING_KERNEL_INC} ${PFRING_INC})
-# target_link_libraries(nDPId_pcap "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" "${pkgcfg_lib_PCAP_pcap}" "${pkgcfg_lib_NDPI_ndpi}"
+target_link_libraries(nDPId_pcap "${STATIC_LIBNDPI_LIB}" "${STATIC_PFRING_LIB}" "${pkgcfg_lib_PCAP_pcap}" "${pkgcfg_lib_NDPI_ndpi}"
                                  # "${pkgcfg_lib_PCRE_pcre2-8}" "${pkgcfg_lib_MAXMINDDB_maxminddb}" "${pkgcfg_lib_ZLIB_z}"
                                  # "${GCRYPT_LIBRARY}" "${GCRYPT_ERROR_LIBRARY}" "${PCAP_LIBRARY}" "${LIBM_LIB}" "${PF_RING_LIB}" "${JSON_C_LIB}"
                                  # "${OSSL_LIBRARY}" "-pthread")
@@ -668,7 +668,7 @@ install(FILES config.h
               dependencies/json-c/include/json-c/printbuf.h
         DESTINATION include/nDPId)
 install(TARGETS nDPId DESTINATION sbin)
-# install(TARGETS nDPId_pcap DESTINATION sbin)
+install(TARGETS nDPId_pcap DESTINATION sbin)
 install(TARGETS nDPIsrvd nDPId-test DESTINATION bin)
 if(BUILD_EXAMPLES)
     install(FILES dependencies/nDPIsrvd.py

@@ -34,6 +34,9 @@
 
 #include "config.h"
 #include "nDPIsrvd.h"
+#ifdef ENABLE_CRYPTO
+#include "ncrypt.h"
+#endif
 #include "nio.h"
 #ifdef ENABLE_PFRING
 #include "npfring.h"
@@ -660,7 +663,7 @@ struct nDPId_flow_extended
 {
     struct nDPId_flow_basic flow_basic; // Do not move this element!
 
-    unsigned long long int flow_id;
+    uint64_t flow_id;
 
     uint16_t min_l4_payload_len[FD_COUNT];
     uint16_t max_l4_payload_len[FD_COUNT];
@@ -765,6 +768,9 @@ struct nDPId_workflow
     uint64_t total_compressions;
     uint64_t total_compression_diff;
     uint64_t current_compression_diff;
+#endif
+#ifdef ENABLE_CRYPTO
+    struct ncrypt_entity ncrypt_entity;
 #endif
 
     uint64_t last_scan_time;
@@ -888,7 +894,7 @@ enum daemon_event
 // Define a structure to hold the flow id and JSON string
 typedef struct
 {
-    unsigned long long int flow_id;
+    uint64_t flow_id;
     char * json_str;
 } flow_entry_t;
 
@@ -941,7 +947,7 @@ void ensure_capacity(flow_map_t * map)
 
 
 // Add or update an entry in the FlowMap
-void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, const char * json_str)
+void add_or_update_flow_entry(flow_map_t * map, uint64_t  flow_id, const char * json_str)
 {
     if (map == NULL || json_str == NULL)
     {
@@ -981,7 +987,7 @@ void add_or_update_flow_entry(flow_map_t * map, unsigned long long int flow_id, 
     map->size++;
 }
 
-static char * get_json_string_from_map(flow_map_t * map, unsigned long long int flow_id)
+static char * get_json_string_from_map(flow_map_t * map, uint64_t  flow_id)
 {
     char * json_string = NULL;
     for (size_t i = 0; i < map->size; ++i)
@@ -1073,7 +1079,9 @@ static MT_VALUE(zlib_decompressions, uint64_t) = MT_INIT(0);
 static MT_VALUE(zlib_compression_diff, uint64_t) = MT_INIT(0);
 static MT_VALUE(zlib_compression_bytes, uint64_t) = MT_INIT(0);
 #endif
-
+#ifdef ENABLE_CRYPTO
+static struct ncrypt_ctx ncrypt_ctx;
+#endif
 static struct
 {
     /* options which are resolved automatically */
@@ -1108,6 +1116,11 @@ static struct
 #endif
 #ifdef ENABLE_PFRING
     struct cmdarg use_pfring;
+#endif
+#ifdef ENABLE_CRYPTO
+    struct cmdarg client_crt_pem_file;
+    struct cmdarg client_key_pem_file;
+    struct cmdarg server_ca_pem_file;
 #endif
     /* subopts */
     struct cmdarg max_flows_per_thread;
@@ -1158,6 +1171,11 @@ static struct
 #endif
 #ifdef ENABLE_PFRING
                    .use_pfring = CMDARG_BOOL(0),
+#endif
+#ifdef ENABLE_CRYPTO
+                   .client_crt_pem_file = CMDARG_STR(NULL),
+                   .client_key_pem_file = CMDARG_STR(NULL),
+                   .server_ca_pem_file = CMDARG_STR(NULL),
 #endif
                    .max_flows_per_thread = CMDARG_ULL(nDPId_MAX_FLOWS_PER_THREAD / 2),
                    .max_idle_flows_per_thread = CMDARG_ULL(nDPId_MAX_IDLE_FLOWS_PER_THREAD / 2),
@@ -1859,12 +1877,60 @@ static void * ndpi_malloc_wrapper(size_t const size)
 
 static void ndpi_free_wrapper(void * const freeable)
 {
+    if (freeable == NULL)
+    {
+        return;
+    }
+
     void * p = (uint8_t *)freeable - sizeof(uint64_t);
 
     MT_GET_AND_ADD(ndpi_memory_free_count, 1);
     MT_GET_AND_ADD(ndpi_memory_free_bytes, *(uint64_t *)p);
 
     free(p);
+}
+
+
+static void * ndpi_calloc_wrapper(size_t nmemb, size_t size)
+{
+    void * p = ndpi_malloc_wrapper(nmemb * size);
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    memset(p, 0x00, nmemb * size);
+
+    return p;
+}
+
+static void * ndpi_realloc_wrapper(void * const reallocable, size_t new_size)
+{
+    if (reallocable == NULL)
+    {
+        return ndpi_malloc_wrapper(new_size);
+    }
+
+    void * const p = (uint8_t *)reallocable - sizeof(uint64_t);
+    void * const new_ptr = realloc(p, sizeof(uint64_t) + new_size);
+
+    if (new_ptr == NULL)
+    {
+        return (uint8_t *)p + sizeof(uint64_t);
+    }
+
+    size_t old_size = *(uint64_t *)new_ptr;
+    *(uint64_t *)new_ptr = new_size;
+
+    if (old_size > new_size)
+    {
+        MT_GET_AND_SUB(ndpi_memory_alloc_bytes, old_size - new_size);
+    }
+    else
+    {
+        MT_GET_AND_ADD(ndpi_memory_alloc_bytes, new_size - old_size);
+    }
+
+    return (uint8_t *)new_ptr + sizeof(uint64_t);
 }
 
 #ifdef ENABLE_MEMORY_PROFILING
@@ -2297,9 +2363,6 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
         return NULL;
     }
 
-    NDPI_PROTOCOL_BITMASK protos;
-    NDPI_BITMASK_SET_ALL(protos);
-    ndpi_set_protocol_detection_bitmask2(workflow->ndpi_struct, &protos);
     if (IS_CMDARG_SET(nDPId_options.custom_risk_domain_file) != 0)
     {
         ndpi_load_risk_domain_file(workflow->ndpi_struct, GET_CMDARG_STR(nDPId_options.custom_risk_domain_file));
@@ -2879,21 +2942,13 @@ static void process_idle_flow(struct nDPId_reader_thread * const reader_thread, 
 
                 if (flow->info.detection_completed == 0)
                 {
-                    uint8_t protocol_was_guessed = 0;
-
                     if (ndpi_is_protocol_detected(flow->info.detection_data->guessed_l7_protocol) == 0)
                     {
                         flow->info.detection_data->guessed_l7_protocol =
-                            ndpi_detection_giveup(workflow->ndpi_struct,
-                                                  &flow->info.detection_data->flow,
-                                                  &protocol_was_guessed);
-                    }
-                    else
-                    {
-                        protocol_was_guessed = 1;
+                            ndpi_detection_giveup(workflow->ndpi_struct, &flow->info.detection_data->flow);
                     }
 
-                    if (protocol_was_guessed != 0)
+                    if (flow->info.detection_data->flow.protocol_was_guessed != 0)
                     {
                         workflow->total_guessed_flows++;
                         jsonize_flow_detection_event(reader_thread, flow, FLOW_EVENT_GUESSED);
@@ -3199,6 +3254,7 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
     }
 
     jsonize_basic(reader_thread, 1);
+#ifndef NO_MAIN
 #ifndef PKG_VERSION
     ndpi_serialize_string_string(&workflow->ndpi_serializer, "version", "unknown");
 #else
@@ -3206,6 +3262,11 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
 #endif
     ndpi_serialize_string_string(&workflow->ndpi_serializer, "ndpi_version", ndpi_revision());
     ndpi_serialize_string_uint32(&workflow->ndpi_serializer, "ndpi_api_version", ndpi_get_api_version());
+#else
+    ndpi_serialize_string_string(&workflow->ndpi_serializer, "version", "");
+    ndpi_serialize_string_string(&workflow->ndpi_serializer, "ndpi_version", "");
+    ndpi_serialize_string_uint32(&workflow->ndpi_serializer, "ndpi_api_version", 0);
+#endif 
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
                                  "size_per_flow",
                                  (uint64_t)(sizeof(struct nDPId_flow) + sizeof(struct nDPId_detection_data)));
@@ -3420,6 +3481,9 @@ static int connect_to_collector(struct nDPId_reader_thread * const reader_thread
         if (reader_thread->collector_sockfd >= 0)
         {
             close(reader_thread->collector_sockfd);
+#ifdef ENABLE_CRYPTO
+            ncrypt_clear_handshake(&reader_thread->workflow->ncrypt_entity);
+#endif
         }
 
         int sock_type = (nDPId_options.parsed_collector_address.raw.sa_family == AF_UNIX ? SOCK_STREAM : SOCK_DGRAM);
@@ -3715,7 +3779,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     char * json_string_with_http_or_tls_info = NULL;
-    unsigned long long int flow_id = GetFlowId(json_msg);
+    uint64_t  flow_id = GetFlowId(json_msg);
  
     if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE)) 
     {
@@ -7705,12 +7769,14 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    set_ndpi_malloc(ndpi_malloc_wrapper);
-    set_ndpi_free(ndpi_free_wrapper);
-    set_ndpi_flow_malloc(NULL);
-    set_ndpi_flow_free(NULL);
+    ndpi_set_memory_alloction_functions(ndpi_malloc_wrapper, ndpi_free_wrapper, ndpi_calloc_wrapper, ndpi_realloc_wrapper, NULL, NULL, NULL, NULL);
 
     init_logging("nDPId");
+#ifdef ENABLE_CRYPTO
+    ncrypt_init();
+    ncrypt_ctx(&ncrypt_ctx);
+#endif
+   
 
     read_ndpid_config("Settings/nDPIdConfiguration.json");
     ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
@@ -7751,6 +7817,18 @@ int main(int argc, char ** argv)
         logger_early(1, "%s", "Option validation failed.");
         return 1;
     }
+
+#ifdef ENABLE_CRYPTO
+    if (IS_CMDARG_SET(nDPId_options.server_ca_pem_file) != 0 &&
+        ncrypt_init_client(&ncrypt_ctx,
+                           GET_CMDARG_STR(nDPId_options.server_ca_pem_file),
+                           GET_CMDARG_STR(nDPId_options.client_key_pem_file),
+                           GET_CMDARG_STR(nDPId_options.client_crt_pem_file)) != NCRYPT_SUCCESS)
+    {
+        logger_early(1, "%s", "Could not initialize crypto.");
+        return 1;
+    }
+#endif
 
     log_app_info();
 
