@@ -3689,7 +3689,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     }
 
     char * converted_json_str = NULL;
-    int flow_risk_count = 0;
+    size_t flow_risk_count = 0;
 
     ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
     if (converted_json_str != NULL)
@@ -5367,7 +5367,7 @@ static void ndpi_process_packet(uint8_t * const args,
     uint8_t is_new_flow = 0;
 
     const struct ndpi_iphdr * ip;
-    struct ndpi_ipv6hdr * ip6;
+    const struct ndpi_ipv6hdr * ip6;
     const struct ndpi_tcphdr * tcp = NULL;
 
     uint64_t time_us;
@@ -5415,7 +5415,7 @@ static void ndpi_process_packet(uint8_t * const args,
 process_layer3_again:
     if (type == ETH_P_IP)
     {
-        ip = (struct ndpi_iphdr *)&packet[ip_offset];
+        ip = (struct ndpi_iphdr const *)&packet[ip_offset];
         ip6 = NULL;
         if (header->caplen < ip_offset + sizeof(*ip))
         {
@@ -5436,7 +5436,7 @@ process_layer3_again:
     else if (type == ETH_P_IPV6)
     {
         ip = NULL;
-        ip6 = (struct ndpi_ipv6hdr *)&packet[ip_offset];
+        ip6 = (struct ndpi_ipv6hdr const *)&packet[ip_offset];
         if (header->caplen < ip_offset + sizeof(*ip6))
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
@@ -5483,7 +5483,7 @@ process_layer3_again:
         flow_basic.l3_type = L3_IP;
 
         if (ndpi_detection_get_l4(
-                (uint8_t *)ip, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV4) != 0)
+                (uint8_t const *)ip, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV4) != 0)
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
             {
@@ -5503,7 +5503,7 @@ process_layer3_again:
     {
         flow_basic.l3_type = L3_IP6;
         if (ndpi_detection_get_l4(
-                (uint8_t *)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
+                (uint8_t const *)ip6, ip_size, &l4_ptr, &l4_len, &flow_basic.l4_protocol, NDPI_DETECTION_ONLY_IPV6) != 0)
         {
             if (distribute_single_packet(reader_thread) != 0 && is_error_event_threshold(reader_thread->workflow) == 0)
             {
@@ -5642,7 +5642,7 @@ process_layer3_again:
             }
             return;
         }
-        tcp = (struct ndpi_tcphdr *)l4_ptr;
+        tcp = (struct ndpi_tcphdr const *)l4_ptr;
         l4_payload_len = ndpi_max(0, l4_len - 4 * tcp->doff);
         flow_basic.tcp_fin_rst_seen = (tcp->fin == 1 || tcp->rst == 1 ? 1 : 0);
         flow_basic.tcp_is_midstream_flow = (tcp->syn == 0 ? 1 : 0);
@@ -5676,7 +5676,7 @@ process_layer3_again:
             }
             return;
         }
-        udp = (struct ndpi_udphdr *)l4_ptr;
+        udp = (struct ndpi_udphdr const *)l4_ptr;
         l4_payload_len = (l4_len > sizeof(struct ndpi_udphdr)) ? l4_len - sizeof(struct ndpi_udphdr) : 0;
         flow_basic.src_port = ntohs(udp->source);
         flow_basic.dst_port = ntohs(udp->dest);
@@ -6060,7 +6060,7 @@ process_layer3_again:
                      1);
         flow_to_process->flow_extended.flow_analysis
             ->entropies[(total_flow_packets - 1) % GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse)] =
-            ndpi_entropy((ip != NULL ? (uint8_t *)ip : (uint8_t *)ip6), ip_size);
+            ndpi_entropy((ip != NULL ? (uint8_t const *)ip : (uint8_t const *)ip6), ip_size);
 
         if (total_flow_packets == GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse))
         {
@@ -6088,12 +6088,13 @@ process_layer3_again:
     flow_to_process->flow_extended.detected_l7_protocol =
         ndpi_detection_process_packet(workflow->ndpi_struct,
                                       &flow_to_process->info.detection_data->flow,
-                                      ip != NULL ? (uint8_t *)ip : (uint8_t *)ip6,
+                                      ip != NULL ? (uint8_t const *)ip : (uint8_t const *)ip6,
                                       ip_size,
                                       workflow->last_thread_time / 1000,
                                       NULL);
 
     if (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) != 0 &&
+        flow_to_process->info.detection_data->flow.protocol_was_guessed == 0 &&
         flow_to_process->info.detection_completed == 0)
     {
         flow_to_process->info.detection_completed = 1;
@@ -6125,17 +6126,17 @@ process_layer3_again:
         }
     }
 
-    if (flow_to_process->info.detection_data->flow.num_processed_pkts ==
-            GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) &&
-        flow_to_process->info.detection_completed == 0)
+      if ((flow_to_process->info.detection_data->flow.num_processed_pkts ==
+             GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) &&
+         flow_to_process->info.detection_completed == 0) ||
+        (flow_to_process->flow_extended.detected_l7_protocol.state == NDPI_STATE_CLASSIFIED &&
+         (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) == 0 ||
+          flow_to_process->info.detection_data->flow.protocol_was_guessed != 0)))
     {
         /* last chance to guess something, better then nothing */
-        uint8_t protocol_was_guessed = 0;
         flow_to_process->info.detection_data->guessed_l7_protocol =
-            ndpi_detection_giveup(workflow->ndpi_struct,
-                                  &flow_to_process->info.detection_data->flow,
-                                  &protocol_was_guessed);
-        if (protocol_was_guessed != 0)
+            ndpi_detection_giveup(workflow->ndpi_struct, &flow_to_process->info.detection_data->flow);
+        if (flow_to_process->info.detection_data->flow.protocol_was_guessed != 0)
         {
             workflow->total_guessed_flows++;
             jsonize_flow_detection_event(reader_thread, flow_to_process, FLOW_EVENT_GUESSED);
@@ -6149,8 +6150,7 @@ process_layer3_again:
 
     if (flow_to_process->info.detection_data->flow.num_processed_pkts ==
             GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_process) ||
-        (ndpi_is_protocol_detected(flow_to_process->flow_extended.detected_l7_protocol) != 0 &&
-         ndpi_extra_dissection_possible(workflow->ndpi_struct, &flow_to_process->info.detection_data->flow) == 0))
+        flow_to_process->flow_extended.detected_l7_protocol.state == NDPI_STATE_CLASSIFIED)
     {
         struct ndpi_proto detected_l7_protocol = flow_to_process->flow_extended.detected_l7_protocol;
         if (ndpi_is_protocol_detected(detected_l7_protocol) == 0)
@@ -6294,13 +6294,14 @@ static void ndpi_log_flow_walker(struct nDPId_flow_basic const * flow_basic,
                 time_until_timeout = last_seen + idle_time - last_thread_time;
 
             logger(0,
-                   "[%2zu][%4llu][last-seen: %13llu][last-update: %13llu][idle-time: %7llu][time-until-timeout: %7llu]",
+                   "[%2zu][%4" PRIu64 "][last-seen: %13" PRIu64 "][last-update: %13" PRIu64 "][idle-time: %7" PRIu64
+                   "][time-until-timeout: %7" PRIu64 "]",
                    reader_thread->array_index,
-                   flow->flow_extended.flow_id,
-                   (unsigned long long int)last_seen,
-                   (unsigned long long int)flow->flow_extended.last_flow_update,
-                   (unsigned long long int)idle_time,
-                   (unsigned long long int)time_until_timeout);
+                   (uint64_t)flow->flow_extended.flow_id,
+                   (uint64_t)last_seen,
+                   (uint64_t)flow->flow_extended.last_flow_update,
+                   (uint64_t)idle_time,
+                   (uint64_t)time_until_timeout);
             break;
         }
     }
@@ -6387,6 +6388,7 @@ static void run_capture_loop(struct nDPId_reader_thread * const reader_thread)
 
         sigaddset(&thread_signal_set, SIGINT);
         sigaddset(&thread_signal_set, SIGTERM);
+        sigaddset(&thread_signal_set, SIGPIPE);
         sigaddset(&thread_signal_set, SIGUSR1);
         int signal_fd = signalfd(-1, &thread_signal_set, SFD_NONBLOCK);
         if (signal_fd < 0 || set_fd_cloexec(signal_fd) < 0)
@@ -7771,7 +7773,7 @@ int main(int argc, char ** argv)
    
 
     read_ndpid_config("Settings/nDPIdConfiguration.json");
-    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json");
+    ReadNdpidConfigurationFilterFile("Settings/nDPIdConfiguration_filter.json", 4);
    
     if (nDPId_parse_options(argc, argv) != 0)
     {
