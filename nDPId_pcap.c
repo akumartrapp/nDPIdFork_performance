@@ -7858,7 +7858,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 11.23.2025.02\n");
+    logger(0, "nDPID_pcap program version is 01.24.02026.01\n");
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
@@ -7957,7 +7957,7 @@ int main(int argc, char ** argv)
         free_flow_map(&flow_map);        
     }
 
-    logger(0, "nDPID_pcap program version is 11.11.2025.01\n");
+    logger(0, "nDPID_pcap program version is 01.24.2026.01\n");
     logger(0, "Number of corrupt files %d", corrupt_files_count);
     logger(0, "Total number of files %d", number_of_valid_files_found);
 

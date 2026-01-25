@@ -750,13 +750,12 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
         result.l4_proto = strDuplicate(json_object_get_string(l4_proto));
     }
    
-    json_object* proto;
-    if (json_object_object_get_ex(root, "proto", &proto))
-    {
-        result.proto = strDuplicate(json_object_get_string(proto));
-    }
+    //json_object* proto;
+    //if (json_object_object_get_ex(root, "proto", &proto))
+    //{
+    //    result.proto = strDuplicate(json_object_get_string(proto));
+    //}
     
-
     json_object* ndpi_object;
     if (json_object_object_get_ex(root, "ndpi", &ndpi_object))
     {
@@ -1526,8 +1525,6 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
         return ;
     }
 
-
-
     // Navigate to the `ndpi` and `flow_risk` fields
     struct json_object * ndpi_obj = NULL;
     struct json_object * flow_risk_array = NULL;
@@ -1539,8 +1536,6 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
         return ;
     }
 
-  
-
     // Check if `flow_risk` is an array and the index is valid
     if (!json_object_is_type(flow_risk_array, json_type_array))
     {
@@ -1548,9 +1543,6 @@ void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char **
         json_object_put(parsed_json_object); // Free parsed JSON object
         return ;
     }
-
-
-
 
     int array_len = json_object_array_length(flow_risk_array);
     if (flow_risk_index < 0 || flow_risk_index >= array_len)
