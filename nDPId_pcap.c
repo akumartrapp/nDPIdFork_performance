@@ -3778,33 +3778,33 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         write_to_master_file(json_msg, json_msg_len);
     }
 
-    char * json_string_with_http_or_tls_info = NULL;
-    uint64_t  flow_id = GetFlowId(json_msg);
+    //char * json_string_with_http_or_tls_info = NULL;
+    //uint64_t  flow_id = GetFlowId(json_msg);
  
-    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE)) 
-    {
-        add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        return; 
-    }
-    else 
-    {
-        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
-    }
+    //if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE)) 
+    //{
+    //    add_or_update_flow_entry(&flow_map, flow_id, json_msg);
+    //    return; 
+    //}
+    //else 
+    //{
+    //    json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
+    //}
 
     // Ashwani 
     // We are not using socket so no need to connect just return from here.
 
     if (workflow->is_pcap_file && output_send_to_file)
     {
-        write_to_file(json_msg, json_string_with_http_or_tls_info);
+        write_to_file(json_msg, json_msg);
     }
 
     if (output_send_to_socket)
     {
-        write_to_socket(reader_thread, json_msg, json_string_with_http_or_tls_info);
+        write_to_socket(reader_thread, json_msg, json_msg);
     }
     
-    free(json_string_with_http_or_tls_info);
+    //free(json_string_with_http_or_tls_info);
     json_string_with_http_or_tls_info = NULL;
 
 
