@@ -3805,7 +3805,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
     
     //free(json_string_with_http_or_tls_info);
-    json_string_with_http_or_tls_info = NULL;
+    //json_string_with_http_or_tls_info = NULL;
 
 
     return;
