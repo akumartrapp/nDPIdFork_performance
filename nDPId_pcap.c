@@ -7857,8 +7857,6 @@ int main(int argc, char ** argv)
 
     // MM.DD.YYYY
     logger(0, "nDPID_pcap program version is 01.24.02026.02\n");
-    
-    NDPI_LOG_DBG2(ndpi_struct, "Ashwani %d\n", 2000);
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
