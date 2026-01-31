@@ -2375,10 +2375,8 @@ static struct nDPId_workflow * init_workflow(char const * const file_or_device)
     }
 
     ndpi_set_user_data(workflow->ndpi_struct, workflow);
+    ndpi_set_config(workflow->ndpi_struct, NULL, "log.level", "3"); // Enable NDPI_LOG_DEBUG_EXTRA output
     set_ndpi_debug_function(workflow->ndpi_struct, ndpi_debug_printf);
-
-
-
     {
         int ret;
 
@@ -7135,7 +7133,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("nDPID program version is 01.19.2026.01\n");
+    printf("nDPID program version is 01.31.2026.01.01\n");
 }
 
 static void print_usage(char const * const arg0)
