@@ -10291,35 +10291,12 @@ static void check_proto_on_non_std_port_risk(struct ndpi_detection_module_struct
 /* ************************************************************************************* */
 
 static void ndpi_internal_detection_process_packet(struct ndpi_detection_module_struct *ndpi_str,
-                                                    if(flow->extra_packets_func) {
-                                                      printf("[TRACE] ndpi_internal_detection_process_packet: Calling process_extra_packet\n");
-                                                      if(flow->extra_packets_func == NULL) {
-                                                        printf("[TRACE] ndpi_internal_detection_process_packet: extra dissection ended\n");
-                                                    } else if(flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
-                                                      printf("[TRACE] ndpi_internal_detection_process_packet: Protocol already detected, skipping to ret_protocols\n");
-                                                    if(fast_callback_protocol_id != NDPI_PROTOCOL_UNKNOWN &&
-                                                       ndpi_str->callback_buffer[dissector_idx].func &&
-                                                       !dissector_bitmask_is_set(&flow->excluded_dissectors_bitmask, dissector_idx) &&
-                                                       (ndpi_str->callback_buffer[dissector_idx].ndpi_selection_bitmask & ndpi_selection_packet) ==
-                                                       ndpi_str->callback_buffer[dissector_idx].ndpi_selection_bitmask) {
-                                                      printf("[TRACE] check_ndpi_detection_func: Calling protocol dissector (fast path), idx=%u\n", dissector_idx);
-                                                        for (a = 0; a < callback_buffer_size; a++) {
-                                                          dissector_idx = callback_buffer[a].dissector_idx;
-                                                          if((func != callback_buffer[a].func) &&
-                                                             (callback_buffer[a].ndpi_selection_bitmask & ndpi_selection_packet) ==
-                                                             callback_buffer[a].ndpi_selection_bitmask &&
-                                                             !dissector_bitmask_is_set(&flow->excluded_dissectors_bitmask, dissector_idx)) {
-                                                            printf("[TRACE] check_ndpi_detection_func: Calling protocol dissector (scan path), idx=%u\n", dissector_idx);
-                                                            if(flow->detected_protocol_stack[0] != NDPI_PROTOCOL_UNKNOWN) {
-                                                              printf("[TRACE] check_ndpi_detection_func: Protocol detected, breaking scan\n");
-                                                            }
-                                                          }
-                                                        }
                                                    struct ndpi_flow_struct *flow,
                                                    const unsigned char *packet_data,
                                                    const unsigned short packetlen,
                                                    const u_int64_t current_time_ms,
                                                    struct ndpi_flow_input_info *input_info) {
+  printf("Ashwani_HTTP: ndpi_internal_detection_process_packet called\n");                                                    
   struct ndpi_packet_struct *packet;
   NDPI_SELECTION_BITMASK_PROTOCOL_SIZE ndpi_selection_packet;
   u_int32_t num_calls = 0;
