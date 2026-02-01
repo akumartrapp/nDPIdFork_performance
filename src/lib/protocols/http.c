@@ -1607,7 +1607,7 @@ static void parse_response_code(struct ndpi_detection_module_struct *ndpi_struct
   char buf[4];
   char ec[48];
 
-  printf("Ashwani_HTTP: parse_response_code called");
+  printf("Ashwani_HTTP: parse_response_code called\n");
   if(packet->payload_packet_len >= 12) {
     /* Set server HTTP response code */
     strncpy(buf, (char*)&packet->payload[9], 3);
