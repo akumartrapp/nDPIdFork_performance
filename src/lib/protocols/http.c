@@ -49,6 +49,7 @@ static const char* binary_exec_file_ext[] = {
 };
 
 static void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct,
+          printf("[TRACE] Entered ndpi_search_http_tcp\n");
 				 struct ndpi_flow_struct *flow);
 static void ndpi_check_http_header(struct ndpi_detection_module_struct *ndpi_struct,
 				   struct ndpi_flow_struct *flow);
@@ -219,7 +220,7 @@ static void ndpi_http_check_human_redeable_content(struct ndpi_detection_module_
 static void ndpi_validate_http_content(struct ndpi_detection_module_struct *ndpi_struct,
 				       struct ndpi_flow_struct *flow) {
 
-  printf("Ashwani: ndpi_validate_http_content called");
+  printf("[TRACE] Entered ndpi_validate_http_content\n");
   struct ndpi_packet_struct *packet = &ndpi_struct->packet;
   const u_int8_t *double_ret = (const u_int8_t *)ndpi_strnstr((const char *)packet->payload, "\r\n\r\n", packet->payload_packet_len);
 
@@ -1720,6 +1721,7 @@ static void process_request(struct ndpi_detection_module_struct *ndpi_struct,
 }
 
 static void process_response(struct ndpi_detection_module_struct *ndpi_struct,
+            printf("[TRACE] Entered process_response\n");
 			     struct ndpi_flow_struct *flow) {
 
   ndpi_parse_packet_line_info(ndpi_struct, flow);
