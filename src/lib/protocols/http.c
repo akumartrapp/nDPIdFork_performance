@@ -1,8 +1,3 @@
-// --- Static function prototypes to avoid implicit declaration errors ---
-static void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
-static void ndpi_search_http_tcp_again(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
-static void process_response(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
-static void ndpi_check_http_header(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
 /*
  * http.c
  *
@@ -53,6 +48,10 @@ static const char* binary_exec_file_ext[] = {
 					NULL
 };
 
+static void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct,
+				 struct ndpi_flow_struct *flow);
+static void ndpi_check_http_header(struct ndpi_detection_module_struct *ndpi_struct,
+				   struct ndpi_flow_struct *flow);
 
 /* *********************************************** */
 
@@ -139,6 +138,7 @@ static void ndpi_analyze_content_signature(struct ndpi_detection_module_struct *
 
 static int ndpi_search_http_tcp_again(struct ndpi_detection_module_struct *ndpi_struct,
 				      struct ndpi_flow_struct *flow) {
+  printf("Ashwani_HTTP: ndpi_search_http_tcp_again called\n");
   struct ndpi_packet_struct *packet = &ndpi_struct->packet;
   if(packet->payload_packet_len == 0 || packet->tcp_retransmission)
     return 1;
@@ -219,8 +219,7 @@ static void ndpi_http_check_human_redeable_content(struct ndpi_detection_module_
 
 static void ndpi_validate_http_content(struct ndpi_detection_module_struct *ndpi_struct,
 				       struct ndpi_flow_struct *flow) {
-
-  printf("[TRACE] Entered ndpi_validate_http_content\n");
+  printf("Ashwani_HTTP: ndpi_validate_http_content called\n");
   struct ndpi_packet_struct *packet = &ndpi_struct->packet;
   const u_int8_t *double_ret = (const u_int8_t *)ndpi_strnstr((const char *)packet->payload, "\r\n\r\n", packet->payload_packet_len);
 
@@ -1608,7 +1607,7 @@ static void parse_response_code(struct ndpi_detection_module_struct *ndpi_struct
   char buf[4];
   char ec[48];
 
-  printf("Ashwani: parse_response_code called");
+  printf("Ashwani: parse_response_code called";
   if(packet->payload_packet_len >= 12) {
     /* Set server HTTP response code */
     strncpy(buf, (char*)&packet->payload[9], 3);
@@ -1721,9 +1720,9 @@ static void process_request(struct ndpi_detection_module_struct *ndpi_struct,
 }
 
 static void process_response(struct ndpi_detection_module_struct *ndpi_struct,
-            printf("[TRACE] Entered process_response\n");
 			     struct ndpi_flow_struct *flow) {
 
+  printf("Ashwani_HTTP: process_response called\n");
   ndpi_parse_packet_line_info(ndpi_struct, flow);
   parse_response_code(ndpi_struct, flow);
   check_content_type_and_change_protocol(ndpi_struct, flow);
@@ -1812,6 +1811,7 @@ static void reset(struct ndpi_detection_module_struct *ndpi_struct,
 
 static void ndpi_check_http_tcp(struct ndpi_detection_module_struct *ndpi_struct,
 				struct ndpi_flow_struct *flow) {
+  printf("Ashwani_HTTP: ndpi_check_http_tcp called\n");
   struct ndpi_packet_struct *packet = &ndpi_struct->packet;
   u_int16_t filename_start;
 
@@ -1918,6 +1918,7 @@ static void ndpi_check_http_tcp(struct ndpi_detection_module_struct *ndpi_struct
 
 static void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct,
 				 struct ndpi_flow_struct *flow) {
+  printf("Ashwani_HTTP: ndpi_search_http_tcp called\n");
   /* Break after 20 packets. */
   if(flow->packet_counter > 20) {
     NDPI_EXCLUDE_DISSECTOR(ndpi_struct, flow);

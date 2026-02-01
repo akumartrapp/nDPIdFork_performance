@@ -9522,6 +9522,7 @@ ndpi_protocol ndpi_detection_giveup(struct ndpi_detection_module_struct *ndpi_st
 
 static void process_extra_packet(struct ndpi_detection_module_struct *ndpi_str,
 			         struct ndpi_flow_struct *flow) {
+  printf("Ashwani_HTTP: process_extra_packet called\n");
   struct ndpi_packet_struct *packet = &ndpi_str->packet;
 
   /* Workaround: safety check to skip non TCP/UDP packets sent to extra dissectors (see #2762) */
@@ -10566,6 +10567,7 @@ ndpi_protocol ndpi_detection_process_packet(struct ndpi_detection_module_struct 
 					    const unsigned short packetlen, const u_int64_t current_time_ms,
 					    struct ndpi_flow_input_info *input_info) {
 
+  printf("Ashwani_HTTP: ndpi_detection_process_packet called\n");
   if(!flow || !ndpi_str || ndpi_str->finalized != 1) {
     ndpi_protocol ret;
     memset(&ret, 0, sizeof(ret));
