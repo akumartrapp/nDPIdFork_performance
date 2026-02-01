@@ -1,3 +1,8 @@
+// --- Static function prototypes to avoid implicit declaration errors ---
+static void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
+static void ndpi_search_http_tcp_again(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
+static void process_response(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
+static void ndpi_check_http_header(struct ndpi_detection_module_struct *ndpi_struct, struct ndpi_flow_struct *flow);
 /*
  * http.c
  *
