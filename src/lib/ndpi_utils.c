@@ -1517,6 +1517,9 @@ int ndpi_dpi2json(struct ndpi_detection_module_struct *ndpi_struct,
     }
 
     ndpi_serialize_string_uint32(serializer, "code", flow->http.response_status_code);
+    ndpi_serialize_string_string(serializer, "content_type", flow->http.content_type);
+    ndpi_serialize_string_string(serializer, "user_agent", flow->http.user_agent);
+
     if (flow->http.request_content_type != NULL)
       ndpi_serialize_string_string(serializer, "request_content_type",
                                    flow->http.request_content_type);
