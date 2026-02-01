@@ -48,11 +48,6 @@ static const char* binary_exec_file_ext[] = {
 					NULL
 };
 
-static void ndpi_search_http_tcp(struct ndpi_detection_module_struct *ndpi_struct,
-          printf("[TRACE] Entered ndpi_search_http_tcp\n");
-				 struct ndpi_flow_struct *flow);
-static void ndpi_check_http_header(struct ndpi_detection_module_struct *ndpi_struct,
-				   struct ndpi_flow_struct *flow);
 
 /* *********************************************** */
 
