@@ -7133,7 +7133,9 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
+    printf("------------------------------------\n");
     printf("nDPID program version is 01.31.2026.01.01\n");
+    printf("------------------------------------\n");
 }
 
 static void print_usage(char const * const arg0)

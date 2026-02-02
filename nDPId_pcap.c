@@ -631,6 +631,15 @@ struct flow_key
 } __attribute__((packed));
 
 
+static void printVersion()
+{
+    // MM.DD.YYYY
+    printf("------------------------------------\n");
+    printf("nDPId_pcap program version is 01.31.2026.01.01\n");
+    printf("------------------------------------\n");
+}
+
+
 //----------Ashwani added ends here---------------------
 
 /*
@@ -6935,6 +6944,7 @@ static void print_subopt_usage(void)
 
 static void print_usage(char const * const arg0)
 {
+    printVersion();
     static char const usage[] =
         "Usage: %s "
         "[-f config-file]\n"
@@ -7856,7 +7866,7 @@ int main(int argc, char ** argv)
     create_events_and_alerts_folders();
 
     // MM.DD.YYYY
-    logger(0, "nDPID_pcap program version is 01.31.02026.01\n");
+    printVersion();
 
     fetch_files_to_process_and_set_default_options(GET_CMDARG_STR(nDPId_options.pcap_file_or_interface));
 
@@ -7955,7 +7965,7 @@ int main(int argc, char ** argv)
         free_flow_map(&flow_map);        
     }
 
-    logger(0, "nDPID_pcap program version is 01.31.2026.01\n");
+    printVersion();
     logger(0, "Number of corrupt files %d", corrupt_files_count);
     logger(0, "Total number of files %d", number_of_valid_files_found);
 
