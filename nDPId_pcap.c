@@ -635,7 +635,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPId_pcap program version is 01.31.2026.01.01\n");
+    printf("nDPId_pcap program version is 01.31.2026.01\n");
     printf("------------------------------------\n");
 }
 
