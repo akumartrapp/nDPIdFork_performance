@@ -5355,6 +5355,58 @@ static uint32_t is_valid_gre_tunnel(struct pcap_pkthdr const * const header,
     return offset;
 }
 
+static uint64_t generate_ndpid_flow_id(struct nDPId_flow_basic * flow)
+{
+    if (flow == NULL)
+        return 0;
+
+    uint32_t low_ip, high_ip;
+    uint16_t low_port, high_port;
+    uint8_t protocol = (uint8_t)flow->l4_protocol;
+
+    // 1. Force numeric comparison of IPs for Symmetry
+    // We use uint32_t to ensure we are comparing values, not pointers
+    uint32_t s_ip = (uint32_t)flow->src.v4.ip;
+    uint32_t d_ip = (uint32_t)flow->dst.v4.ip;
+
+    if (s_ip < d_ip)
+    {
+        low_ip = s_ip;
+        high_ip = d_ip;
+    }
+    else
+    {
+        low_ip = d_ip;
+        high_ip = s_ip;
+    }
+
+    // 2. Force numeric comparison of Ports for Symmetry
+    if (flow->src_port < flow->dst_port)
+    {
+        low_port = flow->src_port;
+        high_port = flow->dst_port;
+    }
+    else
+    {
+        low_port = flow->dst_port;
+        high_port = flow->src_port;
+    }
+
+    // 3. Construct the ID
+    // Base: Lower 32 bits = low_ip, Upper 32 bits = high_ip
+    uint64_t flow_id = ((uint64_t)high_ip << 32) | (uint64_t)low_ip;
+
+    // Mix: XOR with Ports and Protocol
+    // Shift ports to different bit-ranges to avoid total collision with IP bits
+    flow_id ^= ((uint64_t)low_port << 48);
+    flow_id ^= ((uint64_t)high_port << 32);
+    flow_id ^= (uint64_t)protocol;
+
+    return flow_id;
+}
+
+
+
 static void ndpi_process_packet(uint8_t * const args,
                                 struct pcap_pkthdr const * const header,
                                 uint8_t const * const packet)
@@ -5942,8 +5994,23 @@ process_layer3_again:
             return;
         }
 
+      
+        flow_to_process->flow_extended.flow_id = generate_ndpid_flow_id(&flow_to_process->flow_extended.flow_basic);
+
+        if (flow_to_process->flow_extended.flow_id <= 0)
+        {
+            logger(1,
+                   "Failed to generate valid flow ID for new flow. src_ip: %u dst_ip: %u src_port: %u dst_port: %u "
+                   "l4_proto: %u",
+                   flow_basic.src.v4.ip,
+                   flow_basic.dst.v4.ip,
+                   flow_basic.src_port,
+                   flow_basic.dst_port,
+                   flow_basic.l4_protocol);
+            return;
+        }
+
         workflow->total_active_flows++;
-        flow_to_process->flow_extended.flow_id = MT_GET_AND_ADD(global_flow_id, 1);
 
         if (alloc_detection_data(flow_to_process) != 0)
         {
