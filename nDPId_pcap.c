@@ -9,6 +9,7 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <ndpi_api.h>
+#include <ndpi_private.h>
 #include <ndpi_classify.h>
 #include <ndpi_main.h>
 #include <ndpi_typedefs.h>
