@@ -4241,6 +4241,21 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     ndpi_serialize_string_int32(&workflow->ndpi_serializer, "flow_event_id", event);
 
     struct nDPId_flow *flow = (struct nDPId_flow *)flow_ext;
+
+    int is_initiator = 0;
+
+    if (flow->info.detection_data->flow.is_ipv6)
+    {
+        is_initiator =
+            memcmp(flow->info.detection_data->flow.c_address.v6, flow_ext->flow_basic.src_ip.ipv6, 16) == 0 &&
+            flow->info.detection_data->flow.c_port == flow_ext->flow_basic.src_port;
+    }
+    else
+    {
+        is_initiator = flow->info.detection_data->flow.c_address.v4 == flow_ext->flow_basic.src_ip.ipv4 &&
+                       flow->info.detection_data->flow.c_port == flow_ext->flow_basic.src_port;
+    }
+
     ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
 
     if (event > FLOW_EVENT_INVALID && event < FLOW_EVENT_COUNT)
