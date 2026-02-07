@@ -4261,19 +4261,39 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
 
     struct nDPId_flow_basic const * fb = &flow_ext->flow_basic;   
 
-    int is_initiator = 0;
-    u_int16_t client_port = ntohs(flow->info.detection_data->flow.c_port);
 
+    int is_initiator = 0;
+
+    /* nDPI stores ports in NETWORK byte order */
+    u_int16_t client_port = ntohs(flow->info.detection_data->flow.c_port);
     if (flow->info.detection_data->flow.is_ipv6)
     {
-        is_initiator =
-            memcmp(flow->info.detection_data->flow.c_address.v6, fb->src.v6.ip, 16) == 0 && client_port == fb->src_port;
+        /* If event SRC matches client */
+        if (memcmp(flow->info.detection_data->flow.c_address.v6, fb->src.v6.ip, 16) == 0 && client_port == fb->src_port)
+        {
+
+            is_initiator = 1;
+        }
+        else
+        {
+            is_initiator = 0;
+        }
     }
     else
     {
-        is_initiator = flow->info.detection_data->flow.c_address.v4 == fb->src.v4.ip && client_port == fb->src_port;
+        /* IPv4 */
+        if (flow->info.detection_data->flow.c_address.v4 == fb->src.v4.ip && client_port == fb->src_port)
+        {
+
+            is_initiator = 1;
+        }
+        else
+        {
+            is_initiator = 0;
+        }
     }
 
+    /* Serialize result */
     ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", is_initiator);
 
     
