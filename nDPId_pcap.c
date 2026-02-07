@@ -4258,7 +4258,6 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     jsonize_flow(workflow, flow_ext);
     int success = jsonize_l3_l4(workflow, &flow_ext->flow_basic);
 
-    struct nDPId_flow * flow = (struct nDPId_flow *)flow_ext;
     struct nDPId_flow_basic const * fb = &flow_ext->flow_basic;
 
     int is_initiator = 0;
@@ -4274,7 +4273,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                        flow->info.detection_data->flow.c_port == fb->src_port;
     }
 
-    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
+    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", is_initiator);
     
     // Ashwani starts here
     static uint64_t total_calls = 0;
