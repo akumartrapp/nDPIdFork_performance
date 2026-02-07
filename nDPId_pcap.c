@@ -9,7 +9,6 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <ndpi_api.h>
-#include <ndpi_private.h>
 #include <ndpi_classify.h>
 #include <ndpi_main.h>
 #include <ndpi_typedefs.h>
@@ -3921,11 +3920,6 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     write_to_console(0, "serialize_and_send called");
     char * json_msg;
     uint32_t json_msg_len;
-
-     struct nDPId_workflow * const workflow = reader_thread->workflow;     
-     ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
-                                  "packet_direction",
-                                  workflow->ndpi_struct->packet.packet_direction);
     
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
