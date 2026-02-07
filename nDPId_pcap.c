@@ -3921,12 +3921,10 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     char * json_msg;
     uint32_t json_msg_len;
 
-     struct nDPId_workflow * const workflow = reader_thread->workflow;  
-     struct ndpi_detection_module_struct ndpi_detection_module = workflow->ndpi_struct;
-
+     struct nDPId_workflow * const workflow = reader_thread->workflow;     
      ndpi_serialize_string_uint64(&workflow->ndpi_serializer,
                                   "packet_direction",
-                                  ndpi_detection_module->packet.packet_direction);
+                                  workflow->ndpi_struct->packet.packet_direction);
     
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
