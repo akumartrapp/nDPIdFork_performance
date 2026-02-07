@@ -4258,44 +4258,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     jsonize_flow(workflow, flow_ext);
     int success = jsonize_l3_l4(workflow, &flow_ext->flow_basic);
 
-
-    struct nDPId_flow_basic const * fb = &flow_ext->flow_basic;   
-
-
-    int is_initiator = 0;
-
-    /* nDPI stores ports in NETWORK byte order */
-    u_int16_t client_port = ntohs(flow->info.detection_data->flow.c_port);
-    if (flow->info.detection_data->flow.is_ipv6)
-    {
-        /* If event SRC matches client */
-        if (memcmp(flow->info.detection_data->flow.c_address.v6, fb->src.v6.ip, 16) == 0 && client_port == fb->src_port)
-        {
-
-            is_initiator = 1;
-        }
-        else
-        {
-            is_initiator = 0;
-        }
-    }
-    else
-    {
-        /* IPv4 */
-        if (flow->info.detection_data->flow.c_address.v4 == fb->src.v4.ip && client_port == fb->src_port)
-        {
-
-            is_initiator = 1;
-        }
-        else
-        {
-            is_initiator = 0;
-        }
-    }
-
-    /* Serialize result */
-    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", is_initiator);
-
+   
     
     // Ashwani starts here
     static uint64_t total_calls = 0;
@@ -6205,6 +6168,10 @@ process_layer3_again:
         /* Only FS_INFO goes through the whole detection process. */
         return;
     }
+
+    /* Ashwani start temp */
+    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", &flow_to_process->info.detection_data->flow->client_packet_direction);
+    /* Ashwani end temp */
 
     flow_to_process->flow_extended.detected_l7_protocol =
         ndpi_detection_process_packet(workflow->ndpi_struct,
