@@ -4243,21 +4243,8 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     struct nDPId_flow *flow = (struct nDPId_flow *)flow_ext;
 
 
-    int is_initiator = 0;
-
-    if (flow->info.detection_data->flow.is_ipv6)
-    {
-        is_initiator = memcmp(flow->info.detection_data->flow.c_address.v6, flow_ext->src_ip.ipv6, 16) == 0 &&
-                       flow->info.detection_data->flow.c_port == flow_ext->src_port;
-    }
-    else
-    {
-        is_initiator = flow->info.detection_data->flow.c_address.v4 == flow_ext->src_ip.ipv4 &&
-                       flow->info.detection_data->flow.c_port == flow_ext->src_port;
-    }
 
 
-    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
 
     if (event > FLOW_EVENT_INVALID && event < FLOW_EVENT_COUNT)
     {
@@ -4271,6 +4258,24 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     jsonize_flow(workflow, flow_ext);
     int success = jsonize_l3_l4(workflow, &flow_ext->flow_basic);
 
+    struct nDPId_flow * flow = (struct nDPId_flow *)flow_ext;
+    struct nDPId_flow_basic const * fb = &flow_ext->flow_basic;
+
+    int is_initiator = 0;
+
+    if (flow->info.detection_data->flow.is_ipv6)
+    {
+        is_initiator = memcmp(flow->info.detection_data->flow.c_address.v6, fb->src.v6.ip, 16) == 0 &&
+                       flow->info.detection_data->flow.c_port == fb->src_port;
+    }
+    else
+    {
+        is_initiator = flow->info.detection_data->flow.c_address.v4 == fb->src.v4.ip &&
+                       flow->info.detection_data->flow.c_port == fb->src_port;
+    }
+
+    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
+    
     // Ashwani starts here
     static uint64_t total_calls = 0;
     static uint64_t early_returns = 0;
