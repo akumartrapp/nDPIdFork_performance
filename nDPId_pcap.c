@@ -4243,9 +4243,6 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     struct nDPId_flow *flow = (struct nDPId_flow *)flow_ext;
 
 
-
-
-
     if (event > FLOW_EVENT_INVALID && event < FLOW_EVENT_COUNT)
     {
         ndpi_serialize_string_string(&workflow->ndpi_serializer, ev, flow_event_name_table[event]);
@@ -4262,7 +4259,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     // Ashwani starts here
     static uint64_t total_calls = 0;
     static uint64_t early_returns = 0;
-    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
+    
 
     total_calls++;
     if (success == -1)
@@ -4270,6 +4267,11 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         early_returns++;       
         printf("jsonize_flow_event: call #%lu, early returns: %lu\n", total_calls, early_returns);
         return -1; 
+    }
+
+    if (flow != NULL && flow->info.detection_data != NULL) 
+    {
+        ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
     }
 
     // Ashwani ends here
