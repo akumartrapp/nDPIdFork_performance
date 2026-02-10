@@ -4258,11 +4258,11 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     jsonize_flow(workflow, flow_ext);
     int success = jsonize_l3_l4(workflow, &flow_ext->flow_basic);
 
-   
-    
+
     // Ashwani starts here
     static uint64_t total_calls = 0;
     static uint64_t early_returns = 0;
+    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
 
     total_calls++;
     if (success == -1)
