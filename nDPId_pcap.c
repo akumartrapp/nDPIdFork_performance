@@ -4269,10 +4269,10 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         return -1; 
     }
 
-    if (flow != NULL && flow->info != NULL && flow->info.detection_data != NULL) 
-    {
-        ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
-    }
+    // if (flow != NULL && flow->info.detection_data != NULL) 
+    // {
+    //     ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
+    // }
 
     // Ashwani ends here
 
