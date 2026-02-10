@@ -4269,14 +4269,6 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         return -1; 
     }
 
-    if (flow == NULL) {
-        fprintf(stderr, "flow is NULL\n");
-    } else if (flow->info.detection_data == NULL) {
-        fprintf(stderr, "flow->info.detection_data is NULL\n");
-    } else {
-        ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", flow->info.detection_data->flow.client_packet_direction);
-    }
-
     // Ashwani ends here
 
     switch (event)
