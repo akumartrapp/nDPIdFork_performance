@@ -6170,8 +6170,8 @@ process_layer3_again:
     }
 
     /* Ashwani start temp */
-    int32_t tmp_dir = flow_to_process->info.detection_data->flow.client_packet_direction;
-    ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", tmp_dir);
+    // int32_t tmp_dir = flow_to_process->info.detection_data->flow.client_packet_direction;
+    // ndpi_serialize_string_int32(&workflow->ndpi_serializer, "client_packet_direction", tmp_dir);
     /* Ashwani end temp */
 
     flow_to_process->flow_extended.detected_l7_protocol =
