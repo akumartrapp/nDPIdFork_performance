@@ -3751,8 +3751,8 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Use new APIs for flow direction tracking
     StoreOrUpdateFlowDirection(json_msg);
     char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
-    const char * json_msg = updated_json ? updated_json : json_msg;
-    size_t json_msg_len = updated_json ? strlen(updated_json) : json_msg_len;
+    json_msg = updated_json ? updated_json : json_msg;
+    json_msg_len = updated_json ? strlen(updated_json) : json_msg_len;
     
     write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
