@@ -3751,7 +3751,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Use new APIs for flow direction tracking
     StoreOrUpdateFlowDirection(json_msg);
     char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
-    json_msg = updated_json ? updated_json : json_msg;
+    char* json_msg_updated = updated_json ? updated_json : json_msg;
     json_msg_len = updated_json ? strlen(updated_json) : json_msg_len;
     
     write_to_console(0, "send_to_collector called");
@@ -3763,7 +3763,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                      "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
                      json_msg_len + 1,
                      (int)json_msg_len,
-                     json_msg);
+                         json_msg_updated);
 
     if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
     {
@@ -3787,7 +3787,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     if (master_log_file_enabled)
     {
-        write_to_master_file(json_msg, json_msg_len);
+        write_to_master_file(json_msg_updated, json_msg_len);
     }
 
     //char * json_string_with_http_or_tls_info = NULL;
@@ -3808,12 +3808,12 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     if (workflow->is_pcap_file && output_send_to_file)
     {
-        write_to_file(json_msg, json_msg);
+        write_to_file(json_msg_updated, json_msg_updated);
     }
 
     if (output_send_to_socket)
     {
-        write_to_socket(reader_thread, json_msg, json_msg);
+        write_to_socket(reader_thread, json_msg_updated, json_msg_updated);
     }
     
     //free(json_string_with_http_or_tls_info);
