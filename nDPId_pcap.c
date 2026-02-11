@@ -3747,7 +3747,12 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
 }
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
-{
+    // Use new APIs for flow direction tracking
+    StoreOrUpdateFlowDirection(json_msg);
+    char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
+    const char * json_msg = updated_json ? updated_json : json_msg;
+    size_t json_msg_len = updated_json ? strlen(updated_json) : json_msg_len;
+    {
     write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
@@ -4268,14 +4273,14 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
         return -1; 
     }
 
-    if (current_pkt_from_client_to_server(workflow->ndpi_struct, flow->info.detection_data->flow))
-    {
-        ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "client");
-    }
-    else if (current_pkt_from_server_to_client(workflow->ndpi_struct, flow->info.detection_data->flow))
-    {
-        ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "server");
-    }
+    // if (current_pkt_from_client_to_server(workflow->ndpi_struct, flow->info.detection_data->flow))
+    // {
+    //     ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "client");
+    // }
+    // else if (current_pkt_from_server_to_client(workflow->ndpi_struct, flow->info.detection_data->flow))
+    // {
+    //     ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "server");
+    // }
 
     // Ashwani ends here
 
@@ -4407,14 +4412,14 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
     jsonize_flow(workflow, &flow->flow_extended);
     jsonize_l3_l4(workflow, &flow->flow_extended.flow_basic);
 
-    if (current_pkt_from_client_to_server(workflow->ndpi_struct, flow->info.detection_data->flow))
-    {
-        ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "client");
-    }
-    else if (current_pkt_from_server_to_client(workflow->ndpi_struct, flow->info.detection_data->flow))
-    {
-        ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "server");
-    }
+    // if (current_pkt_from_client_to_server(workflow->ndpi_struct, flow->info.detection_data->flow))
+    // {
+    //     ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "client");
+    // }
+    // else if (current_pkt_from_server_to_client(workflow->ndpi_struct, flow->info.detection_data->flow))
+    // {
+    //     ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "server");
+    // }
 
     switch (event)
     {

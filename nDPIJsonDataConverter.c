@@ -1,3 +1,6 @@
+// Flow direction tracking map and API
+
+#include <stdint.h>
 #include "nDPIJsonDataConverter.h"
 #include "ndpi_typedefs.h"
 #include "../json-c/include/json-c/json.h"
@@ -135,6 +138,164 @@ static char * strDuplicate(const char * inputSting)
     // Non-Windows (assume POSIX) code
     return strdup(inputSting);
 #endif
+}
+
+
+typedef struct
+{
+    char src_ip[64];
+    int src_port;
+    char dst_ip[64];
+    int dst_port;
+    uint64_t src2dst_bytes;
+    uint64_t flow_src_packets_processed;
+} flow_direction_info_t;
+
+typedef struct
+{
+    uint64_t flow_id;
+    flow_direction_info_t info;
+} flow_direction_map_entry_t;
+
+#define FLOW_DIRECTION_MAP_MAX 1024
+static flow_direction_map_entry_t flow_direction_map[FLOW_DIRECTION_MAP_MAX];
+static int flow_direction_map_size = 0;
+
+// Store or update flow direction info
+void StoreOrUpdateFlowDirection(const char * json_msg)
+{
+    uint64_t flow_id = GetFlowId(json_msg);
+    char src_ip[64] = "", dst_ip[64] = "";
+    int src_port = -1, dst_port = -1;
+    uint64_t src2dst_bytes = 0, flow_src_packets_processed = 0;
+    int flow_event_id = -1;
+    char flow_event_name[16] = "";
+    json_object * root = json_tokener_parse(json_msg);
+    if (root)
+    {
+        json_object * obj;
+        if (json_object_object_get_ex(root, "flow_event_id", &obj))
+            flow_event_id = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "flow_event_name", &obj))
+            strncpy(flow_event_name, json_object_get_string(obj), sizeof(flow_event_name) - 1);
+        if (json_object_object_get_ex(root, "src_ip", &obj))
+            strncpy(src_ip, json_object_get_string(obj), sizeof(src_ip) - 1);
+        if (json_object_object_get_ex(root, "dst_ip", &obj))
+            strncpy(dst_ip, json_object_get_string(obj), sizeof(dst_ip) - 1);
+        if (json_object_object_get_ex(root, "src_port", &obj))
+            src_port = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "dst_port", &obj))
+            dst_port = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+            src2dst_bytes = json_object_get_int64(obj);
+        if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+            flow_src_packets_processed = json_object_get_int64(obj);
+    }
+    if (root)
+        json_object_put(root);
+    if (flow_event_id == 1 && strcmp(flow_event_name, "new") == 0)
+    {
+        int found = 0, idx = -1;
+        for (int i = 0; i < flow_direction_map_size; ++i)
+        {
+            if (flow_direction_map[i].flow_id == flow_id)
+            {
+                found = 1;
+                idx = i;
+                break;
+            }
+        }
+        if (!found && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX)
+        {
+            idx = flow_direction_map_size++;
+            flow_direction_map[idx].flow_id = flow_id;
+            strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
+            flow_direction_map[idx].info.src_port = src_port;
+            strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
+            flow_direction_map[idx].info.dst_port = dst_port;
+            flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
+            flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+        }
+    }
+}
+
+// Update json_msg if direction swapped, returns new string if updated, else NULL
+char * UpdateFlowDirectionIfSwapped(const char * json_msg)
+{
+    uint64_t flow_id = GetFlowId(json_msg);
+    char src_ip[64] = "", dst_ip[64] = "";
+    int src_port = -1, dst_port = -1;
+    uint64_t src2dst_bytes = 0, flow_src_packets_processed = 0;
+    int flow_event_id = -1;
+    char flow_event_name[16] = "";
+    json_object * root = json_tokener_parse(json_msg);
+    if (root)
+    {
+        json_object * obj;
+        if (json_object_object_get_ex(root, "flow_event_id", &obj))
+            flow_event_id = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "flow_event_name", &obj))
+            strncpy(flow_event_name, json_object_get_string(obj), sizeof(flow_event_name) - 1);
+        if (json_object_object_get_ex(root, "src_ip", &obj))
+            strncpy(src_ip, json_object_get_string(obj), sizeof(src_ip) - 1);
+        if (json_object_object_get_ex(root, "dst_ip", &obj))
+            strncpy(dst_ip, json_object_get_string(obj), sizeof(dst_ip) - 1);
+        if (json_object_object_get_ex(root, "src_port", &obj))
+            src_port = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "dst_port", &obj))
+            dst_port = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+            src2dst_bytes = json_object_get_int64(obj);
+        if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+            flow_src_packets_processed = json_object_get_int64(obj);
+    }
+    int idx = -1;
+    for (int i = 0; i < flow_direction_map_size; ++i)
+    {
+        if (flow_direction_map[i].flow_id == flow_id)
+        {
+            idx = i;
+            break;
+        }
+    }
+    if (idx >= 0)
+    {
+        // Check if swapped
+        if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
+            strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0)
+        {
+            // Copy map values to dst fields
+            json_object * obj;
+            if (json_object_object_get_ex(root, "src_ip", &obj))
+                json_object_set_string(obj, flow_direction_map[idx].info.src_ip);
+            if (json_object_object_get_ex(root, "src_port", &obj))
+                json_object_set_int(obj, flow_direction_map[idx].info.src_port);
+            if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+                json_object_set_int64(obj, flow_direction_map[idx].info.src2dst_bytes);
+            if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+                json_object_set_int64(obj, flow_direction_map[idx].info.flow_src_packets_processed);
+            if (json_object_object_get_ex(root, "dst_ip", &obj))
+                json_object_set_string(obj, flow_direction_map[idx].info.dst_ip);
+            if (json_object_object_get_ex(root, "dst_port", &obj))
+                json_object_set_int(obj, flow_direction_map[idx].info.dst_port);
+            // Now swap map values
+            strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
+            flow_direction_map[idx].info.src_port = src_port;
+            strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
+            flow_direction_map[idx].info.dst_port = dst_port;
+            flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
+            flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+            // Return updated JSON string
+            const char * updated_json = json_object_to_json_string(root);
+            char * result = strdup(updated_json);
+            if (root)
+                json_object_put(root);
+            return result;
+        }
+    }
+    if (root)
+        json_object_put(root);
+    return NULL;
 }
 
 void convert_usec_to_utc_string(uint64_t usec_since_epoch, char * output, size_t output_len)
