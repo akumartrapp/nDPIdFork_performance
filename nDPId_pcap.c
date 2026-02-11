@@ -43,6 +43,8 @@
 #endif
 #include "utils.h"
 
+#include "libnDPI/src/include/ndpi_private.h"
+
 #ifndef ETHERTYPE_DCE
 #define ETHERTYPE_DCE 0x8903
 #endif
