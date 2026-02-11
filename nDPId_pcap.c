@@ -3750,7 +3750,15 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 {
     write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
- 
+    if (workflow->ndpi_struct->input_info->in_pkt_dir == NDPI_IN_PKT_DIR_C_TO_S)
+    {
+        ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "NDPI_IN_PKT_DIR_C_TO_S");
+    }
+    else if (workflow->ndpi_struct->input_info->in_pkt_dir == NDPI_IN_PKT_DIR_S_TO_C) 
+    {
+        ndpi_serialize_string_string(&workflow->ndpi_serializer, "initiator", "NDPI_IN_PKT_DIR_S_TO_C");
+    }
+    
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
     int s_ret = snprintf(newline_json_msg,
