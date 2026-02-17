@@ -148,7 +148,9 @@ typedef struct
     char dst_ip[64];
     int dst_port;
     uint64_t src2dst_bytes;
+    uint64_t dst2src_bytes;
     uint64_t flow_src_packets_processed;
+    uint64_t flow_dst_packets_processed;
     // HTTP fields to persist
     int http_code;
     char http_content_type[128];
@@ -173,7 +175,8 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
     uint64_t flow_id = GetFlowId(json_msg);
     char src_ip[64] = "", dst_ip[64] = "";
     int src_port = -1, dst_port = -1;
-    uint64_t src2dst_bytes = 0, flow_src_packets_processed = 0;
+    uint64_t src2dst_bytes = 0, dst2src_bytes = 0;
+    uint64_t flow_src_packets_processed = 0, flow_dst_packets_processed = 0;
     int flow_event_id = -1;
     char flow_event_name[16] = "";
     // HTTP fields
@@ -201,8 +204,12 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             dst_port = json_object_get_int(obj);
         if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
             src2dst_bytes = json_object_get_int64(obj);
+        if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
+            dst2src_bytes = json_object_get_int64(obj);
         if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
             flow_src_packets_processed = json_object_get_int64(obj);
+        if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
+            flow_dst_packets_processed = json_object_get_int64(obj);
 
         // HTTP fields (from ndpi.http)
         json_object *ndpi_obj = NULL;
@@ -231,76 +238,42 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         json_object_put(root);
     }
 
-    if (flow_event_id == 1 && strcmp(flow_event_name, "new") == 0)
-    {
-        int found = 0, idx = -1;
-        for (int i = 0; i < flow_direction_map_size; ++i)
-        {
-            if (flow_direction_map[i].flow_id == flow_id)
-            {
-                found = 1;
-                idx = i;
-                break;
-            }
-        }
-        if (!found && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX)
-        {
-            idx = flow_direction_map_size++;
-            flow_direction_map[idx].flow_id = flow_id;
-             strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-             flow_direction_map[idx].info.src_port = src_port;
-             strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-             flow_direction_map[idx].info.dst_port = dst_port;
-             flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-             flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
-        }
-        if (idx >= 0)
-        {
-            //strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-            //flow_direction_map[idx].info.src_port = src_port;
-            //strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-            //flow_direction_map[idx].info.dst_port = dst_port;
-            //flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-            //flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
-
-            // Store HTTP fields if non-empty
-            if (http_code != 0)
-                flow_direction_map[idx].info.http_code = http_code;
-            if (http_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
-            if (http_user_agent[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
-            if (http_request_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
-            if (http_filename[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
+    int idx = -1;
+    for (int i = 0; i < flow_direction_map_size; ++i) {
+        if (flow_direction_map[i].flow_id == flow_id) {
+            idx = i;
+            break;
         }
     }
-    else
-    {
-        // For updates, if HTTP fields are present and non-empty, update them
-        int idx = -1;
-        for (int i = 0; i < flow_direction_map_size; ++i)
-        {
-            if (flow_direction_map[i].flow_id == flow_id)
-            {
-                idx = i;
-                break;
-            }
-        }
-        if (idx >= 0)
-        {
-            if (http_code != 0)
-                flow_direction_map[idx].info.http_code = http_code;
-            if (http_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
-            if (http_user_agent[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
-            if (http_request_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
-            if (http_filename[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
-        }
+    if (idx < 0 && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX) {
+        idx = flow_direction_map_size++;
+        flow_direction_map[idx].flow_id = flow_id;
+        strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
+        flow_direction_map[idx].info.src_port = src_port;
+        strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
+        flow_direction_map[idx].info.dst_port = dst_port;
+        flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
+        flow_direction_map[idx].info.dst2src_bytes = dst2src_bytes;
+        flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+        flow_direction_map[idx].info.flow_dst_packets_processed = flow_dst_packets_processed;
+    }
+    if (idx >= 0) {
+        // Always retain the highest value for each stat
+        flow_direction_map[idx].info.src2dst_bytes = (src2dst_bytes > flow_direction_map[idx].info.src2dst_bytes) ? src2dst_bytes : flow_direction_map[idx].info.src2dst_bytes;
+        flow_direction_map[idx].info.dst2src_bytes = (dst2src_bytes > flow_direction_map[idx].info.dst2src_bytes) ? dst2src_bytes : flow_direction_map[idx].info.dst2src_bytes;
+        flow_direction_map[idx].info.flow_src_packets_processed = (flow_src_packets_processed > flow_direction_map[idx].info.flow_src_packets_processed) ? flow_src_packets_processed : flow_direction_map[idx].info.flow_src_packets_processed;
+        flow_direction_map[idx].info.flow_dst_packets_processed = (flow_dst_packets_processed > flow_direction_map[idx].info.flow_dst_packets_processed) ? flow_dst_packets_processed : flow_direction_map[idx].info.flow_dst_packets_processed;
+        // Store HTTP fields if non-empty
+        if (http_code != 0)
+            flow_direction_map[idx].info.http_code = http_code;
+        if (http_content_type[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
+        if (http_user_agent[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
+        if (http_request_content_type[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
+        if (http_filename[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
     }
 }
 // Fill missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
@@ -432,29 +405,30 @@ char * UpdateFlowDirectionIfSwapped(const char * json_msg)
     {
         // Check if swapped
         if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
-            strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0)
+            strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
+            src_port == flow_direction_map[idx].info.dst_port &&
+            dst_port == flow_direction_map[idx].info.src_port)
         {
-            // Copy map values to dst fields
+            // When swapped, map stats accordingly
             json_object * obj;
-            if (json_object_object_get_ex(root, "src_ip", &obj))
-                json_object_set_string(obj, flow_direction_map[idx].info.src_ip);
-            if (json_object_object_get_ex(root, "src_port", &obj))
-                json_object_set_int(obj, flow_direction_map[idx].info.src_port);
+            // src2dst_bytes in JSON is actually dst2src_bytes in map
             if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+                json_object_set_int64(obj, flow_direction_map[idx].info.dst2src_bytes);
+            if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
                 json_object_set_int64(obj, flow_direction_map[idx].info.src2dst_bytes);
             if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+                json_object_set_int64(obj, flow_direction_map[idx].info.flow_dst_packets_processed);
+            if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
                 json_object_set_int64(obj, flow_direction_map[idx].info.flow_src_packets_processed);
-            if (json_object_object_get_ex(root, "dst_ip", &obj))
+            // Also update src/dst ip/port to match map
+            if (json_object_object_get_ex(root, "src_ip", &obj))
                 json_object_set_string(obj, flow_direction_map[idx].info.dst_ip);
-            if (json_object_object_get_ex(root, "dst_port", &obj))
+            if (json_object_object_get_ex(root, "src_port", &obj))
                 json_object_set_int(obj, flow_direction_map[idx].info.dst_port);
-            // Now swap map values
-            //strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-            //flow_direction_map[idx].info.src_port = src_port;
-            //strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-            //flow_direction_map[idx].info.dst_port = dst_port;
-            //flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-            //flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+            if (json_object_object_get_ex(root, "dst_ip", &obj))
+                json_object_set_string(obj, flow_direction_map[idx].info.src_ip);
+            if (json_object_object_get_ex(root, "dst_port", &obj))
+                json_object_set_int(obj, flow_direction_map[idx].info.src_port);
             // Return updated JSON string
             const char * updated_json = json_object_to_json_string(root);
             char * result = strdup(updated_json);
