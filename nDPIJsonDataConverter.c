@@ -258,11 +258,27 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         flow_direction_map[idx].info.flow_dst_packets_processed = flow_dst_packets_processed;
     }
     if (idx >= 0) {
-        // Always retain the highest value for each stat
-        flow_direction_map[idx].info.src2dst_bytes = (src2dst_bytes > flow_direction_map[idx].info.src2dst_bytes) ? src2dst_bytes : flow_direction_map[idx].info.src2dst_bytes;
-        flow_direction_map[idx].info.dst2src_bytes = (dst2src_bytes > flow_direction_map[idx].info.dst2src_bytes) ? dst2src_bytes : flow_direction_map[idx].info.dst2src_bytes;
-        flow_direction_map[idx].info.flow_src_packets_processed = (flow_src_packets_processed > flow_direction_map[idx].info.flow_src_packets_processed) ? flow_src_packets_processed : flow_direction_map[idx].info.flow_src_packets_processed;
-        flow_direction_map[idx].info.flow_dst_packets_processed = (flow_dst_packets_processed > flow_direction_map[idx].info.flow_dst_packets_processed) ? flow_dst_packets_processed : flow_direction_map[idx].info.flow_dst_packets_processed;
+        // Check if direction is swapped
+        int swapped = 0;
+        if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
+            strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
+            src_port == flow_direction_map[idx].info.dst_port &&
+            dst_port == flow_direction_map[idx].info.src_port) {
+            swapped = 1;
+        }
+        if (!swapped) {
+            // Normal direction: update src2dst and flow_src stats
+            flow_direction_map[idx].info.src2dst_bytes = (src2dst_bytes > flow_direction_map[idx].info.src2dst_bytes) ? src2dst_bytes : flow_direction_map[idx].info.src2dst_bytes;
+            flow_direction_map[idx].info.flow_src_packets_processed = (flow_src_packets_processed > flow_direction_map[idx].info.flow_src_packets_processed) ? flow_src_packets_processed : flow_direction_map[idx].info.flow_src_packets_processed;
+            flow_direction_map[idx].info.dst2src_bytes = (dst2src_bytes > flow_direction_map[idx].info.dst2src_bytes) ? dst2src_bytes : flow_direction_map[idx].info.dst2src_bytes;
+            flow_direction_map[idx].info.flow_dst_packets_processed = (flow_dst_packets_processed > flow_direction_map[idx].info.flow_dst_packets_processed) ? flow_dst_packets_processed : flow_direction_map[idx].info.flow_dst_packets_processed;
+        } else {
+            // Swapped direction: map src2dst to dst2src, flow_src to flow_dst, etc.
+            flow_direction_map[idx].info.dst2src_bytes = (src2dst_bytes > flow_direction_map[idx].info.dst2src_bytes) ? src2dst_bytes : flow_direction_map[idx].info.dst2src_bytes;
+            flow_direction_map[idx].info.flow_dst_packets_processed = (flow_src_packets_processed > flow_direction_map[idx].info.flow_dst_packets_processed) ? flow_src_packets_processed : flow_direction_map[idx].info.flow_dst_packets_processed;
+            flow_direction_map[idx].info.src2dst_bytes = (dst2src_bytes > flow_direction_map[idx].info.src2dst_bytes) ? dst2src_bytes : flow_direction_map[idx].info.src2dst_bytes;
+            flow_direction_map[idx].info.flow_src_packets_processed = (flow_dst_packets_processed > flow_direction_map[idx].info.flow_src_packets_processed) ? flow_dst_packets_processed : flow_direction_map[idx].info.flow_src_packets_processed;
+        }
         // Store HTTP fields if non-empty
         if (http_code != 0)
             flow_direction_map[idx].info.http_code = http_code;
