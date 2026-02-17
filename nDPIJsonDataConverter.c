@@ -187,13 +187,6 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
     char http_request_content_type[128] = "";
     char http_filename[256] = "";
     char hostname[256] = "";
-        // Hostname field (from ndpi.hostname)
-        if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj) {
-            json_object *hobj;
-            if (json_object_object_get_ex(ndpi_obj, "hostname", &hobj) && hobj) {
-                strncpy(hostname, json_object_get_string(hobj), sizeof(hostname) - 1);
-            }
-        }
 
     json_object * root = json_tokener_parse(json_msg);
     if (root)
@@ -220,10 +213,15 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
             flow_dst_packets_processed = json_object_get_int64(obj);
 
-        // HTTP fields (from ndpi.http)
+        // HTTP fields (from ndpi.http) and hostname
         json_object *ndpi_obj = NULL;
         if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
         {
+            // Hostname field (from ndpi.hostname)
+            json_object *hobj;
+            if (json_object_object_get_ex(ndpi_obj, "hostname", &hobj) && hobj) {
+                strncpy(hostname, json_object_get_string(hobj), sizeof(hostname) - 1);
+            }
             json_object *http_obj = NULL;
             if (json_object_object_get_ex(ndpi_obj, "http", &http_obj) && http_obj)
             {
