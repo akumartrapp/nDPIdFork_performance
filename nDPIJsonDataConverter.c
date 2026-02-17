@@ -167,8 +167,17 @@ typedef struct
 } flow_direction_map_entry_t;
 
 #define FLOW_DIRECTION_MAP_MAX 1024
+
 static flow_direction_map_entry_t flow_direction_map[FLOW_DIRECTION_MAP_MAX];
 static int flow_direction_map_size = 0;
+
+// API to clear the flow_direction_map
+void ClearFlowDirectionMap(void)
+{
+    flow_direction_map_size = 0;
+    // Optionally zero out the array for safety
+    memset(flow_direction_map, 0, sizeof(flow_direction_map));
+}
 
 // Store or update flow direction info and persist HTTP fields
 void StoreOrUpdateFlowDirection(const char * json_msg)

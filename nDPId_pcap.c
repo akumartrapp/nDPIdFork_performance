@@ -8004,7 +8004,7 @@ int main(int argc, char ** argv)
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
     {
-
+        ClearFlowDirectionMap();
         global_context = ndpi_global_init();
         if (global_context == NULL)
         {
