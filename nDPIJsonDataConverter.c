@@ -247,6 +247,12 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         {
             idx = flow_direction_map_size++;
             flow_direction_map[idx].flow_id = flow_id;
+             strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
+             flow_direction_map[idx].info.src_port = src_port;
+             strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
+             flow_direction_map[idx].info.dst_port = dst_port;
+             flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
+             flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
         }
         if (idx >= 0)
         {
