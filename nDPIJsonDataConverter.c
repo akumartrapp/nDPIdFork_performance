@@ -157,6 +157,7 @@ typedef struct
     char http_user_agent[256];
     char http_request_content_type[128];
     char http_filename[256];
+    char hostname[256];
 } flow_direction_info_t;
 
 typedef struct
@@ -185,6 +186,14 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
     char http_user_agent[256] = "";
     char http_request_content_type[128] = "";
     char http_filename[256] = "";
+    char hostname[256] = "";
+        // Hostname field (from ndpi.hostname)
+        if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj) {
+            json_object *hobj;
+            if (json_object_object_get_ex(ndpi_obj, "hostname", &hobj) && hobj) {
+                strncpy(hostname, json_object_get_string(hobj), sizeof(hostname) - 1);
+            }
+        }
 
     json_object * root = json_tokener_parse(json_msg);
     if (root)
@@ -290,6 +299,8 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
         if (http_filename[0] != '\0')
             strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
+        if (hostname[0] != '\0')
+            strncpy(flow_direction_map[idx].info.hostname, hostname, sizeof(hostname));
     }
 }
 // Fill missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
@@ -314,6 +325,17 @@ char * FillMissingHttpFieldsFromFlowInfo(const char * json_msg)
     json_object *ndpi_obj = NULL;
     if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
     {
+        // Fill hostname if missing or empty
+        json_object *hobj;
+        if (!json_object_object_get_ex(ndpi_obj, "hostname", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+        {
+            if (flow_direction_map[idx].info.hostname[0] != '\0')
+            {
+                json_object_object_add(ndpi_obj, "hostname", json_object_new_string(flow_direction_map[idx].info.hostname));
+                updated = 1;
+            }
+        }
+        // ...existing code...
         json_object *http_obj = NULL;
         if (!json_object_object_get_ex(ndpi_obj, "http", &http_obj) || !http_obj)
         {
@@ -321,7 +343,6 @@ char * FillMissingHttpFieldsFromFlowInfo(const char * json_msg)
             json_object_object_add(ndpi_obj, "http", http_obj);
         }
         // code
-        json_object *hobj;
         if (!json_object_object_get_ex(http_obj, "code", &hobj) || json_object_get_int(hobj) == 0)
         {
             if (flow_direction_map[idx].info.http_code != 0)
