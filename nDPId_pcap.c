@@ -3772,6 +3772,8 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         json_msg_len_updated = strlen(http_filled_json);
     }
 
+    printf("\n%s\n", json_msg_updated);
+
     write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
