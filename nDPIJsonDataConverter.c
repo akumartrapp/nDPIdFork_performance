@@ -403,39 +403,32 @@ char * UpdateFlowDirectionIfSwapped(const char * json_msg)
     }
     if (idx >= 0)
     {
-        // Check if swapped
-        if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
-            strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
-            src_port == flow_direction_map[idx].info.dst_port &&
-            dst_port == flow_direction_map[idx].info.src_port)
-        {
-            // When swapped, map stats accordingly
-            json_object * obj;
-            // src2dst_bytes in JSON is actually dst2src_bytes in map
-            if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
-                json_object_set_int64(obj, flow_direction_map[idx].info.dst2src_bytes);
-            if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
-                json_object_set_int64(obj, flow_direction_map[idx].info.src2dst_bytes);
-            if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
-                json_object_set_int64(obj, flow_direction_map[idx].info.flow_dst_packets_processed);
-            if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
-                json_object_set_int64(obj, flow_direction_map[idx].info.flow_src_packets_processed);
-            // Also update src/dst ip/port to match map
-            if (json_object_object_get_ex(root, "src_ip", &obj))
-                json_object_set_string(obj, flow_direction_map[idx].info.dst_ip);
-            if (json_object_object_get_ex(root, "src_port", &obj))
-                json_object_set_int(obj, flow_direction_map[idx].info.dst_port);
-            if (json_object_object_get_ex(root, "dst_ip", &obj))
-                json_object_set_string(obj, flow_direction_map[idx].info.src_ip);
-            if (json_object_object_get_ex(root, "dst_port", &obj))
-                json_object_set_int(obj, flow_direction_map[idx].info.src_port);
-            // Return updated JSON string
-            const char * updated_json = json_object_to_json_string(root);
-            char * result = strdup(updated_json);
-            if (root)
-                json_object_put(root);
-            return result;
-        }
+        // Always normalize to original src/dst and canonical stats
+        json_object *obj;
+        // Set src/dst ip/port to original
+        if (json_object_object_get_ex(root, "src_ip", &obj))
+            json_object_set_string(obj, flow_direction_map[idx].info.src_ip);
+        if (json_object_object_get_ex(root, "src_port", &obj))
+            json_object_set_int(obj, flow_direction_map[idx].info.src_port);
+        if (json_object_object_get_ex(root, "dst_ip", &obj))
+            json_object_set_string(obj, flow_direction_map[idx].info.dst_ip);
+        if (json_object_object_get_ex(root, "dst_port", &obj))
+            json_object_set_int(obj, flow_direction_map[idx].info.dst_port);
+        // Set stats to canonical (highest) values for each direction
+        if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+            json_object_set_int64(obj, flow_direction_map[idx].info.src2dst_bytes);
+        if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
+            json_object_set_int64(obj, flow_direction_map[idx].info.dst2src_bytes);
+        if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+            json_object_set_int64(obj, flow_direction_map[idx].info.flow_src_packets_processed);
+        if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
+            json_object_set_int64(obj, flow_direction_map[idx].info.flow_dst_packets_processed);
+        // Return updated JSON string
+        const char * updated_json = json_object_to_json_string(root);
+        char * result = strdup(updated_json);
+        if (root)
+            json_object_put(root);
+        return result;
     }
     if (root)
         json_object_put(root);
