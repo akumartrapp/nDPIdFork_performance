@@ -250,12 +250,12 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         }
         if (idx >= 0)
         {
-            strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-            flow_direction_map[idx].info.src_port = src_port;
-            strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-            flow_direction_map[idx].info.dst_port = dst_port;
-            flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-            flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+            //strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
+            //flow_direction_map[idx].info.src_port = src_port;
+            //strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
+            //flow_direction_map[idx].info.dst_port = dst_port;
+            //flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
+            //flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
 
             // Store HTTP fields if non-empty
             if (http_code != 0)
