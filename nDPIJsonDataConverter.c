@@ -149,6 +149,9 @@ typedef struct
     int dst_port;
     uint64_t src2dst_bytes;
     uint64_t flow_src_packets_processed;
+    uint64_t dst2src_bytes;
+    uint64_t flow_dst_packets_processed;
+    
     // HTTP fields to persist
     int http_code;
     char http_content_type[128];
@@ -174,6 +177,7 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
     char src_ip[64] = "", dst_ip[64] = "";
     int src_port = -1, dst_port = -1;
     uint64_t src2dst_bytes = 0, flow_src_packets_processed = 0;
+    uint64_t dst2src_bytes = 0, flow_dst_packets_processed = 0;
     int flow_event_id = -1;
     char flow_event_name[16] = "";
     // HTTP fields
@@ -203,6 +207,10 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             src2dst_bytes = json_object_get_int64(obj);
         if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
             flow_src_packets_processed = json_object_get_int64(obj);
+        if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
+            dst2src_bytes = json_object_get_int64(obj);
+        if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
+            flow_dst_packets_processed = json_object_get_int64(obj);
 
         // HTTP fields (from ndpi.http)
         json_object *ndpi_obj = NULL;
@@ -231,76 +239,69 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         json_object_put(root);
     }
 
-    if (flow_event_id == 1 && strcmp(flow_event_name, "new") == 0)
+    int found = 0, idx = -1;
+    for (int i = 0; i < flow_direction_map_size; ++i)
     {
-        int found = 0, idx = -1;
-        for (int i = 0; i < flow_direction_map_size; ++i)
+        if (flow_direction_map[i].flow_id == flow_id)
         {
-            if (flow_direction_map[i].flow_id == flow_id)
-            {
-                found = 1;
-                idx = i;
-                break;
-            }
-        }
-        if (!found && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX)
-        {
-            idx = flow_direction_map_size++;
-            flow_direction_map[idx].flow_id = flow_id;
-             strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-             flow_direction_map[idx].info.src_port = src_port;
-             strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-             flow_direction_map[idx].info.dst_port = dst_port;
-             flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-             flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
-        }
-        if (idx >= 0)
-        {
-            //strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-            //flow_direction_map[idx].info.src_port = src_port;
-            //strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-            //flow_direction_map[idx].info.dst_port = dst_port;
-            //flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-            //flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
-
-            // Store HTTP fields if non-empty
-            if (http_code != 0)
-                flow_direction_map[idx].info.http_code = http_code;
-            if (http_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
-            if (http_user_agent[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
-            if (http_request_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
-            if (http_filename[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
+            found = 1;
+            idx = i;
+            break;
         }
     }
-    else
+    if (!found && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX)
     {
-        // For updates, if HTTP fields are present and non-empty, update them
-        int idx = -1;
-        for (int i = 0; i < flow_direction_map_size; ++i)
+        idx = flow_direction_map_size++;
+        flow_direction_map[idx].flow_id = flow_id;
+        strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
+        flow_direction_map[idx].info.src_port = src_port;
+        strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
+        flow_direction_map[idx].info.dst_port = dst_port;
+    }
+    if (idx >= 0)
+    {
+        // Direction logic
+        int is_original_direction =
+            (strcmp(src_ip, flow_direction_map[idx].info.src_ip) == 0 && src_port == flow_direction_map[idx].info.src_port &&
+             strcmp(dst_ip, flow_direction_map[idx].info.dst_ip) == 0 && dst_port == flow_direction_map[idx].info.dst_port);
+        int is_reverse_direction =
+            (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 && src_port == flow_direction_map[idx].info.dst_port &&
+             strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 && dst_port == flow_direction_map[idx].info.src_port);
+
+        if (is_original_direction)
         {
-            if (flow_direction_map[i].flow_id == flow_id)
-            {
-                idx = i;
-                break;
-            }
+            if (src2dst_bytes > flow_direction_map[idx].info.src2dst_bytes)
+                flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
+            if (flow_src_packets_processed > flow_direction_map[idx].info.flow_src_packets_processed)
+                flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+            if (dst2src_bytes > flow_direction_map[idx].info.dst2src_bytes)
+                flow_direction_map[idx].info.dst2src_bytes = dst2src_bytes;
+            if (flow_dst_packets_processed > flow_direction_map[idx].info.flow_dst_packets_processed)
+                flow_direction_map[idx].info.flow_dst_packets_processed = flow_dst_packets_processed;
         }
-        if (idx >= 0)
+        else if (is_reverse_direction)
         {
-            if (http_code != 0)
-                flow_direction_map[idx].info.http_code = http_code;
-            if (http_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
-            if (http_user_agent[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
-            if (http_request_content_type[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
-            if (http_filename[0] != '\0')
-                strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
+            // Swap: src2dst_bytes in JSON is actually dst2src_bytes in map, etc.
+            if (src2dst_bytes > flow_direction_map[idx].info.dst2src_bytes)
+                flow_direction_map[idx].info.dst2src_bytes = src2dst_bytes;
+            if (flow_src_packets_processed > flow_direction_map[idx].info.flow_dst_packets_processed)
+                flow_direction_map[idx].info.flow_dst_packets_processed = flow_src_packets_processed;
+            if (dst2src_bytes > flow_direction_map[idx].info.src2dst_bytes)
+                flow_direction_map[idx].info.src2dst_bytes = dst2src_bytes;
+            if (flow_dst_packets_processed > flow_direction_map[idx].info.flow_src_packets_processed)
+                flow_direction_map[idx].info.flow_src_packets_processed = flow_dst_packets_processed;
         }
+        // Store HTTP fields if non-empty
+        if (http_code != 0)
+            flow_direction_map[idx].info.http_code = http_code;
+        if (http_content_type[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
+        if (http_user_agent[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
+        if (http_request_content_type[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
+        if (http_filename[0] != '\0')
+            strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
     }
 }
 // Fill missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
@@ -410,121 +411,135 @@ char * UpdateFlowDirectionIfSwapped(const char * json_msg)
             strncpy(src_ip, json_object_get_string(obj), sizeof(src_ip) - 1);
         if (json_object_object_get_ex(root, "dst_ip", &obj))
             strncpy(dst_ip, json_object_get_string(obj), sizeof(dst_ip) - 1);
-        if (json_object_object_get_ex(root, "src_port", &obj))
-            src_port = json_object_get_int(obj);
-        if (json_object_object_get_ex(root, "dst_port", &obj))
-            dst_port = json_object_get_int(obj);
-        if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
-            src2dst_bytes = json_object_get_int64(obj);
-        if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
-            flow_src_packets_processed = json_object_get_int64(obj);
-    }
-    int idx = -1;
-    for (int i = 0; i < flow_direction_map_size; ++i)
-    {
-        if (flow_direction_map[i].flow_id == flow_id)
+        // HTTP fields
+        json_object *ndpi_obj = NULL;
+        if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
         {
-            idx = i;
-            break;
+            json_object *http_obj = NULL;
+            if (!json_object_object_get_ex(ndpi_obj, "http", &http_obj) || !http_obj)
+            {
+                http_obj = json_object_new_object();
+                json_object_object_add(ndpi_obj, "http", http_obj);
+            }
+            // code
+            json_object *hobj;
+            if (!json_object_object_get_ex(http_obj, "code", &hobj) || json_object_get_int(hobj) == 0)
+            {
+                if (flow_direction_map[idx].info.http_code != 0)
+                {
+                    json_object_object_add(http_obj, "code", json_object_new_int(flow_direction_map[idx].info.http_code));
+                    updated = 1;
+                }
+            }
+            // content_type
+            if (!json_object_object_get_ex(http_obj, "content_type", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+            {
+                if (flow_direction_map[idx].info.http_content_type[0] != '\0')
+                {
+                    json_object_object_add(http_obj, "content_type", json_object_new_string(flow_direction_map[idx].info.http_content_type));
+                    updated = 1;
+                }
+            }
+            // user_agent
+            if (!json_object_object_get_ex(http_obj, "user_agent", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+            {
+                if (flow_direction_map[idx].info.http_user_agent[0] != '\0')
+                {
+                    json_object_object_add(http_obj, "user_agent", json_object_new_string(flow_direction_map[idx].info.http_user_agent));
+                    updated = 1;
+                }
+            }
+            // request_content_type
+            if (!json_object_object_get_ex(http_obj, "request_content_type", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+            {
+                if (flow_direction_map[idx].info.http_request_content_type[0] != '\0')
+                {
+                    json_object_object_add(http_obj, "request_content_type", json_object_new_string(flow_direction_map[idx].info.http_request_content_type));
+                    updated = 1;
+                }
+            }
+            // filename
+            if (!json_object_object_get_ex(http_obj, "filename", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+            {
+                if (flow_direction_map[idx].info.http_filename[0] != '\0')
+                {
+                    json_object_object_add(http_obj, "filename", json_object_new_string(flow_direction_map[idx].info.http_filename));
+                    updated = 1;
+                }
+            }
         }
-    }
-    if (idx >= 0)
-    {
-        // Check if swapped
-        if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
-            strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0)
+
+        // Direction logic for stats
+        char src_ip[64] = "", dst_ip[64] = "";
+        int src_port = -1, dst_port = -1;
+        if (json_object_object_get_ex(root, "src_ip", &obj)) strncpy(src_ip, json_object_get_string(obj), sizeof(src_ip) - 1);
+        if (json_object_object_get_ex(root, "dst_ip", &obj)) strncpy(dst_ip, json_object_get_string(obj), sizeof(dst_ip) - 1);
+        if (json_object_object_get_ex(root, "src_port", &obj)) src_port = json_object_get_int(obj);
+        if (json_object_object_get_ex(root, "dst_port", &obj)) dst_port = json_object_get_int(obj);
+
+        int is_original_direction =
+            (strcmp(src_ip, flow_direction_map[idx].info.src_ip) == 0 && src_port == flow_direction_map[idx].info.src_port &&
+             strcmp(dst_ip, flow_direction_map[idx].info.dst_ip) == 0 && dst_port == flow_direction_map[idx].info.dst_port);
+        int is_reverse_direction =
+            (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 && src_port == flow_direction_map[idx].info.dst_port &&
+             strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 && dst_port == flow_direction_map[idx].info.src_port);
+
+        uint64_t v;
+        // src2dst_bytes
+        if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+            v = json_object_get_int64(obj);
+        else
+            v = 0;
+        uint64_t want = is_original_direction ? flow_direction_map[idx].info.src2dst_bytes : flow_direction_map[idx].info.dst2src_bytes;
+        if (v < want)
         {
-            // Copy map values to dst fields
-            json_object * obj;
-            if (json_object_object_get_ex(root, "src_ip", &obj))
-                json_object_set_string(obj, flow_direction_map[idx].info.src_ip);
-            if (json_object_object_get_ex(root, "src_port", &obj))
-                json_object_set_int(obj, flow_direction_map[idx].info.src_port);
-            if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
-                json_object_set_int64(obj, flow_direction_map[idx].info.src2dst_bytes);
-            if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
-                json_object_set_int64(obj, flow_direction_map[idx].info.flow_src_packets_processed);
-            if (json_object_object_get_ex(root, "dst_ip", &obj))
-                json_object_set_string(obj, flow_direction_map[idx].info.dst_ip);
-            if (json_object_object_get_ex(root, "dst_port", &obj))
-                json_object_set_int(obj, flow_direction_map[idx].info.dst_port);
-            // Now swap map values
-            //strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
-            //flow_direction_map[idx].info.src_port = src_port;
-            //strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
-            //flow_direction_map[idx].info.dst_port = dst_port;
-            //flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
-            //flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
-            // Return updated JSON string
-            const char * updated_json = json_object_to_json_string(root);
-            char * result = strdup(updated_json);
-            if (root)
-                json_object_put(root);
+            json_object_object_add(root, "src2dst_bytes", json_object_new_int64(want));
+            updated = 1;
+        }
+        // dst2src_bytes
+        if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
+            v = json_object_get_int64(obj);
+        else
+            v = 0;
+        want = is_original_direction ? flow_direction_map[idx].info.dst2src_bytes : flow_direction_map[idx].info.src2dst_bytes;
+        if (v < want)
+        {
+            json_object_object_add(root, "dst2src_bytes", json_object_new_int64(want));
+            updated = 1;
+        }
+        // flow_src_packets_processed
+        if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+            v = json_object_get_int64(obj);
+        else
+            v = 0;
+        want = is_original_direction ? flow_direction_map[idx].info.flow_src_packets_processed : flow_direction_map[idx].info.flow_dst_packets_processed;
+        if (v < want)
+        {
+            json_object_object_add(root, "flow_src_packets_processed", json_object_new_int64(want));
+            updated = 1;
+        }
+        // flow_dst_packets_processed
+        if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
+            v = json_object_get_int64(obj);
+        else
+            v = 0;
+        want = is_original_direction ? flow_direction_map[idx].info.flow_dst_packets_processed : flow_direction_map[idx].info.flow_src_packets_processed;
+        if (v < want)
+        {
+            json_object_object_add(root, "flow_dst_packets_processed", json_object_new_int64(want));
+            updated = 1;
+        }
+
+        if (updated)
+        {
+            const char *updated_json = json_object_to_json_string(root);
+            char *result = strdup(updated_json);
+            json_object_put(root);
             return result;
         }
-    }
-    if (root)
         json_object_put(root);
-    return NULL;
-}
-
-void convert_usec_to_utc_string(uint64_t usec_since_epoch, char * output, size_t output_len)
-{
-    time_t seconds = usec_since_epoch / 1000000;
-
-    struct tm gmtime_result;
-    gmtime_r(&seconds, &gmtime_result);
-
-    // Format: 2025-07-11T01:08:20Z
-    snprintf(output,
-             output_len,
-             "%04d-%02d-%02dT%02d:%02d:%02dZ",
-             gmtime_result.tm_year + 1900,
-             gmtime_result.tm_mon + 1,
-             gmtime_result.tm_mday,
-             gmtime_result.tm_hour,
-             gmtime_result.tm_min,
-             gmtime_result.tm_sec);
-}
-
-static inline uint64_t max_u64(uint64_t a, uint64_t b)
-{
-    return (a > b) ? a : b;
-}
-
-static inline uint64_t convert_usec_to_nsec(uint64_t usec)
-{
-    return usec * 1000;
-}
-
-static const char* ndpi_risk2description(ndpi_risk_enum risk)
-{
-
-    switch (risk) {
-    case NDPI_URL_POSSIBLE_XSS:
-        return("HTTP only: this risk indicates a possible `XSS (Cross Side Scripting) <https://en.wikipedia.org/wiki/Cross-site_scripting>`_ attack.");
-
-    case NDPI_URL_POSSIBLE_SQL_INJECTION:
-        return("HTTP only: this risk indicates a possible `SQL Injection attack <https://en.wikipedia.org/wiki/SQL_injection>`_.");
-
-    case NDPI_URL_POSSIBLE_RCE_INJECTION:
-        return("HTTP only: this risk indicates a possible `RCE (Remote Code Execution) attack <https://en.wikipedia.org/wiki/Arbitrary_code_execution>`_.");
-
-    case NDPI_BINARY_APPLICATION_TRANSFER:
-        return("HTTP only: this risk indicates that a binary application is downloaded/uploaded. Detected applications include Windows binaries, Linux executables, Unix scripts and Android apps.");
-
-    case NDPI_KNOWN_PROTOCOL_ON_NON_STANDARD_PORT:
-        return("This risk indicates a known protocol used on a non standard port. Example HTTP is supposed to use TCP/80, and in case it is detected on TCP/1234 this risk is detected.");
-
-    case NDPI_TLS_SELFSIGNED_CERTIFICATE:
-        return("TLS/QUIC only: this risk is triggered when a `self-signed certificate <https://en.wikipedia.org/wiki/Self-signed_certificate>`_ is used.");
-
-    case NDPI_TLS_OBSOLETE_VERSION:
-        return("Risk triggered when TLS version is older than 1.1.");
-
-    case NDPI_TLS_WEAK_CIPHER:
-        return("Risk triggered when an unsafe TLS cipher is used. See `this page <https://community.qualys.com/thread/18212-how-does-qualys-determine-the-server-cipher-suites>`_ for a list of insecure ciphers.");
-
+        return NULL;
+    }
     case NDPI_TLS_CERTIFICATE_EXPIRED:
         return("Risk triggered when a TLS certificate is expired, i.e. the current date falls outside of the certificate validity dates.");
 
