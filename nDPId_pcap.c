@@ -3748,6 +3748,11 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
 {
+    if (master_log_file_enabled)
+    {
+        write_to_master_file(json_msg, json_msg_len);
+    }
+
     // Use new APIs for flow direction tracking
     StoreOrUpdateFlowDirection(json_msg);
     char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
@@ -3756,8 +3761,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     // Fill missing HTTP fields if needed
     char *http_filled_json = FillMissingHttpFieldsFromFlowInfo(json_msg_updated);
-    if (http_filled_json) {
-        if (updated_json) free(updated_json);
+    if (http_filled_json) 
+    {
+        if (updated_json)
+        {
+            free(updated_json);
+        }
+
         json_msg_updated = http_filled_json;
         json_msg_len_updated = strlen(http_filled_json);
     }
@@ -3790,16 +3800,23 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                    ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
                    newline_json_msg);
         }
-        if (http_filled_json) free(http_filled_json);
+
+        if (http_filled_json)
+        {
+            free(http_filled_json);
+        }
         return;
     }
 
-    if (master_log_file_enabled)
+
+    if (http_filled_json)
     {
-        write_to_master_file(json_msg_updated, json_msg_len_updated);
+        free(http_filled_json);
     }
-    if (http_filled_json) free(http_filled_json);
-    else if (updated_json) free(updated_json);
+    else if (updated_json)
+    {
+        free(updated_json);
+    }
 
     //char * json_string_with_http_or_tls_info = NULL;
     //uint64_t  flow_id = GetFlowId(json_msg);

@@ -225,8 +225,12 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             }
         }
     }
+    
     if (root)
+    {
         json_object_put(root);
+    }
+
     if (flow_event_id == 1 && strcmp(flow_event_name, "new") == 0)
     {
         int found = 0, idx = -1;
@@ -252,6 +256,7 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             flow_direction_map[idx].info.dst_port = dst_port;
             flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
             flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+
             // Store HTTP fields if non-empty
             if (http_code != 0)
                 flow_direction_map[idx].info.http_code = http_code;
