@@ -149,6 +149,12 @@ typedef struct
     int dst_port;
     uint64_t src2dst_bytes;
     uint64_t flow_src_packets_processed;
+    // HTTP fields to persist
+    int http_code;
+    char http_content_type[128];
+    char http_user_agent[256];
+    char http_request_content_type[128];
+    char http_filename[256];
 } flow_direction_info_t;
 
 typedef struct
@@ -161,7 +167,7 @@ typedef struct
 static flow_direction_map_entry_t flow_direction_map[FLOW_DIRECTION_MAP_MAX];
 static int flow_direction_map_size = 0;
 
-// Store or update flow direction info
+// Store or update flow direction info and persist HTTP fields
 void StoreOrUpdateFlowDirection(const char * json_msg)
 {
     uint64_t flow_id = GetFlowId(json_msg);
@@ -170,6 +176,13 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
     uint64_t src2dst_bytes = 0, flow_src_packets_processed = 0;
     int flow_event_id = -1;
     char flow_event_name[16] = "";
+    // HTTP fields
+    int http_code = 0;
+    char http_content_type[128] = "";
+    char http_user_agent[256] = "";
+    char http_request_content_type[128] = "";
+    char http_filename[256] = "";
+
     json_object * root = json_tokener_parse(json_msg);
     if (root)
     {
@@ -190,6 +203,27 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             src2dst_bytes = json_object_get_int64(obj);
         if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
             flow_src_packets_processed = json_object_get_int64(obj);
+
+        // HTTP fields (from ndpi.http)
+        json_object *ndpi_obj = NULL;
+        if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
+        {
+            json_object *http_obj = NULL;
+            if (json_object_object_get_ex(ndpi_obj, "http", &http_obj) && http_obj)
+            {
+                json_object *hobj;
+                if (json_object_object_get_ex(http_obj, "code", &hobj))
+                    http_code = json_object_get_int(hobj);
+                if (json_object_object_get_ex(http_obj, "content_type", &hobj))
+                    strncpy(http_content_type, json_object_get_string(hobj), sizeof(http_content_type) - 1);
+                if (json_object_object_get_ex(http_obj, "user_agent", &hobj))
+                    strncpy(http_user_agent, json_object_get_string(hobj), sizeof(http_user_agent) - 1);
+                if (json_object_object_get_ex(http_obj, "request_content_type", &hobj))
+                    strncpy(http_request_content_type, json_object_get_string(hobj), sizeof(http_request_content_type) - 1);
+                if (json_object_object_get_ex(http_obj, "filename", &hobj))
+                    strncpy(http_filename, json_object_get_string(hobj), sizeof(http_filename) - 1);
+            }
+        }
     }
     if (root)
         json_object_put(root);
@@ -209,14 +243,139 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         {
             idx = flow_direction_map_size++;
             flow_direction_map[idx].flow_id = flow_id;
+        }
+        if (idx >= 0)
+        {
             strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
             flow_direction_map[idx].info.src_port = src_port;
             strncpy(flow_direction_map[idx].info.dst_ip, dst_ip, sizeof(dst_ip));
             flow_direction_map[idx].info.dst_port = dst_port;
             flow_direction_map[idx].info.src2dst_bytes = src2dst_bytes;
             flow_direction_map[idx].info.flow_src_packets_processed = flow_src_packets_processed;
+            // Store HTTP fields if non-empty
+            if (http_code != 0)
+                flow_direction_map[idx].info.http_code = http_code;
+            if (http_content_type[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
+            if (http_user_agent[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
+            if (http_request_content_type[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
+            if (http_filename[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
         }
     }
+    else
+    {
+        // For updates, if HTTP fields are present and non-empty, update them
+        int idx = -1;
+        for (int i = 0; i < flow_direction_map_size; ++i)
+        {
+            if (flow_direction_map[i].flow_id == flow_id)
+            {
+                idx = i;
+                break;
+            }
+        }
+        if (idx >= 0)
+        {
+            if (http_code != 0)
+                flow_direction_map[idx].info.http_code = http_code;
+            if (http_content_type[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_content_type, http_content_type, sizeof(http_content_type));
+            if (http_user_agent[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_user_agent, http_user_agent, sizeof(http_user_agent));
+            if (http_request_content_type[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_request_content_type, http_request_content_type, sizeof(http_request_content_type));
+            if (http_filename[0] != '\0')
+                strncpy(flow_direction_map[idx].info.http_filename, http_filename, sizeof(http_filename));
+        }
+    }
+}
+// Fill missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
+char * FillMissingHttpFieldsFromFlowInfo(const char * json_msg)
+{
+    uint64_t flow_id = GetFlowId(json_msg);
+    int idx = -1;
+    for (int i = 0; i < flow_direction_map_size; ++i)
+    {
+        if (flow_direction_map[i].flow_id == flow_id)
+        {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0)
+        return NULL;
+
+    json_object *root = json_tokener_parse(json_msg);
+    if (!root) return NULL;
+    int updated = 0;
+    json_object *ndpi_obj = NULL;
+    if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
+    {
+        json_object *http_obj = NULL;
+        if (!json_object_object_get_ex(ndpi_obj, "http", &http_obj) || !http_obj)
+        {
+            http_obj = json_object_new_object();
+            json_object_object_add(ndpi_obj, "http", http_obj);
+        }
+        // code
+        json_object *hobj;
+        if (!json_object_object_get_ex(http_obj, "code", &hobj) || json_object_get_int(hobj) == 0)
+        {
+            if (flow_direction_map[idx].info.http_code != 0)
+            {
+                json_object_object_add(http_obj, "code", json_object_new_int(flow_direction_map[idx].info.http_code));
+                updated = 1;
+            }
+        }
+        // content_type
+        if (!json_object_object_get_ex(http_obj, "content_type", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+        {
+            if (flow_direction_map[idx].info.http_content_type[0] != '\0')
+            {
+                json_object_object_add(http_obj, "content_type", json_object_new_string(flow_direction_map[idx].info.http_content_type));
+                updated = 1;
+            }
+        }
+        // user_agent
+        if (!json_object_object_get_ex(http_obj, "user_agent", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+        {
+            if (flow_direction_map[idx].info.http_user_agent[0] != '\0')
+            {
+                json_object_object_add(http_obj, "user_agent", json_object_new_string(flow_direction_map[idx].info.http_user_agent));
+                updated = 1;
+            }
+        }
+        // request_content_type
+        if (!json_object_object_get_ex(http_obj, "request_content_type", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+        {
+            if (flow_direction_map[idx].info.http_request_content_type[0] != '\0')
+            {
+                json_object_object_add(http_obj, "request_content_type", json_object_new_string(flow_direction_map[idx].info.http_request_content_type));
+                updated = 1;
+            }
+        }
+        // filename
+        if (!json_object_object_get_ex(http_obj, "filename", &hobj) || strlen(json_object_get_string(hobj)) == 0)
+        {
+            if (flow_direction_map[idx].info.http_filename[0] != '\0')
+            {
+                json_object_object_add(http_obj, "filename", json_object_new_string(flow_direction_map[idx].info.http_filename));
+                updated = 1;
+            }
+        }
+    }
+    if (updated)
+    {
+        const char *updated_json = json_object_to_json_string(root);
+        char *result = strdup(updated_json);
+        json_object_put(root);
+        return result;
+    }
+    json_object_put(root);
+    return NULL;
 }
 
 // Update json_msg if direction swapped, returns new string if updated, else NULL

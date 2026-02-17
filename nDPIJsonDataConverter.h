@@ -10,6 +10,8 @@ extern "C" {
 // New APIs for flow direction tracking
 void StoreOrUpdateFlowDirection(const char *json_msg);
 char *UpdateFlowDirectionIfSwapped(const char *json_msg);
+// Fills missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
+char *FillMissingHttpFieldsFromFlowInfo(const char *json_msg);
 
 void ConvertnDPIDataFormat(const char * json_str, const char * const json_string_with_http_or_tls_info, int flowRiskIndex, char ** converted_json_str, int * create_alert);
 void DeletenDPIRisk(char* jsonStr, char** converted_json_str);

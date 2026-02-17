@@ -3751,9 +3751,17 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Use new APIs for flow direction tracking
     StoreOrUpdateFlowDirection(json_msg);
     char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
-    char* json_msg_updated = updated_json ? updated_json : json_msg;
-    json_msg_len = updated_json ? strlen(updated_json) : json_msg_len;
-    
+    char *json_msg_updated = updated_json ? updated_json : (char*)json_msg;
+    size_t json_msg_len_updated = updated_json ? strlen(updated_json) : json_msg_len;
+
+    // Fill missing HTTP fields if needed
+    char *http_filled_json = FillMissingHttpFieldsFromFlowInfo(json_msg_updated);
+    if (http_filled_json) {
+        if (updated_json) free(updated_json);
+        json_msg_updated = http_filled_json;
+        json_msg_len_updated = strlen(http_filled_json);
+    }
+
     write_to_console(0, "send_to_collector called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
@@ -3761,9 +3769,9 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     int s_ret = snprintf(newline_json_msg,
                      sizeof(newline_json_msg),
                      "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
-                     json_msg_len + 1,
-                     (int)json_msg_len,
-                         json_msg_updated);
+                     (int)json_msg_len_updated + 1,
+                     (int)json_msg_len_updated,
+                     json_msg_updated);
 
     if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
     {
@@ -3781,14 +3789,17 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                    reader_thread->array_index,
                    ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
                    newline_json_msg);
-        }       
+        }
+        if (http_filled_json) free(http_filled_json);
         return;
     }
 
     if (master_log_file_enabled)
     {
-        write_to_master_file(json_msg_updated, json_msg_len);
+        write_to_master_file(json_msg_updated, json_msg_len_updated);
     }
+    if (http_filled_json) free(http_filled_json);
+    else if (updated_json) free(updated_json);
 
     //char * json_string_with_http_or_tls_info = NULL;
     //uint64_t  flow_id = GetFlowId(json_msg);
