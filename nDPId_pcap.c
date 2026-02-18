@@ -5524,11 +5524,11 @@ static void ndpi_process_packet(uint8_t * const args,
     }
 
     do_periodically_work(reader_thread);
-    // Ashwani_Undo
-    // if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
-    // {
-    //     return;
-    // }
+
+    if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
+    {
+        return;
+    }
 
 process_layer3_again:
     if (type == ETH_P_IP)
