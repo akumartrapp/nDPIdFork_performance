@@ -5530,6 +5530,41 @@ static void ndpi_process_packet(uint8_t * const args,
         return;
     }
 
+      // --- Logging and counters ---
+  static unsigned long long total_packets = 0;
+  static unsigned long long total_bytes = 0;
+  total_packets++;
+  total_bytes += header->caplen;
+
+  // Extract IP and port info (Windows compatible, manual parsing)
+  char src_ip[64] = {0}, dst_ip[64] = {0};
+  u_int16_t src_port = 0, dst_port = 0;
+  u_int ip_hdr_offset = 14; // Ethernet header size
+  if(header->caplen > ip_hdr_offset + 20) { // Minimum IPv4 header size
+    const unsigned char *ip_ptr = packet + ip_hdr_offset;
+    unsigned char ip_ver = (ip_ptr[0] >> 4) & 0xF;
+    if(ip_ver == 4) {
+      unsigned int ip_hdr_len = (ip_ptr[0] & 0x0F) * 4;
+      snprintf(src_ip, sizeof(src_ip), "%u.%u.%u.%u", ip_ptr[12], ip_ptr[13], ip_ptr[14], ip_ptr[15]);
+      snprintf(dst_ip, sizeof(dst_ip), "%u.%u.%u.%u", ip_ptr[16], ip_ptr[17], ip_ptr[18], ip_ptr[19]);
+      unsigned char proto = ip_ptr[9];
+      if(proto == 6 && header->caplen > ip_hdr_offset + ip_hdr_len + 4) { // TCP
+        const unsigned char *tcp_ptr = ip_ptr + ip_hdr_len;
+        src_port = (tcp_ptr[0] << 8) | tcp_ptr[1];
+        dst_port = (tcp_ptr[2] << 8) | tcp_ptr[3];
+      } else if(proto == 17 && header->caplen > ip_hdr_offset + ip_hdr_len + 4) { // UDP
+        const unsigned char *udp_ptr = ip_ptr + ip_hdr_len;
+        src_port = (udp_ptr[0] << 8) | udp_ptr[1];
+        dst_port = (udp_ptr[2] << 8) | udp_ptr[3];
+      }
+    }
+  }
+
+  printf("Packet %llu: %s:%u -> %s:%u | %u bytes | ts: %ld.%06ld\n",
+         total_packets, src_ip, src_port, dst_ip, dst_port, header->caplen,
+         (long)header->ts.tv_sec, (long)header->ts.tv_usec);
+  // --- End logging ---
+  
 process_layer3_again:
     if (type == ETH_P_IP)
     {
