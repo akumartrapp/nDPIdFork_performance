@@ -3759,6 +3759,11 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Use new APIs for flow direction tracking
     StoreOrUpdateFlowDirection(json_msg);
     char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
+    if (event == FLOW_EVENT_INVALID)
+    {
+        return;
+    }
+
     char *json_msg_updated = updated_json ? updated_json : (char*)json_msg;
     size_t json_msg_len_updated = updated_json ? strlen(updated_json) : json_msg_len;
 
