@@ -1,18 +1,4 @@
-// Print all JSON strings stored in flow_direction_map using accessor API
-void PrintAllFlowDirectionJson(void)
-{
-    int map_size = 0;
-    const flow_direction_map_entry_t *map = GetFlowDirectionMap(&map_size);
-    printf("\n--- Flow Direction Map JSON Entries ---\n");
-    for (int i = 0; i < map_size; ++i) {
-        printf("[flow_id: %llu] %s\n", (unsigned long long)map[i].flow_id,
-               map[i].info.json_str ? map[i].info.json_str : "(null)");
-        if (output_send_to_file && map[i].info.json_str) {
-            write_to_file(map[i].info.json_str, map[i].info.json_str);
-        }
-    }
-    printf("--- End of Flow Direction Map ---\n\n");
-}
+
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #include <sys/types.h>
 #endif
@@ -209,7 +195,24 @@ int currentFileIndex = -1;
 
 
 /*---------------------------------------------------------------------------------------------------------*/
-
+// Print all JSON strings stored in flow_direction_map using accessor API
+void PrintAllFlowDirectionJson(void)
+{
+    int map_size = 0;
+    const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
+    printf("\n--- Flow Direction Map JSON Entries ---\n");
+    for (int i = 0; i < map_size; ++i)
+    {
+        printf("[flow_id: %llu] %s\n",
+               (unsigned long long)map[i].flow_id,
+               map[i].info.json_str ? map[i].info.json_str : "(null)");
+        if (output_send_to_file && map[i].info.json_str)
+        {
+            write_to_file(map[i].info.json_str, map[i].info.json_str);
+        }
+    }
+    printf("--- End of Flow Direction Map ---\n\n");
+}
 
 static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
 {
