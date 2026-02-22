@@ -4159,6 +4159,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
     // return;
     // Ashwani Ends:
 
+    printf("[TRACE]: jsonize_packet_event called for event %s\n", packet_event_name_table[event]);
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "packet_event_name";
 
@@ -4265,12 +4266,15 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event)
 {
+    printf("[TRACE]: jsonize_flow_event called for event %s\n", flow_event_name_table[event]);
     write_to_console(0, "jsonize_flow_event called");
     if (skipEventsFromLogging(event))
     {       
+        printf("[TRACE]: Skipping event %s from logging\n", flow_event_name_table[event]);
         return -1;
     }
 
+    printf("[TRACE]: jsonize_flow_event called for event %s\n", flow_event_name_table[event]);
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_event_name";
 
@@ -4424,9 +4428,11 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
 {
     if (skipEventsFromLogging(event))
     {     
+        printf("[TRACE]: jsonize_flow_detection_event: skipping event %d\n", event);
         return ;
     }
 
+    printf("[TRACE]: jsonize_flow_detection_event: processing event %d\n", event);
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_detection_event_name";
 
@@ -4664,6 +4670,7 @@ __attribute__((format(printf, 3, 4))) static void jsonize_error_eventf(struct nD
                                                                        ...)
 {
     // Ashwani Starts: We don't want to log error_event_name
+    printf("[TRACE] Return jsonize_error_eventf called with event %d\n", event);
     return;
     // Ashwani Ends:
 
@@ -6212,6 +6219,7 @@ process_layer3_again:
     flow_to_process->flow_extended.bytes[direction] = flow_to_process->flow_extended.bytes[direction] + header->caplen;
     flow_to_process->flow_extended.total_l4_payload_len[direction] += l4_payload_len;
     workflow->packets_processed++;
+    printf("[TRACE] Bytes processed: bytes[%d]=%llu, packets_processed=%llu\n", direction, flow_to_process->flow_extended.bytes[direction], workflow->packets_processed);
     workflow->total_l4_payload_len += l4_payload_len;
 
     if (l4_payload_len > flow_to_process->flow_extended.max_l4_payload_len[direction])
@@ -6232,6 +6240,7 @@ process_layer3_again:
         flow_to_process->flow_extended.max_l4_payload_len[direction] = l4_payload_len;
         flow_to_process->flow_extended.min_l4_payload_len[direction] = l4_payload_len;
         jsonize_flow_event(reader_thread, &flow_to_process->flow_extended, FLOW_EVENT_NEW);
+        printf("[TRACE] New flow detected: flow_id=%llu\n", flow_to_process->flow_extended.flow_id);
     }
 
     if (GET_CMDARG_BOOL(nDPId_options.enable_data_analysis) != 0 &&
@@ -6261,11 +6270,13 @@ process_layer3_again:
 
         if (total_flow_packets == GET_CMDARG_ULL(nDPId_options.max_packets_per_flow_to_analyse))
         {
+            printf("[TRACE] Flow analysis completed for flow_id=%llu, total_flow_packets=%llu\n", flow_to_process->flow_extended.flow_id, total_flow_packets);
             jsonize_flow_event(reader_thread, &flow_to_process->flow_extended, FLOW_EVENT_ANALYSE);
             free_analysis_data(&flow_to_process->flow_extended);
         }
     }
 
+    printf("[TRACE] Starting nDPI detection for flow_id=%llu\n", flow_to_process->flow_extended.flow_id);
     jsonize_packet_event(reader_thread,
                          header,
                          packet,
@@ -6279,6 +6290,7 @@ process_layer3_again:
     if (flow_to_process->flow_extended.flow_basic.state != FS_INFO || flow_to_process->info.detection_data == NULL)
     {
         /* Only FS_INFO goes through the whole detection process. */
+        printf("[TRACE] Packet skipped for nDPI detection: Flow state is not FS_INFO or detection data is NULL: caplen=%u, flow_id=%llu, state=%d\n", header->caplen, flow_to_process->flow_extended.flow_id, flow_to_process->flow_extended.flow_basic.state);
         return;
     }
 
