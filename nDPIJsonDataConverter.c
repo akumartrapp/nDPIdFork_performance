@@ -140,19 +140,7 @@ static char * strDuplicate(const char * inputSting)
 }
 
 
-typedef struct {
-    char src_ip[64];
-    int src_port;
-    char dst_ip[64];
-    int dst_port;
-    int swapped;
-    char *json_str; // Store full JSON string
-} flow_direction_info_t;
-
-typedef struct {
-    uint64_t flow_id;
-    flow_direction_info_t info;
-} flow_direction_map_entry_t;
+// struct definitions moved to header
 
 #define FLOW_DIRECTION_MAP_MAX 1024
 

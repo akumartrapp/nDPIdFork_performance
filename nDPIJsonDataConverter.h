@@ -11,7 +11,19 @@ extern "C" {
 
 // New APIs for flow direction tracking
 // Accessor APIs for flow_direction_map
-typedef struct flow_direction_map_entry_t flow_direction_map_entry_t;
+typedef struct {
+	char src_ip[64];
+	int src_port;
+	char dst_ip[64];
+	int dst_port;
+	int swapped;
+	char *json_str; // Store full JSON string
+} flow_direction_info_t;
+
+typedef struct {
+	uint64_t flow_id;
+	flow_direction_info_t info;
+} flow_direction_map_entry_t;
 const flow_direction_map_entry_t *GetFlowDirectionMap(int *size);
 void StoreOrUpdateFlowDirection(const char *json_msg);
 char *UpdateFlowDirectionIfSwapped(const char *json_msg);
