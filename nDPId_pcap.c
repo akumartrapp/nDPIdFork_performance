@@ -195,6 +195,25 @@ int currentFileIndex = -1;
 
 /*---------------------------------------------------------------------------------------------------------*/
 
+// Print all JSON strings stored in flow_direction_map
+void PrintAllFlowDirectionJson(void)
+{
+    extern flow_direction_map_entry_t flow_direction_map[];
+    extern int flow_direction_map_size;
+    printf("\n--- Flow Direction Map JSON Entries ---\n");
+    for (int i = 0; i < flow_direction_map_size; ++i) 
+    {
+        printf("[flow_id: %llu] %s\n", (unsigned long long)flow_direction_map[i].flow_id,
+               flow_direction_map[i].info.json_str ? flow_direction_map[i].info.json_str : "(null)");
+
+       if (output_send_to_file && flow_direction_map[i].info.json_str) 
+       {
+           write_to_file(flow_direction_map[i].info.json_str, flow_direction_map[i].info.json_str);
+       }
+    }
+    printf("--- End of Flow Direction Map ---\n\n");
+}
+
 static inline void encode_uint32_be(uint32_t value, unsigned char out[4])
 {
     out[0] = (value >> 24) & 0xFF;
@@ -3760,7 +3779,8 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // StoreOrUpdateFlowDirection now keeps the full merged JSON string
     StoreOrUpdateFlowDirection(json_msg);
     char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
-    if (event == FLOW_EVENT_INVALID) {
+    if (event == FLOW_EVENT_INVALID) 
+    {
         if (merged_json) free(merged_json);
         return;
     }
@@ -3770,50 +3790,56 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
 
     // No need to call FillMissingHttpFieldsFromFlowInfo; merged_json already contains all HTTP fields
 
+    // Update flow_direction_info_t JSON string with json_msg_updated
+    UpdateFlowDirectionJson(json_msg_updated);
+
     printf("\n%s\n", json_msg_updated);
 
-    write_to_console(0, "send_to_collector called");
-    struct nDPId_workflow * const workflow = reader_thread->workflow;
-    char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
+    if (merged_json)
+    {
+        free(merged_json);
+    } 
 
-    int s_ret = snprintf(newline_json_msg,
-                        sizeof(newline_json_msg),
-                        "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
-                        (int)json_msg_len_updated + 1,
-                        (int)json_msg_len_updated,
-                        json_msg_updated);
+    // write_to_console(0, "send_to_collector called");
+    // struct nDPId_workflow * const workflow = reader_thread->workflow;
+    // char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
-    if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg)) {
-        logger(1,
-               "[%8llu, %zu] JSON buffer prepare failed: snprintf returned %d, buffer size %zu",
-               workflow->packets_captured,
-               reader_thread->array_index,
-               s_ret,
-               sizeof(newline_json_msg));
-        if (s_ret >= (int)sizeof(newline_json_msg)) {
-            logger(1,
-                   "[%8llu, %zu] JSON message: %.*s...",
-                   workflow->packets_captured,
-                   reader_thread->array_index,
-                   ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
-                   newline_json_msg);
-        }
-        if (http_filled_json) free(http_filled_json);
-        else if (merged_json) free(merged_json);
-        return;
-    }
+    // int s_ret = snprintf(newline_json_msg,
+    //                     sizeof(newline_json_msg),
+    //                     "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
+    //                     (int)json_msg_len_updated + 1,
+    //                     (int)json_msg_len_updated,
+    //                     json_msg_updated);
 
-    // Output to file/socket as before
-    if (workflow->is_pcap_file && output_send_to_file) {
-        write_to_file(json_msg_updated, json_msg_updated);
-    }
-    if (output_send_to_socket) {
-        write_to_socket(reader_thread, json_msg_updated, json_msg_updated);
-    }
+    // if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg)) {
+    //     logger(1,
+    //            "[%8llu, %zu] JSON buffer prepare failed: snprintf returned %d, buffer size %zu",
+    //            workflow->packets_captured,
+    //            reader_thread->array_index,
+    //            s_ret,
+    //            sizeof(newline_json_msg));
+    //     if (s_ret >= (int)sizeof(newline_json_msg)) {
+    //         logger(1,
+    //                "[%8llu, %zu] JSON message: %.*s...",
+    //                workflow->packets_captured,
+    //                reader_thread->array_index,
+    //                ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
+    //                newline_json_msg);
+    //     }
+    //         if (merged_json) free(merged_json);
+    //     return;
+    // }
 
-    // Free memory
-    if (http_filled_json) free(http_filled_json);
-    else if (merged_json) free(merged_json);
+    // // Output to file/socket as before
+    // if (workflow->is_pcap_file && output_send_to_file) {
+    //     write_to_file(json_msg_updated, json_msg_updated);
+    // }
+    // if (output_send_to_socket) {
+    //     write_to_socket(reader_thread, json_msg_updated, json_msg_updated);
+    // }
+
+    // // Free memory
+    //     if (merged_json) free(merged_json);
 
     return;
 
@@ -8051,8 +8077,7 @@ int main(int argc, char ** argv)
 
     currentFileIndex = 0;
     for (currentFileIndex = 0; currentFileIndex < number_of_valid_files_found; currentFileIndex++)
-    {
-        ClearFlowDirectionMap();
+    {      
         global_context = ndpi_global_init();
         if (global_context == NULL)
         {
@@ -8117,6 +8142,7 @@ int main(int argc, char ** argv)
             sleep(1);
         }
 
+        PrintAllFlowDirectionJson();
         if (stop_reader_threads() != 0)
         {
             return 1;
@@ -8141,7 +8167,8 @@ int main(int argc, char ** argv)
         free(generated_tmp_json_files_alerts[currentFileIndex]);
         free(generated_json_files_events[currentFileIndex]);
         free(generated_json_files_alerts[currentFileIndex]);
-        free_flow_map(&flow_map);        
+        free_flow_map(&flow_map);  
+        ClearFlowDirectionMap();
     }
 
     printVersion();

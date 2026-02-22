@@ -1,3 +1,4 @@
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -7,11 +8,14 @@ extern "C" {
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 #define INVALID_FLOW_ID UINT64_MAX
 
+
 // New APIs for flow direction tracking
+// Accessor APIs for flow_direction_map
+typedef struct flow_direction_map_entry_t flow_direction_map_entry_t;
+const flow_direction_map_entry_t *GetFlowDirectionMap(int *size);
 void StoreOrUpdateFlowDirection(const char *json_msg);
 char *UpdateFlowDirectionIfSwapped(const char *json_msg);
-// Fills missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
-char *FillMissingHttpFieldsFromFlowInfo(const char *json_msg);
+void UpdateFlowDirectionJson(const char *json_msg);
 void ClearFlowDirectionMap(void);
 
 void ConvertnDPIDataFormat(const char * json_str, const char * const json_string_with_http_or_tls_info, int flowRiskIndex, char ** converted_json_str, int * create_alert);
