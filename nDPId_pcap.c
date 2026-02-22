@@ -434,7 +434,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     fflush(alert_log_fp); // ensure data is written
 }
 
-static void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
+void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
 {
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
