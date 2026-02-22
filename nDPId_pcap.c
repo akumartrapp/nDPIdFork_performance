@@ -4168,7 +4168,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
    
     jsonize_basic(reader_thread, 1);
     jsonize_flow(workflow, flow_ext);
-    jsonize_l3_l4(workflow, &flow_ext.flow_basic);
+    jsonize_l3_l4(workflow, &flow_ext->flow_basic);
     // Ashwani added Ends here  
 
 
