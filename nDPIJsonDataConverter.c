@@ -264,66 +264,65 @@ char * FillMissingHttpFieldsFromFlowInfo(const char * json_msg)
     json_object *ndpi_obj = NULL;
     if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
     {
-        // Fill hostname if missing or empty
-        json_object *hobj;
-        if (!json_object_object_get_ex(ndpi_obj, "hostname", &hobj) || strlen(json_object_get_string(hobj)) == 0)
-        {
-            if (flow_direction_map[idx].info.hostname[0] != '\0')
-            {
-                json_object_object_add(ndpi_obj, "hostname", json_object_new_string(flow_direction_map[idx].info.hostname));
-                updated = 1;
-            }
-        }
-        // ...existing code...
-        json_object *http_obj = NULL;
-        if (!json_object_object_get_ex(ndpi_obj, "http", &http_obj) || !http_obj)
-        {
-            http_obj = json_object_new_object();
-            json_object_object_add(ndpi_obj, "http", http_obj);
-        }
-        // code
-        if (!json_object_object_get_ex(http_obj, "code", &hobj) || json_object_get_int(hobj) == 0)
-        {
-            if (flow_direction_map[idx].info.http_code != 0)
-            {
-                json_object_object_add(http_obj, "code", json_object_new_int(flow_direction_map[idx].info.http_code));
-                updated = 1;
-            }
-        }
-        // content_type
-        if (!json_object_object_get_ex(http_obj, "content_type", &hobj) || strlen(json_object_get_string(hobj)) == 0)
-        {
-            if (flow_direction_map[idx].info.http_content_type[0] != '\0')
-            {
-                json_object_object_add(http_obj, "content_type", json_object_new_string(flow_direction_map[idx].info.http_content_type));
-                updated = 1;
-            }
-        }
-        // user_agent
-        if (!json_object_object_get_ex(http_obj, "user_agent", &hobj) || strlen(json_object_get_string(hobj)) == 0)
-        {
-            if (flow_direction_map[idx].info.http_user_agent[0] != '\0')
-            {
-                json_object_object_add(http_obj, "user_agent", json_object_new_string(flow_direction_map[idx].info.http_user_agent));
-                updated = 1;
-            }
-        }
-        // request_content_type
-        if (!json_object_object_get_ex(http_obj, "request_content_type", &hobj) || strlen(json_object_get_string(hobj)) == 0)
-        {
-            if (flow_direction_map[idx].info.http_request_content_type[0] != '\0')
-            {
-                json_object_object_add(http_obj, "request_content_type", json_object_new_string(flow_direction_map[idx].info.http_request_content_type));
-                updated = 1;
-            }
-        }
-        // filename
-        if (!json_object_object_get_ex(http_obj, "filename", &hobj) || strlen(json_object_get_string(hobj)) == 0)
-        {
-            if (flow_direction_map[idx].info.http_filename[0] != '\0')
-            {
-                json_object_object_add(http_obj, "filename", json_object_new_string(flow_direction_map[idx].info.http_filename));
-                updated = 1;
+        // Fill hostname and HTTP fields from info.json_str
+        struct json_object *stored_obj = NULL;
+        if (flow_direction_map[idx].info.json_str) {
+            stored_obj = json_tokener_parse(flow_direction_map[idx].info.json_str);
+            if (stored_obj) {
+                // hostname
+                struct json_object *hostname_obj = NULL;
+                if (json_object_object_get_ex(stored_obj, "hostname", &hostname_obj)) {
+                    const char *hostname_val = json_object_get_string(hostname_obj);
+                    if (hostname_val && hostname_val[0] != '\0') {
+                        json_object_object_add(ndpi_obj, "hostname", json_object_new_string(hostname_val));
+                        updated = 1;
+                    }
+                }
+                // HTTP fields
+                struct json_object *http_obj_stored = NULL;
+                if (json_object_object_get_ex(stored_obj, "http", &http_obj_stored)) {
+                    struct json_object *code_obj = NULL;
+                    if (json_object_object_get_ex(http_obj_stored, "code", &code_obj)) {
+                        int code_val = json_object_get_int(code_obj);
+                        if (code_val != 0) {
+                            json_object_object_add(http_obj, "code", json_object_new_int(code_val));
+                            updated = 1;
+                        }
+                    }
+                    struct json_object *content_type_obj = NULL;
+                    if (json_object_object_get_ex(http_obj_stored, "content_type", &content_type_obj)) {
+                        const char *content_type_val = json_object_get_string(content_type_obj);
+                        if (content_type_val && content_type_val[0] != '\0') {
+                            json_object_object_add(http_obj, "content_type", json_object_new_string(content_type_val));
+                            updated = 1;
+                        }
+                    }
+                    struct json_object *user_agent_obj = NULL;
+                    if (json_object_object_get_ex(http_obj_stored, "user_agent", &user_agent_obj)) {
+                        const char *user_agent_val = json_object_get_string(user_agent_obj);
+                        if (user_agent_val && user_agent_val[0] != '\0') {
+                            json_object_object_add(http_obj, "user_agent", json_object_new_string(user_agent_val));
+                            updated = 1;
+                        }
+                    }
+                    struct json_object *request_content_type_obj = NULL;
+                    if (json_object_object_get_ex(http_obj_stored, "request_content_type", &request_content_type_obj)) {
+                        const char *request_content_type_val = json_object_get_string(request_content_type_obj);
+                        if (request_content_type_val && request_content_type_val[0] != '\0') {
+                            json_object_object_add(http_obj, "request_content_type", json_object_new_string(request_content_type_val));
+                            updated = 1;
+                        }
+                    }
+                    struct json_object *filename_obj = NULL;
+                    if (json_object_object_get_ex(http_obj_stored, "filename", &filename_obj)) {
+                        const char *filename_val = json_object_get_string(filename_obj);
+                        if (filename_val && filename_val[0] != '\0') {
+                            json_object_object_add(http_obj, "filename", json_object_new_string(filename_val));
+                            updated = 1;
+                        }
+                    }
+                }
+                json_object_put(stored_obj);
             }
         }
     }
@@ -390,15 +389,34 @@ char * UpdateFlowDirectionIfSwapped(const char * json_msg)
             json_object_set_string(obj, flow_direction_map[idx].info.dst_ip);
         if (json_object_object_get_ex(root, "dst_port", &obj))
             json_object_set_int(obj, flow_direction_map[idx].info.dst_port);
-        // Set stats to canonical (highest) values for each direction
-        if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
-            json_object_set_int64(obj, flow_direction_map[idx].info.src2dst_bytes);
-        if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
-            json_object_set_int64(obj, flow_direction_map[idx].info.dst2src_bytes);
-        if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
-            json_object_set_int64(obj, flow_direction_map[idx].info.flow_src_packets_processed);
-        if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
-            json_object_set_int64(obj, flow_direction_map[idx].info.flow_dst_packets_processed);
+        // Set stats to canonical (highest) values for each direction from info.json_str
+        struct json_object *stored_obj = NULL;
+        if (flow_direction_map[idx].info.json_str) {
+            stored_obj = json_tokener_parse(flow_direction_map[idx].info.json_str);
+            if (stored_obj) {
+                struct json_object *src2dst_bytes_obj = NULL;
+                if (json_object_object_get_ex(stored_obj, "src2dst_bytes", &src2dst_bytes_obj)) {
+                    if (json_object_object_get_ex(root, "src2dst_bytes", &obj))
+                        json_object_set_int64(obj, json_object_get_int64(src2dst_bytes_obj));
+                }
+                struct json_object *dst2src_bytes_obj = NULL;
+                if (json_object_object_get_ex(stored_obj, "dst2src_bytes", &dst2src_bytes_obj)) {
+                    if (json_object_object_get_ex(root, "dst2src_bytes", &obj))
+                        json_object_set_int64(obj, json_object_get_int64(dst2src_bytes_obj));
+                }
+                struct json_object *flow_src_packets_obj = NULL;
+                if (json_object_object_get_ex(stored_obj, "flow_src_packets_processed", &flow_src_packets_obj)) {
+                    if (json_object_object_get_ex(root, "flow_src_packets_processed", &obj))
+                        json_object_set_int64(obj, json_object_get_int64(flow_src_packets_obj));
+                }
+                struct json_object *flow_dst_packets_obj = NULL;
+                if (json_object_object_get_ex(stored_obj, "flow_dst_packets_processed", &flow_dst_packets_obj)) {
+                    if (json_object_object_get_ex(root, "flow_dst_packets_processed", &obj))
+                        json_object_set_int64(obj, json_object_get_int64(flow_dst_packets_obj));
+                }
+                json_object_put(stored_obj);
+            }
+        }
         // Return updated JSON string
         const char * updated_json = json_object_to_json_string(root);
         char * result = strdup(updated_json);

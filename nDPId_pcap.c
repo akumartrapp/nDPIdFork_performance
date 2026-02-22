@@ -3768,13 +3768,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     char *json_msg_updated = merged_json ? merged_json : (char*)json_msg;
     size_t json_msg_len_updated = merged_json ? strlen(merged_json) : json_msg_len;
 
-    // Fill missing HTTP fields if needed
-    char *http_filled_json = FillMissingHttpFieldsFromFlowInfo(json_msg_updated);
-    if (http_filled_json) {
-        if (merged_json) free(merged_json);
-        json_msg_updated = http_filled_json;
-        json_msg_len_updated = strlen(http_filled_json);
-    }
+    // No need to call FillMissingHttpFieldsFromFlowInfo; merged_json already contains all HTTP fields
 
     printf("\n%s\n", json_msg_updated);
 
