@@ -161,16 +161,7 @@ const flow_direction_map_entry_t *GetFlowDirectionMap(int *size)
     if (size) *size = flow_direction_map_size;
     return flow_direction_map;
 }
-// Print all JSON strings stored in flow_direction_map
-void PrintAllFlowDirectionJson(void)
-{
-    printf("\n--- Flow Direction Map JSON Entries ---\n");
-    for (int i = 0; i < flow_direction_map_size; ++i) {
-        printf("[flow_id: %llu] %s\n", (unsigned long long)flow_direction_map[i].flow_id,
-               flow_direction_map[i].info.json_str ? flow_direction_map[i].info.json_str : "(null)");
-    }
-    printf("--- End of Flow Direction Map ---\n\n");
-}
+
 // Update the flow direction map entry with the latest JSON string for the given flow
 void UpdateFlowDirectionJson(const char *json_msg)
 {
