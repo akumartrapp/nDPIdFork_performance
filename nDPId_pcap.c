@@ -4156,7 +4156,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                                  enum packet_event event)
 {
     // Ashwani Starts: We don't want to log packet_event_name
-    return;
+    // return;
     // Ashwani Ends:
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -5566,7 +5566,7 @@ static void ndpi_process_packet(uint8_t * const args,
     }
   }
 
-  printf("Packet %llu: %s:%u -> %s:%u | %u bytes | ts: %ld.%06ld\n",
+  printf("[TRACE] Packet %llu: %s:%u -> %s:%u | %u bytes | ts: %ld.%06ld\n",
       total_packets, src_ip, src_port, dst_ip, dst_port, header->caplen,
       (long)header->ts.tv_sec, (long)header->ts.tv_usec);
   // --- End logging ---
