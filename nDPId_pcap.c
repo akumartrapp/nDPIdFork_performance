@@ -3437,6 +3437,7 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
 
 static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_flow_extended const * const flow_ext)
 {
+    printf("[TRACE]: jsonize_flow: flow_id: %lu, flow_state: %s\n", flow_ext->flow_id, flow_state_name_table[flow_ext->flow_basic.state]);
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "flow_id", flow_ext->flow_id);
     ndpi_serialize_string_string(&workflow->ndpi_serializer,
                                  "flow_state",
@@ -4162,6 +4163,12 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
     printf("[TRACE]: jsonize_packet_event called for event %s\n", packet_event_name_table[event]);
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "packet_event_name";
+
+    // Ashwani added Starts here on 02/21/2026
+    struct nDPId_workflow * const workflow = reader_thread->workflow;
+    jsonize_flow(workflow, flow_ext);
+    // Ashwani added Ends here  
+
 
     if (event == PACKET_EVENT_PAYLOAD_FLOW)
     {
