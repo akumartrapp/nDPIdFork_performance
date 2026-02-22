@@ -4165,7 +4165,9 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
     char const ev[] = "packet_event_name";
 
     // Ashwani added Starts here on 02/21/2026
-    jsonize_flow(workflow, flow_ext);
+    jsonize_basic(reader_thread, 1);
+    jsonize_flow(workflow, &flow->flow_extended);
+    jsonize_l3_l4(workflow, &flow->flow_extended.flow_basic);
     // Ashwani added Ends here  
 
 
