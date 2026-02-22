@@ -219,7 +219,7 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             json_object *stored_val;
             if (json_object_object_get_ex(stored_root, key, &stored_val)) {
                 // Compare and keep largest integer or longest string
-                if (json_object_get_type(val) == json_type_int || json_object_get_type(val) == json_type_int64) {
+                if (json_object_get_type(val) == json_type_int) {
                     int64_t new_val = json_object_get_int64(val);
                     int64_t old_val = json_object_get_int64(stored_val);
                     if (new_val > old_val)
@@ -242,100 +242,7 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
     }
     json_object_put(root);
 }
-// Fill missing HTTP fields in json_msg from stored info, returns new string if updated, else NULL
-char * FillMissingHttpFieldsFromFlowInfo(const char * json_msg)
-{
-    uint64_t flow_id = GetFlowId(json_msg);
-    int idx = -1;
-    for (int i = 0; i < flow_direction_map_size; ++i)
-    {
-        if (flow_direction_map[i].flow_id == flow_id)
-        {
-            idx = i;
-            break;
-        }
-    }
-    if (idx < 0)
-        return NULL;
 
-    json_object *root = json_tokener_parse(json_msg);
-    if (!root) return NULL;
-    int updated = 0;
-    json_object *ndpi_obj = NULL;
-    if (json_object_object_get_ex(root, "ndpi", &ndpi_obj) && ndpi_obj)
-    {
-        // Fill hostname and HTTP fields from info.json_str
-        struct json_object *stored_obj = NULL;
-        if (flow_direction_map[idx].info.json_str) {
-            stored_obj = json_tokener_parse(flow_direction_map[idx].info.json_str);
-            if (stored_obj) {
-                // hostname
-                struct json_object *hostname_obj = NULL;
-                if (json_object_object_get_ex(stored_obj, "hostname", &hostname_obj)) {
-                    const char *hostname_val = json_object_get_string(hostname_obj);
-                    if (hostname_val && hostname_val[0] != '\0') {
-                        json_object_object_add(ndpi_obj, "hostname", json_object_new_string(hostname_val));
-                        updated = 1;
-                    }
-                }
-                // HTTP fields
-                struct json_object *http_obj_stored = NULL;
-                if (json_object_object_get_ex(stored_obj, "http", &http_obj_stored)) {
-                    struct json_object *code_obj = NULL;
-                    if (json_object_object_get_ex(http_obj_stored, "code", &code_obj)) {
-                        int code_val = json_object_get_int(code_obj);
-                        if (code_val != 0) {
-                            json_object_object_add(http_obj, "code", json_object_new_int(code_val));
-                            updated = 1;
-                        }
-                    }
-                    struct json_object *content_type_obj = NULL;
-                    if (json_object_object_get_ex(http_obj_stored, "content_type", &content_type_obj)) {
-                        const char *content_type_val = json_object_get_string(content_type_obj);
-                        if (content_type_val && content_type_val[0] != '\0') {
-                            json_object_object_add(http_obj, "content_type", json_object_new_string(content_type_val));
-                            updated = 1;
-                        }
-                    }
-                    struct json_object *user_agent_obj = NULL;
-                    if (json_object_object_get_ex(http_obj_stored, "user_agent", &user_agent_obj)) {
-                        const char *user_agent_val = json_object_get_string(user_agent_obj);
-                        if (user_agent_val && user_agent_val[0] != '\0') {
-                            json_object_object_add(http_obj, "user_agent", json_object_new_string(user_agent_val));
-                            updated = 1;
-                        }
-                    }
-                    struct json_object *request_content_type_obj = NULL;
-                    if (json_object_object_get_ex(http_obj_stored, "request_content_type", &request_content_type_obj)) {
-                        const char *request_content_type_val = json_object_get_string(request_content_type_obj);
-                        if (request_content_type_val && request_content_type_val[0] != '\0') {
-                            json_object_object_add(http_obj, "request_content_type", json_object_new_string(request_content_type_val));
-                            updated = 1;
-                        }
-                    }
-                    struct json_object *filename_obj = NULL;
-                    if (json_object_object_get_ex(http_obj_stored, "filename", &filename_obj)) {
-                        const char *filename_val = json_object_get_string(filename_obj);
-                        if (filename_val && filename_val[0] != '\0') {
-                            json_object_object_add(http_obj, "filename", json_object_new_string(filename_val));
-                            updated = 1;
-                        }
-                    }
-                }
-                json_object_put(stored_obj);
-            }
-        }
-    }
-    if (updated)
-    {
-        const char *updated_json = json_object_to_json_string(root);
-        char *result = strdup(updated_json);
-        json_object_put(root);
-        return result;
-    }
-    json_object_put(root);
-    return NULL;
-}
 
 // Update json_msg if direction swapped, returns new string if updated, else NULL
 char * UpdateFlowDirectionIfSwapped(const char * json_msg)
