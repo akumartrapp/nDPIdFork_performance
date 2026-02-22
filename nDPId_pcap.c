@@ -344,6 +344,8 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         if (!master_log_fp)
         {
             printf("ERROR: Failed to open log file: %s (%s)\n", current_master_filename, strerror(errno));
+            printf("[TRACE] Early return: Capture size smaller than packet size\n");
+            printf("[TRACE] Early return: IP4_PACKET_TOO_SHORT (header->caplen < ip_offset + sizeof(*ip))\n");
             return;
         }
 
@@ -4650,6 +4652,7 @@ static void vjsonize_error_eventf(struct nDPId_reader_thread * const reader_thre
                 break;
             default:
                 internal_format_error(&reader_thread->workflow->ndpi_serializer, format, format_index);
+                printf("[TRACE] Early return: flow_basic_to_process->state == FS_SKIPPED\n");
                 return;
         }
     }
@@ -5503,12 +5506,14 @@ static void ndpi_process_packet(uint8_t * const args,
 
     if (reader_thread == NULL)
     {
+        printf("[TRACE] Packet skipped: reader_thread is NULL\n");
         return;
     }
     workflow = reader_thread->workflow;
 
     if (workflow == NULL)
     {
+        printf("[TRACE] Packet skipped: workflow is NULL\n");
         return;
     }
 
@@ -5527,6 +5532,7 @@ static void ndpi_process_packet(uint8_t * const args,
 
     if (process_datalink_layer(reader_thread, header, packet, &ip_offset, &type, &flow_basic.vlan_id) != 0)
     {
+        printf("[TRACE] Packet skipped: process_datalink_layer failed\n");
         return;
     }
 
@@ -5561,8 +5567,8 @@ static void ndpi_process_packet(uint8_t * const args,
   }
 
   printf("Packet %llu: %s:%u -> %s:%u | %u bytes | ts: %ld.%06ld\n",
-         total_packets, src_ip, src_port, dst_ip, dst_port, header->caplen,
-         (long)header->ts.tv_sec, (long)header->ts.tv_usec);
+      total_packets, src_ip, src_port, dst_ip, dst_port, header->caplen,
+      (long)header->ts.tv_sec, (long)header->ts.tv_usec);
   // --- End logging ---
   
 process_layer3_again:
@@ -5583,6 +5589,7 @@ process_layer3_again:
                                      sizeof(struct ndpi_ethhdr) + sizeof(struct ndpi_iphdr));
                 jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: Dropping IPv4 packet: caplen=%u, ip_offset=%u, required=%zu\n", header->caplen, ip_offset, sizeof(*ip));
             return;
         }
     }
@@ -5603,6 +5610,7 @@ process_layer3_again:
                                      sizeof(struct ndpi_ethhdr) + sizeof(struct ndpi_iphdr));
                 jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: ETH_P_IPV6 packet too short: caplen=%u, ip_offset=%u, required=%zu\n", header->caplen, ip_offset, sizeof(*ip6));
             return;
         }
     }
@@ -5613,6 +5621,7 @@ process_layer3_again:
             jsonize_error_eventf(reader_thread, UNKNOWN_L3_PROTOCOL, "%s%u", "protocol", type);
             jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
         }
+        printf("[TRACE] Packet skipped: Unknown L3 protocol: caplen=%u, ip_offset=%u\n", header->caplen, ip_offset);
         return;
     }
     ip_size = header->caplen - ip_offset;
@@ -5644,6 +5653,7 @@ process_layer3_again:
                     reader_thread, IP4_L4_PAYLOAD_DETECTION_FAILED, "%s%zu", "l4_data_len", ip_size - sizeof(*ip));
                 jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: IPv4 L4 payload detection failed: caplen=%u, ip_offset=%u, required=%zu\n", header->caplen, ip_offset, sizeof(*ip));
             return;
         }
 
@@ -5664,6 +5674,7 @@ process_layer3_again:
                     reader_thread, IP6_L4_PAYLOAD_DETECTION_FAILED, "%s%zu", "l4_data_len", ip_size - sizeof(*ip));
                 jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: IPv6 L4 payload detection failed: caplen=%u, ip_offset=%u, required=%zu\n", header->caplen, ip_offset, sizeof(*ip6));
             return;
         }
 
@@ -5693,6 +5704,7 @@ process_layer3_again:
             jsonize_error_eventf(reader_thread, UNKNOWN_L3_PROTOCOL, "%s%u", "protocol", type);
             jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
         }
+        printf("[TRACE] Packet skipped: Unknown L3 protocol: caplen=%u, ip_offset=%u\n", header->caplen, ip_offset);
         return;
     }
 
@@ -5708,6 +5720,7 @@ process_layer3_again:
                 jsonize_error_eventf(reader_thread, TUNNEL_DECODE_FAILED, "%s%u", "protocol", flow_basic.l4_protocol);
                 jsonize_packet_event(reader_thread, header, packet, type, ip_offset, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: Not a valid GRE tunnel: caplen=%u, ip_offset=%u\n", header->caplen, ip_offset);
             return;
         }
         else
@@ -5738,6 +5751,7 @@ process_layer3_again:
                                              offset + sizeof(struct ndpi_chdlc));
                         jsonize_packet_event(reader_thread, header, packet, 0, 0, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
                     }
+                    printf("[TRACE] Packet skipped: PPP header too short in GRE tunnel: caplen=%u, required=%zu\n", header->caplen, offset + sizeof(struct ndpi_chdlc));
                     return;
                 }
 
@@ -5757,6 +5771,7 @@ process_layer3_again:
                             jsonize_error_eventf(reader_thread, TUNNEL_DECODE_FAILED, "%s%u", "ppp-protocol", type);
                             jsonize_packet_event(reader_thread, header, packet, 0, 0, 0, 0, NULL, PACKET_EVENT_PAYLOAD);
                         }
+                        printf("[TRACE] Packet skipped: Unknown PPP protocol in GRE tunnel: caplen=%u, ppp_proto=%u\n", header->caplen, type);
                         return;
                 }
                 ip_offset = offset + sizeof(*chdlc);
@@ -5764,6 +5779,7 @@ process_layer3_again:
             }
             else
             {
+                printf("[TRACE] Packet skipped: Unsupported GRE protocol: caplen=%u, gre_proto=%u\n", header->caplen, ntohs(grehdr->protocol));
                 // TODO: Check Layer1 / Layer2 again?
             }
         }
@@ -5793,6 +5809,8 @@ process_layer3_again:
                                      NULL,
                                      PACKET_EVENT_PAYLOAD);
             }
+
+            printf("[TRACE] Packet skipped: TCP header too short: caplen=%u, required=%zu\n", header->caplen, (l4_ptr - packet) + sizeof(struct ndpi_tcphdr));
             return;
         }
         tcp = (struct ndpi_tcphdr const *)l4_ptr;
@@ -5827,6 +5845,7 @@ process_layer3_again:
                                      NULL,
                                      PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: UDP header too short: caplen=%u, required=%zu\n", header->caplen, (l4_ptr - packet) + sizeof(struct ndpi_udphdr));
             return;
         }
         udp = (struct ndpi_udphdr const *)l4_ptr;
@@ -5846,6 +5865,7 @@ process_layer3_again:
     thread_index %= GET_CMDARG_ULL(nDPId_options.reader_thread_count);
     if (thread_index != reader_thread->array_index)
     {
+        printf("[TRACE] Packet skipped: thread_index mismatch (thread_index=%zu, array_index=%zu)\n", thread_index, reader_thread->array_index);
         return;
     }
 
@@ -5925,17 +5945,17 @@ process_layer3_again:
             break;
     }
 
-
     hashed_index = flow_basic.hashval % workflow->max_active_flows;
     direction = FD_SRC2DST;
-    
+
     struct nDPId_flow_basic * tree_result = NULL;
 
     // Make sure flow_basic.key is set before searching
     nDPId_flow_basic_set_key(&flow_basic);
 
     // Lookup
-    HASH_FIND(hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
+    HASH_FIND(
+        hh, workflow->ndpi_flows_active_hash[hashed_index], &flow_basic.key, sizeof(struct flow_key), tree_result);
 
     // Ashwani: commented this code
     // tree_result = ndpi_tfind(&flow_basic, &workflow->ndpi_flows_active[hashed_index], ndpi_workflow_node_cmp);
@@ -6010,6 +6030,7 @@ process_layer3_again:
                                          NULL,
                                          PACKET_EVENT_PAYLOAD);
                 }
+                printf("[TRACE] Packet skipped: Internal initial direction not processed and source IP not in subnet: caplen=%u, src_ip=%s\n", header->caplen, (flow_basic.l3_type == L3_IP) ? inet_ntoa(*(struct in_addr *)&flow_basic.src.v4.ip) : "IPv6");
                 return;
             }
         }
@@ -6036,6 +6057,7 @@ process_layer3_again:
                                          NULL,
                                          PACKET_EVENT_PAYLOAD);
                 }
+                printf("[TRACE] Packet skipped: External initial direction not processed and source IP in subnet: caplen=%u, src_ip=%s\n", header->caplen, (flow_basic.l3_type == L3_IP) ? inet_ntoa(*(struct in_addr *)&flow_basic.src.v4.ip) : "IPv6");
                 return;
             }
         }
@@ -6065,6 +6087,7 @@ process_layer3_again:
                                      NULL,
                                      PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: Maximum active flows reached: caplen=%u, current_active=%zu, max_active=%zu\n", header->caplen, workflow->cur_active_flows, workflow->max_active_flows);    
             return;
         }
 
@@ -6085,6 +6108,7 @@ process_layer3_again:
                                      NULL,
                                      PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: Failed to add new flow (memory allocation failed): caplen=%u, required=%zu\n", header->caplen, sizeof(*flow_to_process));
             return;
         }
 
@@ -6122,6 +6146,7 @@ process_layer3_again:
                                      NULL,
                                      PACKET_EVENT_PAYLOAD);
             }
+            printf("[TRACE] Packet skipped: Failed to allocate detection data for new flow (memory allocation failed): caplen=%u, required=%zu\n", header->caplen, sizeof(*flow_to_process));
             return;
         }
 
@@ -6172,6 +6197,8 @@ process_layer3_again:
                            "zLib decompression failed for existing flow %llu with error code: %d",
                            flow_to_process->flow_extended.flow_id,
                            ret);
+                    
+                    printf("[TRACE] Packet skipped: zLib decompression failed for existing flow: caplen=%u, flow_id=%llu, error_code=%d\n", header->caplen, flow_to_process->flow_extended.flow_id, ret);
                     return;
                 }
             }
@@ -6180,6 +6207,8 @@ process_layer3_again:
     }
 
     flow_to_process->flow_extended.packets_processed[direction]++;
+    // Ashwani  bytes incremented here
+    printf("[TRACE] Packet processed: caplen=%u, flow_id=%llu, direction=%d\n", header->caplen, flow_to_process->flow_extended.flow_id, direction);
     flow_to_process->flow_extended.bytes[direction] = flow_to_process->flow_extended.bytes[direction] + header->caplen;
     flow_to_process->flow_extended.total_l4_payload_len[direction] += l4_payload_len;
     workflow->packets_processed++;
