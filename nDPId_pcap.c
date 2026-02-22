@@ -3757,25 +3757,21 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     }
 
     // Use new APIs for flow direction tracking
+    // StoreOrUpdateFlowDirection now keeps the full merged JSON string
     StoreOrUpdateFlowDirection(json_msg);
-    char *updated_json = UpdateFlowDirectionIfSwapped(json_msg);
-    if (event == FLOW_EVENT_INVALID)
-    {
+    char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
+    if (event == FLOW_EVENT_INVALID) {
+        if (merged_json) free(merged_json);
         return;
     }
 
-    char *json_msg_updated = updated_json ? updated_json : (char*)json_msg;
-    size_t json_msg_len_updated = updated_json ? strlen(updated_json) : json_msg_len;
+    char *json_msg_updated = merged_json ? merged_json : (char*)json_msg;
+    size_t json_msg_len_updated = merged_json ? strlen(merged_json) : json_msg_len;
 
     // Fill missing HTTP fields if needed
     char *http_filled_json = FillMissingHttpFieldsFromFlowInfo(json_msg_updated);
-    if (http_filled_json) 
-    {
-        if (updated_json)
-        {
-            free(updated_json);
-        }
-
+    if (http_filled_json) {
+        if (merged_json) free(merged_json);
         json_msg_updated = http_filled_json;
         json_msg_len_updated = strlen(http_filled_json);
     }
@@ -3787,22 +3783,20 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
 
     int s_ret = snprintf(newline_json_msg,
-                     sizeof(newline_json_msg),
-                     "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
-                     (int)json_msg_len_updated + 1,
-                     (int)json_msg_len_updated,
-                     json_msg_updated);
+                        sizeof(newline_json_msg),
+                        "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
+                        (int)json_msg_len_updated + 1,
+                        (int)json_msg_len_updated,
+                        json_msg_updated);
 
-    if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
-    {
+    if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg)) {
         logger(1,
                "[%8llu, %zu] JSON buffer prepare failed: snprintf returned %d, buffer size %zu",
                workflow->packets_captured,
                reader_thread->array_index,
                s_ret,
                sizeof(newline_json_msg));
-        if (s_ret >= (int)sizeof(newline_json_msg))
-        {
+        if (s_ret >= (int)sizeof(newline_json_msg)) {
             logger(1,
                    "[%8llu, %zu] JSON message: %.*s...",
                    workflow->packets_captured,
@@ -3810,52 +3804,22 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
                    ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
                    newline_json_msg);
         }
-
-        if (http_filled_json)
-        {
-            free(http_filled_json);
-        }
+        if (http_filled_json) free(http_filled_json);
+        else if (merged_json) free(merged_json);
         return;
     }
 
-    //char * json_string_with_http_or_tls_info = NULL;
-    //uint64_t  flow_id = GetFlowId(json_msg);
- 
-    //if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE)) 
-    //{
-    //    add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-    //    return; 
-    //}
-    //else 
-    //{
-    //    json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
-    //}
-
-    // Ashwani 
-    // We are not using socket so no need to connect just return from here.
-
-    if (workflow->is_pcap_file && output_send_to_file)
-    {
+    // Output to file/socket as before
+    if (workflow->is_pcap_file && output_send_to_file) {
         write_to_file(json_msg_updated, json_msg_updated);
     }
-
-    if (output_send_to_socket)
-    {
+    if (output_send_to_socket) {
         write_to_socket(reader_thread, json_msg_updated, json_msg_updated);
     }
-    
-    if (http_filled_json)
-    {
-        free(http_filled_json);
-    }
-    else if (updated_json)
-    {
-        free(updated_json);
-    }
 
-    //free(json_string_with_http_or_tls_info);
-    //json_string_with_http_or_tls_info = NULL;
-
+    // Free memory
+    if (http_filled_json) free(http_filled_json);
+    else if (merged_json) free(merged_json);
 
     return;
 
