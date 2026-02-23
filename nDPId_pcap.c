@@ -3780,29 +3780,32 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // Use new APIs for flow direction tracking
     // StoreOrUpdateFlowDirection now keeps the full merged JSON string
     StoreOrUpdateFlowDirection(json_msg);
-    char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
-    //if (event == FLOW_EVENT_INVALID) 
+
+    PrintAllFlowDirectionJsons();
+
+    //char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
+    ////if (event == FLOW_EVENT_INVALID) 
+    ////{
+    ////    if (merged_json) free(merged_json);
+    ////    return;
+    ////}
+
+    //char *json_msg_updated = merged_json ? merged_json : (char*)json_msg;
+    //size_t json_msg_len_updated = merged_json ? strlen(merged_json) : json_msg_len;
+
+    //printf("UPDATED:\n%s\n", json_msg);
+
+    //// No need to call FillMissingHttpFieldsFromFlowInfo; merged_json already contains all HTTP fields
+
+    //// Update flow_direction_info_t JSON string with json_msg_updated
+    //UpdateFlowDirectionJson(json_msg_updated);
+
+    //printf("\n%s\n", json_msg_updated);
+
+    //if (merged_json)
     //{
-    //    if (merged_json) free(merged_json);
-    //    return;
-    //}
-
-    char *json_msg_updated = merged_json ? merged_json : (char*)json_msg;
-    size_t json_msg_len_updated = merged_json ? strlen(merged_json) : json_msg_len;
-
-    printf("UPDATED:\n%s\n", json_msg);
-
-    // No need to call FillMissingHttpFieldsFromFlowInfo; merged_json already contains all HTTP fields
-
-    // Update flow_direction_info_t JSON string with json_msg_updated
-    UpdateFlowDirectionJson(json_msg_updated);
-
-    printf("\n%s\n", json_msg_updated);
-
-    if (merged_json)
-    {
-        free(merged_json);
-    } 
+    //    free(merged_json);
+    //} 
 
     // write_to_console(0, "send_to_collector called");
     // struct nDPId_workflow * const workflow = reader_thread->workflow;
