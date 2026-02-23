@@ -3781,8 +3781,6 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // StoreOrUpdateFlowDirection now keeps the full merged JSON string
     StoreOrUpdateFlowDirection(json_msg);
 
-    PrintAllFlowDirectionJson();
-
     //char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
     ////if (event == FLOW_EVENT_INVALID) 
     ////{
