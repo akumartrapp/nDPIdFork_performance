@@ -272,7 +272,7 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         void merge_json(json_object *stored, json_object *incoming) {
             json_object_object_foreach(incoming, key, val) {
                 if (strcmp(key, "src_ip") == 0 || strcmp(key, "dst_ip") == 0 || strcmp(key, "src_port") == 0 || strcmp(key, "dst_port") == 0)
-                    return;
+                    continue;
                 json_object *stored_val;
                 if (json_object_object_get_ex(stored, key, &stored_val))
                 {
