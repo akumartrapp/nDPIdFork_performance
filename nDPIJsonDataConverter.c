@@ -268,16 +268,14 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             }
         }
 
-        // Merge all other fields except src_ip, dst_ip, src_port, dst_port, src2dst_bytes, flow_src_packets_processed
+        // Merge all other fields except src_ip, dst_ip, src_port, dst_port
         void merge_json(json_object *stored, json_object *incoming) {
             json_object_object_foreach(incoming, key, val) {
                 if (
                     strcmp(key, "src_ip") == 0 ||
                     strcmp(key, "dst_ip") == 0 ||
                     strcmp(key, "src_port") == 0 ||
-                    strcmp(key, "dst_port") == 0 ||
-                    strcmp(key, "src2dst_bytes") == 0 ||
-                    strcmp(key, "flow_src_packets_processed") == 0
+                    strcmp(key, "dst_port") == 0
                 )
                     continue;
                 json_object *stored_val;
