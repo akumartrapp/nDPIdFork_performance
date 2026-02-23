@@ -211,7 +211,8 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             break;
         }
     }
-    if (idx < 0 && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX) {
+    if (idx < 0 && flow_direction_map_size < FLOW_DIRECTION_MAP_MAX) 
+    {
         idx = flow_direction_map_size++;
         flow_direction_map[idx].flow_id = flow_id;
         strncpy(flow_direction_map[idx].info.src_ip, src_ip, sizeof(src_ip));
@@ -228,44 +229,58 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
             strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
             src_port == flow_direction_map[idx].info.dst_port &&
-            dst_port == flow_direction_map[idx].info.src_port) {
+            dst_port == flow_direction_map[idx].info.src_port) 
+        {
             swapped = 1;
         }
         flow_direction_map[idx].info.swapped = swapped;
         // Merge fields from json_msg into stored json_str
         json_object *stored_root = json_tokener_parse(flow_direction_map[idx].info.json_str);
-        if (!stored_root) stored_root = json_tokener_parse(json_msg); // fallback
+        if (!stored_root)
+        {
+            stored_root = json_tokener_parse(json_msg); // fallback
+        } 
+
         // Recursive merge function
         void merge_json(json_object *stored, json_object *incoming) {
             json_object_object_foreach(incoming, key, val) {
                 json_object *stored_val;
-                if (json_object_object_get_ex(stored, key, &stored_val)) {
+                if (json_object_object_get_ex(stored, key, &stored_val)) 
+                {
                     enum json_type t = json_object_get_type(val);
                     enum json_type t_stored = json_object_get_type(stored_val);
-                    if (t == json_type_int && t_stored == json_type_int) {
+                    if (t == json_type_int && t_stored == json_type_int) 
+                    {
                         int64_t new_val = json_object_get_int64(val);
                         int64_t old_val = json_object_get_int64(stored_val);
                         if (new_val > old_val)
                             json_object_object_add(stored, key, json_object_new_int64(new_val));
-                    } else if (t == json_type_string && t_stored == json_type_string) {
+                    } else if (t == json_type_string && t_stored == json_type_string) 
+                    {
                         const char *new_str = json_object_get_string(val);
                         const char *old_str = json_object_get_string(stored_val);
                         if (strlen(new_str) > strlen(old_str))
                             json_object_object_add(stored, key, json_object_new_string(new_str));
-                    } else if (t == json_type_object && t_stored == json_type_object) {
+                    } else if (t == json_type_object && t_stored == json_type_object) 
+                    {
                         merge_json(stored_val, val);
-                    } else if (t == json_type_array && t_stored == json_type_array) {
+                    } else if (t == json_type_array && t_stored == json_type_array) 
+                    {
                         // For arrays, keep the longest
                         int len_new = json_object_array_length(val);
                         int len_old = json_object_array_length(stored_val);
-                        if (len_new > len_old) {
+                        if (len_new > len_old) 
+                        {
                             json_object_object_add(stored, key, json_object_get(val));
                         }
-                    } else {
+                    } else 
+                    {
                         // For other types or mismatched types, prefer incoming
                         json_object_object_add(stored, key, json_object_get(val));
                     }
-                } else {
+                } 
+                else 
+                {
                     // Add missing field
                     json_object_object_add(stored, key, json_object_get(val));
                 }
