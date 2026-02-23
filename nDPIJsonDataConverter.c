@@ -229,64 +229,91 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
         if (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
             strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
             src_port == flow_direction_map[idx].info.dst_port &&
-            dst_port == flow_direction_map[idx].info.src_port) 
+            dst_port == flow_direction_map[idx].info.src_port)
         {
             swapped = 1;
         }
         flow_direction_map[idx].info.swapped = swapped;
-        // Merge fields from json_msg into stored json_str
+
+        // Merge fields from json_msg into stored json_str, but never overwrite src_ip, dst_ip, src_port, dst_port
         json_object *stored_root = json_tokener_parse(flow_direction_map[idx].info.json_str);
         if (!stored_root)
         {
             stored_root = json_tokener_parse(json_msg); // fallback
-        } 
+        }
 
-        // Recursive merge function
+        // Only update flow_dst_packets_processed and dst2src_bytes if incoming values are greater and direction is swapped
+        if (swapped)
+        {
+            json_object *incoming_dst_packets = NULL;
+            json_object *stored_dst_packets = NULL;
+            if (json_object_object_get_ex(root, "flow_src_packets_processed", &incoming_dst_packets) &&
+                json_object_object_get_ex(stored_root, "flow_dst_packets_processed", &stored_dst_packets))
+            {
+                int64_t incoming_val = json_object_get_int64(incoming_dst_packets);
+                int64_t stored_val = json_object_get_int64(stored_dst_packets);
+                if (incoming_val > stored_val)
+                    json_object_object_add(stored_root, "flow_dst_packets_processed", json_object_new_int64(incoming_val));
+            }
+
+            json_object *incoming_bytes = NULL;
+            json_object *stored_bytes = NULL;
+            if (json_object_object_get_ex(root, "src2dst_bytes", &incoming_bytes) &&
+                json_object_object_get_ex(stored_root, "dst2src_bytes", &stored_bytes))
+            {
+                int64_t incoming_val = json_object_get_int64(incoming_bytes);
+                int64_t stored_val = json_object_get_int64(stored_bytes);
+                if (incoming_val > stored_val)
+                    json_object_object_add(stored_root, "dst2src_bytes", json_object_new_int64(incoming_val));
+            }
+        }
+
+        // Merge all other fields except src_ip, dst_ip, src_port, dst_port
         void merge_json(json_object *stored, json_object *incoming) {
             json_object_object_foreach(incoming, key, val) {
+                if (strcmp(key, "src_ip") == 0 || strcmp(key, "dst_ip") == 0 || strcmp(key, "src_port") == 0 || strcmp(key, "dst_port") == 0)
+                    return;
                 json_object *stored_val;
-                if (json_object_object_get_ex(stored, key, &stored_val)) 
+                if (json_object_object_get_ex(stored, key, &stored_val))
                 {
                     enum json_type t = json_object_get_type(val);
                     enum json_type t_stored = json_object_get_type(stored_val);
-                    if (t == json_type_int && t_stored == json_type_int) 
+                    if (t == json_type_int && t_stored == json_type_int)
                     {
                         int64_t new_val = json_object_get_int64(val);
                         int64_t old_val = json_object_get_int64(stored_val);
                         if (new_val > old_val)
                             json_object_object_add(stored, key, json_object_new_int64(new_val));
-                    } else if (t == json_type_string && t_stored == json_type_string) 
+                    } else if (t == json_type_string && t_stored == json_type_string)
                     {
                         const char *new_str = json_object_get_string(val);
                         const char *old_str = json_object_get_string(stored_val);
                         if (strlen(new_str) > strlen(old_str))
                             json_object_object_add(stored, key, json_object_new_string(new_str));
-                    } else if (t == json_type_object && t_stored == json_type_object) 
+                    } else if (t == json_type_object && t_stored == json_type_object)
                     {
                         merge_json(stored_val, val);
-                    } else if (t == json_type_array && t_stored == json_type_array) 
+                    } else if (t == json_type_array && t_stored == json_type_array)
                     {
-                        // For arrays, keep the longest
                         int len_new = json_object_array_length(val);
                         int len_old = json_object_array_length(stored_val);
-                        if (len_new > len_old) 
+                        if (len_new > len_old)
                         {
                             json_object_object_add(stored, key, json_object_get(val));
                         }
-                    } else 
+                    } else
                     {
-                        // For other types or mismatched types, prefer incoming
                         json_object_object_add(stored, key, json_object_get(val));
                     }
-                } 
-                else 
+                }
+                else
                 {
-                    // Add missing field
                     json_object_object_add(stored, key, json_object_get(val));
                 }
             }
         }
         merge_json(stored_root, root);
+
         // Update stored json_str
         free(flow_direction_map[idx].info.json_str);
         flow_direction_map[idx].info.json_str = strdup(json_object_to_json_string(stored_root));
