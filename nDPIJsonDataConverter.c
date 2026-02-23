@@ -242,27 +242,29 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
             stored_root = json_tokener_parse(json_msg); // fallback
         }
 
-        // Only update flow_dst_packets_processed and dst2src_bytes if incoming values are greater and direction is swapped
+        // Only update dst2src_bytes and flow_dst_packets_processed if direction is swapped
         if (swapped)
         {
-            json_object *incoming_dst_packets = NULL;
+            // Update flow_dst_packets_processed from incoming flow_src_packets_processed if greater
+            json_object *incoming_src_packets = NULL;
             json_object *stored_dst_packets = NULL;
-            if (json_object_object_get_ex(root, "flow_src_packets_processed", &incoming_dst_packets) &&
+            if (json_object_object_get_ex(root, "flow_src_packets_processed", &incoming_src_packets) &&
                 json_object_object_get_ex(stored_root, "flow_dst_packets_processed", &stored_dst_packets))
             {
-                int64_t incoming_val = json_object_get_int64(incoming_dst_packets);
+                int64_t incoming_val = json_object_get_int64(incoming_src_packets);
                 int64_t stored_val = json_object_get_int64(stored_dst_packets);
                 if (incoming_val > stored_val)
                     json_object_object_add(stored_root, "flow_dst_packets_processed", json_object_new_int64(incoming_val));
             }
 
-            json_object *incoming_bytes = NULL;
-            json_object *stored_bytes = NULL;
-            if (json_object_object_get_ex(root, "src2dst_bytes", &incoming_bytes) &&
-                json_object_object_get_ex(stored_root, "dst2src_bytes", &stored_bytes))
+            // Update dst2src_bytes from incoming src2dst_bytes if greater
+            json_object *incoming_src_bytes = NULL;
+            json_object *stored_dst_bytes = NULL;
+            if (json_object_object_get_ex(root, "src2dst_bytes", &incoming_src_bytes) &&
+                json_object_object_get_ex(stored_root, "dst2src_bytes", &stored_dst_bytes))
             {
-                int64_t incoming_val = json_object_get_int64(incoming_bytes);
-                int64_t stored_val = json_object_get_int64(stored_bytes);
+                int64_t incoming_val = json_object_get_int64(incoming_src_bytes);
+                int64_t stored_val = json_object_get_int64(stored_dst_bytes);
                 if (incoming_val > stored_val)
                     json_object_object_add(stored_root, "dst2src_bytes", json_object_new_int64(incoming_val));
             }
@@ -277,6 +279,9 @@ void StoreOrUpdateFlowDirection(const char * json_msg)
                     strcmp(key, "src_port") == 0 ||
                     strcmp(key, "dst_port") == 0
                 )
+                    continue;
+                // Prevent overwriting src2dst_bytes and flow_src_packets_processed in stored when swapped
+                if (swapped && (strcmp(key, "src2dst_bytes") == 0 || strcmp(key, "flow_src_packets_processed") == 0))
                     continue;
                 json_object *stored_val;
                 if (json_object_object_get_ex(stored, key, &stored_val))
