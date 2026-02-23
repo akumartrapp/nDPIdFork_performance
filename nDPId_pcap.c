@@ -3779,11 +3779,11 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     // StoreOrUpdateFlowDirection now keeps the full merged JSON string
     StoreOrUpdateFlowDirection(json_msg);
     char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
-    if (event == FLOW_EVENT_INVALID) 
-    {
-        if (merged_json) free(merged_json);
-        return;
-    }
+    //if (event == FLOW_EVENT_INVALID) 
+    //{
+    //    if (merged_json) free(merged_json);
+    //    return;
+    //}
 
     char *json_msg_updated = merged_json ? merged_json : (char*)json_msg;
     size_t json_msg_len_updated = merged_json ? strlen(merged_json) : json_msg_len;
