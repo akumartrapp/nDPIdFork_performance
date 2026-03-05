@@ -3775,11 +3775,13 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         write_to_master_file(json_msg, json_msg_len);
     }
 
-     printf("MASTER:\n%s\n", json_msg);
+     //printf("MASTER:\n%s\n", json_msg);
 
     // Use new APIs for flow direction tracking
     // StoreOrUpdateFlowDirection now keeps the full merged JSON string
     StoreOrUpdateFlowDirection(json_msg);
+
+    PrintAllFlowDirectionJson();
 
     //char *merged_json = UpdateFlowDirectionIfSwapped(json_msg);
     ////if (event == FLOW_EVENT_INVALID) 
@@ -6290,12 +6292,14 @@ process_layer3_again:
                          &flow_to_process->flow_extended,
                          PACKET_EVENT_PAYLOAD_FLOW);
 
-    if (flow_to_process->flow_extended.flow_basic.state != FS_INFO || flow_to_process->info.detection_data == NULL)
-    {
-        /* Only FS_INFO goes through the whole detection process. */
-        printf("[TRACE] Packet skipped for nDPI detection: Flow state is not FS_INFO or detection data is NULL: caplen=%u, flow_id=%llu, state=%d\n", header->caplen, flow_to_process->flow_extended.flow_id, flow_to_process->flow_extended.flow_basic.state);
-        return;
-    }
+     
+    // Ashwani: Commented out this code to match source/destination packets and bytes. 
+    // if (flow_to_process->flow_extended.flow_basic.state != FS_INFO || flow_to_process->info.detection_data == NULL)
+    // {
+    //     /* Only FS_INFO goes through the whole detection process. */
+    //     printf("[TRACE] Packet skipped for nDPI detection: Flow state is not FS_INFO or detection data is NULL: caplen=%u, flow_id=%llu, state=%d\n", header->caplen, flow_to_process->flow_extended.flow_id, flow_to_process->flow_extended.flow_basic.state);
+    //     return;
+    // }
 
     /* Ashwani start temp */
     // int32_t tmp_dir = flow_to_process->info.detection_data->flow.client_packet_direction;
