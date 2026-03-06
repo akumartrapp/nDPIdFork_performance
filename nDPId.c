@@ -333,24 +333,42 @@ void rotate_alert_log_file()
     }
 }
 
+// Rotate log file: close, rename, reset state
+void rotate_master_log_file()
+{
+    if (master_log_fp != NULL)
+    {
+        fclose(master_log_fp);
+
+        // Rename .tmp to .json
+        char new_name[MAX_FILENAME_LEN];
+        snprintf(new_name, sizeof(new_name), "%.*s.json", (int)(strlen(current_master_filename) - 4),  current_master_filename); // strip ".tmp"
+
+        if (rename(current_master_filename, new_name) != 0)
+        {
+            logger(1,"ERROR (master log file): rename() failed, current_master_filename = %s, new_name = %s", current_master_filename, new_name);
+        }
+
+        master_log_fp = NULL;
+        current_master_filename[0] = '\0';
+        master_file_start_time = 0;
+    }
+}
+
 void write_to_master_file(const char * const json_msg, size_t json_msg_len)
 {
     time_t now = time(NULL);
 
-    // Create new file if none open or time elapsed
     int master_file_log_duration_in_seconds = master_log_file_duration_in_minutes * 60;
     if (master_log_fp == NULL || difftime(now, master_file_start_time) >= master_file_log_duration_in_seconds)
     {
-        if (master_log_fp)
-        {
-            exit(0);
-        }
+        rotate_master_log_file(); // ← replaces the exit(0)
 
         // Create new file
         char timestamp[32];
         get_current_utc_iso8601(timestamp, sizeof(timestamp));
 
-        snprintf(current_master_filename, sizeof(current_master_filename), "%s/nDPId_MASTER_log_%s.tmp", master_folder_full_path, timestamp);
+        snprintf(current_master_filename, sizeof(current_master_filename),"%s/nDPId_MASTER_log_%s.tmp", master_folder_full_path,timestamp);
 
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
@@ -370,7 +388,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
     }
 
     fwrite("\n", 1, 1, master_log_fp);
-    fflush(master_log_fp); // ensure data is written
+    fflush(master_log_fp);
 }
 
 void write_to_event_file(const char * const json_msg, size_t json_msg_len)
