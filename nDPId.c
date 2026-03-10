@@ -7152,7 +7152,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPID program version is 01.31.2026.01\n");
+    printf("nDPID program version is 03.10.2026.01\n");
     printf("------------------------------------\n");
 }
 

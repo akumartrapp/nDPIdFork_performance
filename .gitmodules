@@ -1,6 +1,6 @@
 [submodule "libnDPI"]
 	path = libnDPI
-	url = https://github.com/ntop/nDPI
+	url = https://github.com/akumartrapp/nDPI.git
 	branch = dev
 	update = rebase
 [submodule "examples/js-rt-analyzer"]
