@@ -30,7 +30,7 @@ char *UpdateFlowDirectionIfSwapped(const char *json_msg);
 void UpdateFlowDirectionJson(const char *json_msg);
 void ClearFlowDirectionMap(void);
 
-void ConvertnDPIDataFormat(const char * json_str, const char * const json_string_with_http_or_tls_info, int flowRiskIndex, char ** converted_json_str, int * create_alert);
+void ConvertnDPIDataFormat(const char * json_str, int flowRiskIndex, char ** converted_json_str, int * create_alert);
 void DeletenDPIRisk(char* jsonStr, char** converted_json_str);
 void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char ** converted_json_str, int flow_risk_index);
 void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, uint64_t * flow_id);

@@ -183,7 +183,6 @@ static int collector_reconnect_timeout_sec = 60;
 struct socket_message
 {
     char * json_msg;
-    char * json_string_with_http_or_tls_info;
 };
 
 struct socket_buffer_queue
@@ -466,13 +465,13 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 }
 
 
-static void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
+static void write_to_file(const char * const json_msg)
 {
     write_to_console(0, 3, "write_to_file called new ");
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
-    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+    ConvertnDPIDataFormat(json_msg, 0, &converted_json_str, &flow_risk_count);
     if (converted_json_str != NULL)
     {
         int length = strlen(converted_json_str);
@@ -496,7 +495,7 @@ static void write_to_file(const char * const json_msg, const char * const json_s
                 {
                     free(converted_json_str);
                     int flow_risk_count_dummy = 0;
-                    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &flow_risk_count_dummy);
+                    ConvertnDPIDataFormat(json_msg, index, &converted_json_str, &flow_risk_count_dummy);
                     length = strlen(converted_json_str);
                     if (length != 0)
                     {
@@ -3786,8 +3785,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 
  
 static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                           const char * const json_msg,
-                           const char * const json_string_with_http_or_tls_info)
+                           const char * const json_msg)
 {
     write_to_console(0, 3, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -3864,7 +3862,7 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
-    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+    ConvertnDPIDataFormat(json_msg, 0, &converted_json_str, &flow_risk_count);
 
     if (converted_json_str == NULL)
     {
@@ -3890,8 +3888,7 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
                     free(converted_json_str);
 
                     int dummy = 0;
-                    ConvertnDPIDataFormat(
-                        json_msg, json_string_with_http_or_tls_info, index, &converted_json_str, &dummy);
+                    ConvertnDPIDataFormat(json_msg, index, &converted_json_str, &dummy);
                 }
 
                 length = strlen(converted_json_str);
@@ -3929,9 +3926,7 @@ out:
 
 
 
-static void write_to_socket_buffer(
-                            const char * json_msg,
-                            const char * json_string_with_http_or_tls_info)
+static void write_to_socket_buffer(const char * json_msg)
 {
     write_to_console(0, 3, "write_to_socket_buffer called");
     pthread_mutex_lock(&socket_queue.lock);
@@ -3943,11 +3938,6 @@ static void write_to_socket_buffer(
 
     msg->json_msg = strdup(json_msg);
 
-    if (json_string_with_http_or_tls_info)
-        msg->json_string_with_http_or_tls_info = strdup(json_string_with_http_or_tls_info);
-    else
-        msg->json_string_with_http_or_tls_info = NULL;
-
     socket_queue.tail = (socket_queue.tail + 1) % SOCKET_BUFFER_CAPACITY;
     socket_queue.count++;
 
@@ -3956,47 +3946,17 @@ static void write_to_socket_buffer(
     write_to_console(0, 3, "write_to_socket_buffer exiting");
 }
 
-
-static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
+static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
+                              char const * const json_msg,
+                              size_t json_msg_len,
+                              enum flow_event event)
 {
     write_to_console(0, 3, "send_to_collector called");
-    struct nDPId_workflow * const workflow = reader_thread->workflow;
-
-    char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
-
-    int s_ret = snprintf(newline_json_msg,
-                         sizeof(newline_json_msg),
-                         "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
-                         json_msg_len + 1,
-                         (int)json_msg_len,
-                         json_msg);
-
-    if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
-    {
-        logger(1,
-               "[%8llu, %zu] JSON buffer prepare failed: snprintf returned %d, buffer size %zu",
-               workflow->packets_captured,
-               reader_thread->array_index,
-               s_ret,
-               sizeof(newline_json_msg));
-        if (s_ret >= (int)sizeof(newline_json_msg))
-        {
-            logger(1,
-                   "[%8llu, %zu] JSON message: %.*s...",
-                   workflow->packets_captured,
-                   reader_thread->array_index,
-                   ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
-                   newline_json_msg);
-        }
-        return;
-    }
-
     if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
     }
 
-    char * json_string_with_http_or_tls_info = NULL;
     uint64_t flow_id = GetFlowId(json_msg);
 
     if (console_output_level > 1)
@@ -4019,35 +3979,120 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
         return;
     }
 
-
-    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
-    {
-        add_or_update_flow_entry(&flow_map, flow_id, json_msg);
-        write_to_console(0, 3, "send_to_collector returning for [event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE]");
-        return;
-    }
-    else
-    {
-        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
-    }
-
     // Ashwani
     // We are not using socket so no need to connect just return from here. vv
 
-    if (output_send_to_file)
+    if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
-        write_to_file(json_msg, json_string_with_http_or_tls_info);
-    }
+        if (output_send_to_file)
+        {
+            write_to_file(json_msg);
+        }
 
-    if (output_send_to_socket)
+        if (output_send_to_socket)
+        {
+            write_to_socket_buffer(json_msg);
+            log_socket_buffer_stats();
+        }
+    }
+    else
     {
-        write_to_socket_buffer(json_msg, json_string_with_http_or_tls_info);
-        log_socket_buffer_stats();        
+        StoreOrUpdateFlowDirection(json_msg);
     }
-
-    free(json_string_with_http_or_tls_info);
-    json_string_with_http_or_tls_info = NULL;
 }
+//
+//
+//static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
+//{
+//    write_to_console(0, 3, "send_to_collector called");
+//    struct nDPId_workflow * const workflow = reader_thread->workflow;
+//
+//    char newline_json_msg[NETWORK_BUFFER_MAX_SIZE];
+//
+//    int s_ret = snprintf(newline_json_msg,
+//                         sizeof(newline_json_msg),
+//                         "%0" NETWORK_BUFFER_LENGTH_DIGITS_STR "zu%.*s\n",
+//                         json_msg_len + 1,
+//                         (int)json_msg_len,
+//                         json_msg);
+//
+//    if (s_ret < 0 || s_ret >= (int)sizeof(newline_json_msg))
+//    {
+//        logger(1,
+//               "[%8llu, %zu] JSON buffer prepare failed: snprintf returned %d, buffer size %zu",
+//               workflow->packets_captured,
+//               reader_thread->array_index,
+//               s_ret,
+//               sizeof(newline_json_msg));
+//        if (s_ret >= (int)sizeof(newline_json_msg))
+//        {
+//            logger(1,
+//                   "[%8llu, %zu] JSON message: %.*s...",
+//                   workflow->packets_captured,
+//                   reader_thread->array_index,
+//                   ndpi_min(512, NETWORK_BUFFER_MAX_SIZE),
+//                   newline_json_msg);
+//        }
+//        return;
+//    }
+//
+//    if (master_log_file_enabled)
+//    {
+//        write_to_master_file(json_msg, json_msg_len);
+//    }
+//
+//    char * json_string_with_http_or_tls_info = NULL;
+//    uint64_t flow_id = GetFlowId(json_msg);
+//
+//    if (console_output_level > 1)
+//    {
+//        printf("[nDPId Debug] GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
+//    }
+//
+//    if (flow_id <= 0)
+//    {
+//        printf("Error: Flow id not found in \n%s\n", json_msg);
+//        return;
+//    }
+//
+//    if (flow_id == INVALID_FLOW_ID)
+//    {
+//        logger(1,
+//               "[%8llu, %zu] Could not extract flow ID from JSON message",
+//               workflow->packets_captured,
+//               reader_thread->array_index);
+//        return;
+//    }
+//
+//
+//    if (workflow->is_pcap_file == 0 && (event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE))
+//    {
+//        add_or_update_flow_entry(&flow_map, flow_id, json_msg);
+//        write_to_console(0, 3, "send_to_collector returning for [event == FLOW_EVENT_DETECTED || event == FLOW_EVENT_DETECTION_UPDATE]");
+//        return;
+//    }
+//    else
+//    {
+//        json_string_with_http_or_tls_info = get_json_string_from_map(&flow_map, flow_id);
+//    }
+//
+//    // Ashwani
+//    // We are not using socket so no need to connect just return from here. vv
+//
+//    if (output_send_to_file)
+//    {
+//        write_to_file(json_msg, json_string_with_http_or_tls_info);
+//    }
+//
+//    if (output_send_to_socket)
+//    {
+//        write_to_socket_buffer(json_msg, json_string_with_http_or_tls_info);
+//        log_socket_buffer_stats();        
+//    }
+//
+//    free(json_string_with_http_or_tls_info);
+//    json_string_with_http_or_tls_info = NULL;
+//}
 
 static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
 {
@@ -7152,7 +7197,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPID program version is 03.10.2026.01\n");
+    printf("nDPID program version is 03.11.2026.01\n");
     printf("------------------------------------\n");
 }
 
@@ -7996,7 +8041,7 @@ static void * socket_writer_thread_func()
         pthread_mutex_unlock(&socket_queue.lock);
 
         // Try to write the message
-        int rc = write_to_socket(&reader_threads[0], msg->json_msg, msg->json_string_with_http_or_tls_info);
+        int rc = write_to_socket(&reader_threads[0], msg->json_msg);
 
         if (rc == 0)
         {
@@ -8011,8 +8056,6 @@ static void * socket_writer_thread_func()
 
             // Free message after removal from queue
             free(msg->json_msg);
-            if (msg->json_string_with_http_or_tls_info)
-                free(msg->json_string_with_http_or_tls_info);
         }
         else
         {
