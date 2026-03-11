@@ -3972,6 +3972,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     if (flow_id == INVALID_FLOW_ID)
     {
+        struct nDPId_workflow * const workflow = reader_thread->workflow;
         logger(1,
                "[%8llu, %zu] Could not extract flow ID from JSON message",
                workflow->packets_captured,
@@ -7197,7 +7198,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPID program version is 03.11.2026.01\n");
+    printf("nDPID program version is 03.11.2026.02\n");
     printf("------------------------------------\n");
 }
 
