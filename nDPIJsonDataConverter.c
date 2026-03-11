@@ -1721,7 +1721,7 @@ void ConvertnDPIDataFormat(const char * originalJsonStr,
                            int * createAlert)
 {
    
-    struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr;
+    struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr);
 
     *createAlert = ndpiData.flow_risk_count;
 
