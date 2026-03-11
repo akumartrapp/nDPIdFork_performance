@@ -142,7 +142,7 @@ static char * strDuplicate(const char * inputSting)
 
 // struct definitions moved to header
 
-#define FLOW_DIRECTION_MAP_MAX 10240
+#define FLOW_DIRECTION_MAP_MAX 500000
 
 static flow_direction_map_entry_t flow_direction_map[FLOW_DIRECTION_MAP_MAX];
 static int flow_direction_map_size = 0;
