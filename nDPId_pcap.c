@@ -434,12 +434,12 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     fflush(alert_log_fp); // ensure data is written
 }
 
-void write_to_file(const char * const json_msg, const char * const json_string_with_http_or_tls_info)
+void write_to_file(const char * const json_msg)
 {
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
-    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+    ConvertnDPIDataFormat(json_msg,  0, &converted_json_str, &flow_risk_count);
     if (converted_json_str != NULL)
     {
         int length = strlen(converted_json_str);
@@ -453,7 +453,6 @@ void write_to_file(const char * const json_msg, const char * const json_string_w
                     free(converted_json_str);
                     int flow_risk_count_dummy = 0;
                     ConvertnDPIDataFormat(json_msg,
-                                          json_string_with_http_or_tls_info,
                                           index,
                                           &converted_json_str,
                                           &flow_risk_count_dummy);
@@ -3678,8 +3677,7 @@ static void write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 }
 
 static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                     const char * const json_msg,
-                            const char * const json_string_with_http_or_tls_info)
+                     const char * const json_msg)
 {
     write_to_console(0, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -3720,7 +3718,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
-    ConvertnDPIDataFormat(json_msg, json_string_with_http_or_tls_info, 0, &converted_json_str, &flow_risk_count);
+    ConvertnDPIDataFormat(json_msg, 0, &converted_json_str, &flow_risk_count);
     if (converted_json_str != NULL)
     {
         int length = strlen(converted_json_str);
@@ -3733,8 +3731,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
                 {
                     free(converted_json_str);
                     int flow_risk_count_dummy = 0;
-                    ConvertnDPIDataFormat(json_msg,
-                                          json_string_with_http_or_tls_info,
+                    ConvertnDPIDataFormat(json_msg,                                          
                                           index,
                                           &converted_json_str,
                                           &flow_risk_count_dummy);
