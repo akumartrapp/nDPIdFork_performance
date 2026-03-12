@@ -3983,23 +3983,24 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     // Ashwani
     // We are not using socket so no need to connect just return from here. vv
 
+    char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg);
     if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
         if (output_send_to_file)
         {
-            write_to_file(json_msg);
+            write_to_file(updated_json_msg);
         }
 
         if (output_send_to_socket)
         {
-            write_to_socket_buffer(json_msg);
+            write_to_socket_buffer(updated_json_msg);
             log_socket_buffer_stats();
         }
+
+        RemoveFlowDirectionEntry(flow_id);
     }
-    else
-    {
-        StoreOrUpdateFlowDirection(json_msg);
-    }
+    
+    free(updated_json_msg);
 }
 //
 //

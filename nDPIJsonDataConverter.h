@@ -25,10 +25,11 @@ typedef struct {
 	flow_direction_info_t info;
 } flow_direction_map_entry_t;
 const flow_direction_map_entry_t *GetFlowDirectionMap(int *size);
-void StoreOrUpdateFlowDirection(const char *json_msg);
+char* StoreOrUpdateFlowDirection(const char *json_msg);
 char *UpdateFlowDirectionIfSwapped(const char *json_msg);
 void UpdateFlowDirectionJson(const char *json_msg);
 void ClearFlowDirectionMap(void);
+int RemoveFlowDirectionEntry(uint64_t flow_id);
 
 void ConvertnDPIDataFormat(const char * json_str, int flowRiskIndex, char ** converted_json_str, int * create_alert);
 void DeletenDPIRisk(char* jsonStr, char** converted_json_str);
