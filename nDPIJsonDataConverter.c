@@ -162,7 +162,7 @@ const flow_direction_map_entry_t *GetFlowDirectionMap(int *size)
     return flow_direction_map;
 }
 
-c// Removes the entry with the given flow_id from the map.
+// Removes the entry with the given flow_id from the map.
 // Returns 1 if found and removed, 0 if not found.
 int RemoveFlowDirectionEntry(uint64_t flow_id)
 {
