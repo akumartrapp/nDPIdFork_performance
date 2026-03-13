@@ -37,7 +37,7 @@ char *UpdateFlowDirectionIfSwapped(const char *json_msg);
 void UpdateFlowDirectionJson(const char *json_msg);
 void ClearFlowDirectionMap(void);
 void AddToPendingEndList(uint64_t flow_id, uint64_t time_usec);
-void RemoveFromPendingEndList(uint64_t flow_id) void ClearFlowDirectionMap(void);
+void RemoveFromPendingEndList(uint64_t flow_id)
 int GetPendingEndListSize();
 int RemoveFlowDirectionEntry(uint64_t flow_id);
 
