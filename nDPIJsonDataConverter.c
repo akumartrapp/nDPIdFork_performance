@@ -173,12 +173,6 @@ const pending_end_entry_t * GetPendingEndList(int * size)
     return pending_end_list;
 }
 
-// Accessor for read-only access to pending end list
-const pending_end_entry_t *GetPendingEndList(int *size)
-{
-    if (size) *size = pending_end_list_size;
-    return pending_end_list;
-}
 
 // Remove entry at a specific index (used by sweep)
 void RemovePendingEndListAtIndex(int idx)
