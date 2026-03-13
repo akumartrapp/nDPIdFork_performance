@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -171,6 +172,13 @@ const pending_end_entry_t * GetPendingEndList(int * size)
 {
     if (size) *size = pending_end_list_size;
     return pending_end_list;
+}
+
+uint64_t GetCurrentTimeUsec(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 
 
