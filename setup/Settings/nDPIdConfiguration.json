@@ -2,6 +2,8 @@
     "nDPId": {
         "logFilesLengthInSeconds": 60,
         "logFilesLengthInMB": 5,
+        "flowEndTimeoutInMinutes": 1,
+        "flowStaleTimeoutInMinutes": 10,
 
         "debugLogs": {
             "detailedLog": false,
@@ -20,7 +22,7 @@
         },
 
         "output": {
-            "sendToSocket": true,
+            "sendToSocket": false,
             "writeToJsonFiles": true
         },
 

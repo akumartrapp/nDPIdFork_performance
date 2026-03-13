@@ -143,9 +143,13 @@ static char * strDuplicate(const char * inputSting)
 // struct definitions moved to header
 
 #define FLOW_DIRECTION_MAP_MAX 500000
+#define PENDING_END_MAX 500000
 
 static flow_direction_map_entry_t flow_direction_map[FLOW_DIRECTION_MAP_MAX];
 static int flow_direction_map_size = 0;
+
+static pending_end_entry_t pending_end_list[PENDING_END_MAX];
+static int pending_end_list_size = 0;
 
 // API to clear the flow_direction_map
 void ClearFlowDirectionMap(void)
@@ -193,6 +197,39 @@ int RemoveFlowDirectionEntry(uint64_t flow_id)
     }
     return 0;
 }
+
+int GetPendingEndListSize()
+{
+    return pending_end_list_size;
+}
+
+void AddToPendingEndList(uint64_t flow_id, uint64_t time_usec)
+{
+    if (pending_end_list_size >= PENDING_END_MAX)
+    {
+        printf("WARN: pending_end_list is FULL, cannot track flow_id=%llu\n", (unsigned long long)flow_id);
+        return;
+    }
+    pending_end_list[pending_end_list_size].flow_id = flow_id;
+    pending_end_list[pending_end_list_size].first_end_time_usec = time_usec;
+    pending_end_list_size++;
+}
+
+void RemoveFromPendingEndList(uint64_t flow_id)
+{
+    for (int i = 0; i < pending_end_list_size; ++i)
+    {
+        if (pending_end_list[i].flow_id == flow_id)
+        {
+            if (i < pending_end_list_size - 1)
+                pending_end_list[i] = pending_end_list[pending_end_list_size - 1];
+            memset(&pending_end_list[pending_end_list_size - 1], 0, sizeof(pending_end_entry_t));
+            pending_end_list_size--;
+            return;
+        }
+    }
+}
+
 
 // Update the flow direction map entry with the latest JSON string for the given flow
 void UpdateFlowDirectionJson(const char *json_msg)

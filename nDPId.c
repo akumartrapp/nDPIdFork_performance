@@ -146,6 +146,11 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 #define MAX_FILENAME_LEN (PATH_STR_LEN + 512)
 #define SOCKET_BUFFER_CAPACITY 8192 // number of messages allowed in queue adjust based on memory
 
+// File-level variables (replaces the #defines)
+static uint64_t flow_end_timeout_usec = (60ULL * 1000000ULL);    // default: 1 minute
+static uint64_t flow_stale_timeout_usec = (600ULL * 1000000ULL); // default: 10 minutes
+
+
 
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
@@ -209,6 +214,50 @@ static void init_socket_buffer();
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
 
 /*--------------------------------------------------------------------------------------------------------------*/
+// Call this after reading values from config file.
+// end_timeout_minutes   : how long to wait for second END event
+// stale_timeout_minutes : how long before an inactive flow is evicted
+void SetFlowTimeouts(uint32_t end_timeout_minutes, uint32_t stale_timeout_minutes)
+{
+    if (end_timeout_minutes == 0)
+    {
+        printf("WARN: end_timeout_minutes cannot be 0, using default of 1 minute\n");
+        end_timeout_minutes = 1;
+    }
+    if (stale_timeout_minutes == 0)
+    {
+        printf("WARN: stale_timeout_minutes cannot be 0, using default of 10 minutes\n");
+        stale_timeout_minutes = 10;
+    }
+    if (end_timeout_minutes >= stale_timeout_minutes)
+    {
+        printf("WARN: end_timeout_minutes (%u) should be less than stale_timeout_minutes (%u)\n",
+               end_timeout_minutes,
+               stale_timeout_minutes);
+    }
+
+    flow_end_timeout_usec = (uint64_t)end_timeout_minutes * 60ULL * 1000000ULL;
+    flow_stale_timeout_usec = (uint64_t)stale_timeout_minutes * 60ULL * 1000000ULL;
+
+    printf("INFO: flow_end_timeout   = %u min (%llu usec)\n",
+           end_timeout_minutes,
+           (unsigned long long)flow_end_timeout_usec);
+    printf("INFO: flow_stale_timeout = %u min (%llu usec)\n",
+           stale_timeout_minutes,
+           (unsigned long long)flow_stale_timeout_usec);
+}
+
+// Getters — use these in SweepStaleEndFlows instead of the old #defines
+uint64_t GetFlowEndTimeoutUsec(void)
+{
+    return flow_end_timeout_usec;
+}
+
+uint64_t GetFlowStaleTimeoutUsec(void)
+{
+    return flow_stale_timeout_usec;
+}
+
 void write_to_console(int error, int level, const char * fmt, ...)
 {
     if (console_output_level < level)
@@ -1382,6 +1431,8 @@ static void printConfigurationData(int level)
         printf("nDPId Configuration Data:\n");
         printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
         printf("\tlog_file_size_in_mb: %d\n", log_file_size_in_mb);
+        printf("\end_timeout_min: %d\n", end_timeout_min);
+        printf("\stale_timeout_min: %d\n", stale_timeout_min);
         printf("\tconsole_output_level: %d\n", console_output_level);
         printf("\tdetailed_log_enabled: %s\n", detailed_log_enabled ? "TRUE" : "FALSE");
         printf("\tmaster_log_file_enabled: %s\n", master_log_file_enabled ? "TRUE" : "FALSE");
@@ -1454,6 +1505,23 @@ static void readConfigurationData(const char * filename, int level)
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
         {
             log_file_size_in_mb = json_object_get_int(val);           
+        }
+
+        uint32_t end_timeout_min = 1;
+        uint32_t stale_timeout_min = 10; 
+        if (json_object_object_get_ex(ndpid_obj, "flowEndTimeoutInMinutes", &val))
+        {
+            end_timeout_min = json_object_get_int(val);
+        }
+
+        if (json_object_object_get_ex(ndpid_obj, "flowStaleTimeoutInMinutes", &val))
+        {
+            stale_timeout_min = json_object_get_int(val);
+        }
+
+        if (end_timeout_min >= 1 and stale_timeout_min > end_timeout_min)
+        {
+            SetFlowTimeouts(end_timeout_min, stale_timeout_min);
         }
 
         struct json_object * consoleOutput_obj;
@@ -3946,6 +4014,99 @@ static void write_to_socket_buffer(const char * json_msg)
     write_to_console(0, 3, "write_to_socket_buffer exiting");
 }
 
+void SweepStaleEndFlows(void)
+{
+    uint64_t now = GetCurrentTimeUsec();
+
+    // --- Pass 1: check pending END list for end_timeout (default: 1 minute) ---
+    int pending_end_list_size = GetPendingEndListSize();
+    int i = 0;
+    while (i < pending_end_list_size)
+    {
+        if ((now - pending_end_list[i].first_end_time_usec) >= GetFlowEndTimeoutUsec())
+        {
+            uint64_t flow_id = pending_end_list[i].flow_id;
+
+            printf("WARN: flow_id=%llu timed out waiting for second END, emitting and removing\n", (unsigned long long)flow_id);
+
+            // Find the entry in the flow direction map and emit
+            for (int j = 0; j < flow_direction_map_size; ++j)
+            {
+                if (flow_direction_map[j].flow_id == flow_id)
+                {
+                    if (flow_direction_map[j].info.json_str)
+                    {
+                        if (output_send_to_file)
+                        {
+                            write_to_file(flow_direction_map[j].info.json_str);
+                        }
+
+                        if (output_send_to_socket)
+                        {
+                            write_to_socket_buffer(flow_direction_map[j].info.json_str);
+                            log_socket_buffer_stats();
+                        }
+                    }
+                    break;
+                }
+            }
+
+            // Remove from flow direction map
+            RemoveFlowDirectionEntry(flow_id);
+
+            // Remove from pending end list (swap with last)
+            if (i < pending_end_list_size - 1)
+            {
+                pending_end_list[i] = pending_end_list[pending_end_list_size - 1];
+            }
+
+            memset(&pending_end_list[pending_end_list_size - 1], 0, sizeof(pending_end_entry_t));
+            pending_end_list_size--;
+            // Don't increment i — recheck this slot
+        }
+        else
+        {
+            i++;
+        }
+    }
+
+    // --- Pass 2: scan full map for flows stale for stale_timeout (default: 10 minutes) ---
+    i = 0;
+    while (i < flow_direction_map_size)
+    {
+        flow_direction_map_entry_t * entry = &flow_direction_map[i];
+
+        if (entry->last_update_time_usec > 0 && (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
+        {
+            printf("WARN: flow_id=%llu stale for configured timeout, removing\n", (unsigned long long)entry->flow_id);
+
+            // Clean up pending end list in case this flow was waiting for second END
+            RemoveFromPendingEndList(entry->flow_id);
+
+            // Free json string
+            if (entry->info.json_str)
+            {
+                free(entry->info.json_str);
+                entry->info.json_str = NULL;
+            }
+
+            // Swap with last entry and shrink map
+            if (i < flow_direction_map_size - 1)
+            {
+                flow_direction_map[i] = flow_direction_map[flow_direction_map_size - 1];
+            }
+
+            memset(&flow_direction_map[flow_direction_map_size - 1], 0, sizeof(flow_direction_map_entry_t));
+            flow_direction_map_size--;
+            // Don't increment i — recheck this slot
+        }
+        else
+        {
+            i++;
+        }
+    }
+}
+
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                               char const * const json_msg,
                               size_t json_msg_len,
@@ -3984,24 +4145,40 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     // We are not using socket so no need to connect just return from here. vv
 
     char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg);
+
     if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
-        if (output_send_to_file)
-        {
-            write_to_file(updated_json_msg);
-        }
+        IncrementEndEventCount(flow_id);
 
-        if (output_send_to_socket)
+        if (GetEndEventCount(flow_id) >= 2)
         {
-            write_to_socket_buffer(updated_json_msg);
-            log_socket_buffer_stats();
-        }
+            // Both directions ended — emit, clean up pending list, and remove
+            if (output_send_to_file)
+            {
+                write_to_file(updated_json_msg);
+            }
 
-        RemoveFlowDirectionEntry(flow_id);
+            if (output_send_to_socket)
+            {
+                write_to_socket_buffer(updated_json_msg);
+                log_socket_buffer_stats();
+            }
+
+            RemoveFromPendingEndList(flow_id);
+            RemoveFlowDirectionEntry(flow_id);
+        }
+        else
+        {
+            // First END — add to pending list and wait for second
+            AddToPendingEndList(flow_id, GetCurrentTimeUsec());
+        }
     }
-    
+
+    SweepStaleEndFlows();
+
     free(updated_json_msg);
 }
+
 //
 //
 //static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len,  enum flow_event event)
@@ -7199,7 +7376,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPID program version is 03.11.2026.03\n");
+    printf("nDPID program version is 03.12.2026.01\n");
     printf("------------------------------------\n");
 }
 
