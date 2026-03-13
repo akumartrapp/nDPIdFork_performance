@@ -32,6 +32,8 @@ typedef struct
 } pending_end_entry_t;
 
 const flow_direction_map_entry_t *GetFlowDirectionMap(int *size);
+const pending_end_entry_t * GetPendingEndList(int * size);
+
 char* StoreOrUpdateFlowDirection(const char *json_msg);
 char *UpdateFlowDirectionIfSwapped(const char *json_msg);
 void UpdateFlowDirectionJson(const char *json_msg);

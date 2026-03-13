@@ -4019,31 +4019,33 @@ void SweepStaleEndFlows(void)
     uint64_t now = GetCurrentTimeUsec();
 
     // --- Pass 1: check pending END list for end_timeout (default: 1 minute) ---
-    int pending_end_list_size = GetPendingEndListSize();
+    int pending_size = 0;
     int i = 0;
-    while (i < pending_end_list_size)
+    while (i < (GetPendingEndList(&pending_size), pending_size))
     {
-        if ((now - pending_end_list[i].first_end_time_usec) >= GetFlowEndTimeoutUsec())
+        const pending_end_entry_t * pending = GetPendingEndList(&pending_size);
+        if ((now - pending[i].first_end_time_usec) >= GetFlowEndTimeoutUsec())
         {
-            uint64_t flow_id = pending_end_list[i].flow_id;
+            uint64_t flow_id = pending[i].flow_id;
 
-            printf("WARN: flow_id=%llu timed out waiting for second END, emitting and removing\n", (unsigned long long)flow_id);
+            printf("WARN: flow_id=%llu timed out waiting for second END, emitting and removing\n",
+                   (unsigned long long)flow_id);
 
-            // Find the entry in the flow direction map and emit
-            for (int j = 0; j < flow_direction_map_size; ++j)
+            // Find entry in flow direction map and emit
+            int map_size = 0;
+            const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
+            for (int j = 0; j < map_size; ++j)
             {
-                if (flow_direction_map[j].flow_id == flow_id)
+                if (map[j].flow_id == flow_id)
                 {
-                    if (flow_direction_map[j].info.json_str)
+                    if (map[j].info.json_str)
                     {
                         if (output_send_to_file)
-                        {
-                            write_to_file(flow_direction_map[j].info.json_str);
-                        }
+                            write_to_file(map[j].info.json_str);
 
                         if (output_send_to_socket)
                         {
-                            write_to_socket_buffer(flow_direction_map[j].info.json_str);
+                            write_to_socket_buffer(map[j].info.json_str);
                             log_socket_buffer_stats();
                         }
                     }
@@ -4051,17 +4053,8 @@ void SweepStaleEndFlows(void)
                 }
             }
 
-            // Remove from flow direction map
             RemoveFlowDirectionEntry(flow_id);
-
-            // Remove from pending end list (swap with last)
-            if (i < pending_end_list_size - 1)
-            {
-                pending_end_list[i] = pending_end_list[pending_end_list_size - 1];
-            }
-
-            memset(&pending_end_list[pending_end_list_size - 1], 0, sizeof(pending_end_entry_t));
-            pending_end_list_size--;
+            RemovePendingEndListAtIndex(i);
             // Don't increment i — recheck this slot
         }
         else
@@ -4070,34 +4063,20 @@ void SweepStaleEndFlows(void)
         }
     }
 
-    // --- Pass 2: scan full map for flows stale for stale_timeout (default: 10 minutes) ---
+    // --- Pass 2: scan full map for flows stale beyond stale_timeout (default: 10 minutes) ---
     i = 0;
-    while (i < flow_direction_map_size)
+    int map_size = 0;
+    while (i < (GetFlowDirectionMap(&map_size), map_size))
     {
-        flow_direction_map_entry_t * entry = &flow_direction_map[i];
+        const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
+        const flow_direction_map_entry_t * entry = &map[i];
 
         if (entry->last_update_time_usec > 0 && (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
         {
             printf("WARN: flow_id=%llu stale for configured timeout, removing\n", (unsigned long long)entry->flow_id);
 
-            // Clean up pending end list in case this flow was waiting for second END
             RemoveFromPendingEndList(entry->flow_id);
-
-            // Free json string
-            if (entry->info.json_str)
-            {
-                free(entry->info.json_str);
-                entry->info.json_str = NULL;
-            }
-
-            // Swap with last entry and shrink map
-            if (i < flow_direction_map_size - 1)
-            {
-                flow_direction_map[i] = flow_direction_map[flow_direction_map_size - 1];
-            }
-
-            memset(&flow_direction_map[flow_direction_map_size - 1], 0, sizeof(flow_direction_map_entry_t));
-            flow_direction_map_size--;
+            RemoveFlowDirectionEntry(entry->flow_id);
             // Don't increment i — recheck this slot
         }
         else

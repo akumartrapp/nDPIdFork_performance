@@ -166,6 +166,14 @@ const flow_direction_map_entry_t *GetFlowDirectionMap(int *size)
     return flow_direction_map;
 }
 
+// Accessor for read-only access to pending end list
+const pending_end_entry_t * GetPendingEndList(int * size)
+{
+    if (size) *size = pending_end_list_size;
+    return pending_end_list;
+}
+
+
 // Removes the entry with the given flow_id from the map.
 // Returns 1 if found and removed, 0 if not found.
 int RemoveFlowDirectionEntry(uint64_t flow_id)
