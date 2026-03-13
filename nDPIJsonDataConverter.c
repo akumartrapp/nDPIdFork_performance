@@ -173,6 +173,47 @@ const pending_end_entry_t * GetPendingEndList(int * size)
     return pending_end_list;
 }
 
+// Accessor for read-only access to pending end list
+const pending_end_entry_t *GetPendingEndList(int *size)
+{
+    if (size) *size = pending_end_list_size;
+    return pending_end_list;
+}
+
+// Remove entry at a specific index (used by sweep)
+void RemovePendingEndListAtIndex(int idx)
+{
+    if (idx < 0 || idx >= pending_end_list_size) return;
+
+    if (idx < pending_end_list_size - 1)
+        pending_end_list[idx] = pending_end_list[pending_end_list_size - 1];
+
+    memset(&pending_end_list[pending_end_list_size - 1], 0,
+           sizeof(pending_end_entry_t));
+    pending_end_list_size--;
+}
+
+void IncrementEndEventCount(uint64_t flow_id)
+{
+    for (int i = 0; i < flow_direction_map_size; ++i)
+    {
+        if (flow_direction_map[i].flow_id == flow_id)
+        {
+            flow_direction_map[i].end_event_count++;
+            return;
+        }
+    }
+}
+
+int GetEndEventCount(uint64_t flow_id)
+{
+    for (int i = 0; i < flow_direction_map_size; ++i)
+    {
+        if (flow_direction_map[i].flow_id == flow_id)
+            return flow_direction_map[i].end_event_count;
+    }
+    return 0;
+}
 
 // Removes the entry with the given flow_id from the map.
 // Returns 1 if found and removed, 0 if not found.
