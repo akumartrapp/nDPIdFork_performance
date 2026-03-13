@@ -1519,7 +1519,7 @@ static void readConfigurationData(const char * filename, int level)
             stale_timeout_min = json_object_get_int(val);
         }
 
-        if (end_timeout_min >= 1 and stale_timeout_min > end_timeout_min)
+        if (end_timeout_min >= 1 && stale_timeout_min > end_timeout_min)
         {
             SetFlowTimeouts(end_timeout_min, stale_timeout_min);
         }
