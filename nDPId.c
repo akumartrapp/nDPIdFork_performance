@@ -1431,8 +1431,8 @@ static void printConfigurationData(int level)
         printf("nDPId Configuration Data:\n");
         printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
         printf("\tlog_file_size_in_mb: %d\n", log_file_size_in_mb);
-        printf("\end_timeout_min: %d\n", end_timeout_min);
-        printf("\stale_timeout_min: %d\n", stale_timeout_min);
+        printf("\flow_end_timeout_usec: %d\n", flow_end_timeout_usec);
+        printf("\flow_stale_timeout_usec: %d\n", flow_stale_timeout_usec);
         printf("\tconsole_output_level: %d\n", console_output_level);
         printf("\tdetailed_log_enabled: %s\n", detailed_log_enabled ? "TRUE" : "FALSE");
         printf("\tmaster_log_file_enabled: %s\n", master_log_file_enabled ? "TRUE" : "FALSE");
