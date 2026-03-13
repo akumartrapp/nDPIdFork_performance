@@ -20,9 +20,13 @@ typedef struct {
 	char *json_str; // Store full JSON string
 } flow_direction_info_t;
 
-typedef struct {
-	uint64_t flow_id;
-	flow_direction_info_t info;
+typedef struct
+{
+    uint64_t flow_id;
+    flow_direction_info_t info;
+    int end_event_count;
+    uint64_t first_end_time_usec;
+    uint64_t last_update_time_usec;
 } flow_direction_map_entry_t;
 
 typedef struct
