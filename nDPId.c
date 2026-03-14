@@ -4567,10 +4567,10 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                enum flow_event event)
 {
     write_to_console(0, 3, "jsonize_flow_event called");
-    if (skipEventsFromLogging(event))
-    {       
-        return -1;
-    }
+    //if (skipEventsFromLogging(event))
+    //{       
+    //    return -1;
+    //}
 
     struct nDPId_workflow * const workflow = reader_thread->workflow;
     char const ev[] = "flow_event_name";
@@ -7355,7 +7355,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPID program version is 03.13.2026.01\n");
+    printf("nDPID program version is 03.13.2026.02\n");
     printf("------------------------------------\n");
 }
 

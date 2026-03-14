@@ -655,7 +655,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPId_pcap program version is 03.10.2026.01\n");
+    printf("nDPId_pcap program version is 03.13.2026.02\n");
     printf("------------------------------------\n");
 }
 
@@ -4270,11 +4270,11 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
 {
     printf("[TRACE]: jsonize_flow_event called for event %s\n", flow_event_name_table[event]);
     write_to_console(0, "jsonize_flow_event called");
-    if (skipEventsFromLogging(event))
-    {       
-        printf("[TRACE]: Skipping event %s from logging\n", flow_event_name_table[event]);
-        return -1;
-    }
+    //if (skipEventsFromLogging(event))
+    //{       
+    //    printf("[TRACE]: Skipping event %s from logging\n", flow_event_name_table[event]);
+    //    return -1;
+    //}
 
     printf("[TRACE]: jsonize_flow_event called for event %s\n", flow_event_name_table[event]);
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -4428,11 +4428,11 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
                                          struct nDPId_flow * const flow,
                                          enum flow_event event)
 {
-    if (skipEventsFromLogging(event))
-    {     
-        printf("[TRACE]: jsonize_flow_detection_event: skipping event %d\n", event);
-        return ;
-    }
+    //if (skipEventsFromLogging(event))
+    //{     
+    //    printf("[TRACE]: jsonize_flow_detection_event: skipping event %d\n", event);
+    //    return ;
+    //}
 
     printf("[TRACE]: jsonize_flow_detection_event: processing event %d\n", event);
     struct nDPId_workflow * const workflow = reader_thread->workflow;
