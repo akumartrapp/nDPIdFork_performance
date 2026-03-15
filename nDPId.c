@@ -7799,7 +7799,7 @@ static int nDPId_parse_options(int argc, char ** argv)
             default:
                 logger_early(0, "%s", get_nDPId_version());
                 print_usage(argv[0]);
-                print_subopt_usage();
+                //print_subopt_usage();
                 return 1;
         }
     }
@@ -7808,7 +7808,7 @@ static int nDPId_parse_options(int argc, char ** argv)
     {
         logger_early(1, "%s", "Unexpected argument after options");
         print_usage(argv[0]);
-        //print_subopt_usage();
+        print_subopt_usage();
         return 1;
     }
 
