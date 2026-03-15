@@ -7473,7 +7473,7 @@ static void nDPId_print_deps_version(void)
         "nDPI version...: %s\n"
 #endif
         "API version...: %u\n"
-        "pcap version...: %s\n",
+        "pcap version...: %s\t",
 #ifndef PKG_VERSION
         "unknown",
 #else

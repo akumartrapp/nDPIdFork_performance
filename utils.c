@@ -654,7 +654,7 @@ char const * get_nDPId_version(void)
 #else
            "unknown"
 #endif
-           "\n"
+           ""
            ""
            "";
 }
