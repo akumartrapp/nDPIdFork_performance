@@ -7510,33 +7510,34 @@ static void nDPId_print_deps_version()
     // MM.DD.YYYY
     printVersion();
 
-    return;
-    printf(
-            "-------------------------------------------------------\n"
-            "package version: %s\n"
+#ifdef PKG_VERSION
+    logger_early(0, "package version: %s", PKG_VERSION);
+#else
+    logger_early(0, "package version: unknown");
+#endif
+return;
 #ifdef LIBNDPI_STATIC
-            "nDPI version...: %s (statically linked)\n"
+    logger_early(0, "nDPI version...: %s (statically linked)", ndpi_revision());
 #else
-            "nDPI version...: %s\n"
+    logger_early(0, "nDPI version...: %s", ndpi_revision());
 #endif
-            " API version...: %u\n"
-            "pcap version...: %s\n",
-#ifndef PKG_VERSION
-            "unknown",
-#else
-            PKG_VERSION,
-#endif
-            ndpi_revision(),
-            ndpi_get_api_version(),
-            pcap_lib_version() + strlen("libpcap version "));
-    if (ndpi_get_gcrypt_version() != NULL)
-    {
-        printf("gcrypt version.: %s\n", ndpi_get_gcrypt_version());
+    logger_early(0, "API version...: %u", ndpi_get_api_version());
+    const char *pcap_ver = pcap_lib_version();
+    const char *prefix = "libpcap version ";
+    const char *pcap_short = NULL;
+    if (pcap_ver && strncmp(pcap_ver, prefix, strlen(prefix)) == 0) {
+        pcap_short = pcap_ver + strlen(prefix);
+    } else {
+        pcap_short = pcap_ver ? pcap_ver : "unknown";
+    }
+    logger_early(0, "pcap version...: %s", pcap_short);
+    if (ndpi_get_gcrypt_version() != NULL) {
+        logger_early(0, "gcrypt version.: %s", ndpi_get_gcrypt_version());
     }
 #ifdef ENABLE_PFRING
     npfring_print_version(NULL);
 #endif
-    printf("%s", "-------------------------------------------------------\n");
+    logger_early(0, "%s", "-------------------------------------------------------");
 }
 
 static int read_uuid_from_file(char const * const path)
