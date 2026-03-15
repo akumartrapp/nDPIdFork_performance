@@ -221,30 +221,23 @@ void SetFlowTimeouts(uint32_t end_timeout_minutes, uint32_t stale_timeout_minute
 {
     if (end_timeout_minutes == 0)
     {
-        printf("WARN: end_timeout_minutes cannot be 0, using default of 1 minute\n");
+        logger(0, "WARN: end_timeout_minutes cannot be 0, using default of 1 minute");
         end_timeout_minutes = 1;
     }
     if (stale_timeout_minutes == 0)
     {
-        printf("WARN: stale_timeout_minutes cannot be 0, using default of 10 minutes\n");
+        logger(0, "WARN: stale_timeout_minutes cannot be 0, using default of 10 minutes");
         stale_timeout_minutes = 10;
     }
     if (end_timeout_minutes >= stale_timeout_minutes)
     {
-        printf("WARN: end_timeout_minutes (%u) should be less than stale_timeout_minutes (%u)\n",
+        logger(0, "WARN: end_timeout_minutes (%u) should be less than stale_timeout_minutes (%u)",
                end_timeout_minutes,
                stale_timeout_minutes);
     }
 
     flow_end_timeout_usec = (uint64_t)end_timeout_minutes * 60ULL * 1000000ULL;
     flow_stale_timeout_usec = (uint64_t)stale_timeout_minutes * 60ULL * 1000000ULL;
-
-    printf("INFO: flow_end_timeout   = %u min (%llu usec)\n",
-           end_timeout_minutes,
-           (unsigned long long)flow_end_timeout_usec);
-    printf("INFO: flow_stale_timeout = %u min (%llu usec)\n",
-           stale_timeout_minutes,
-           (unsigned long long)flow_stale_timeout_usec);
 }
 
 // Getters — use these in SweepStaleEndFlows instead of the old #defines
@@ -529,11 +522,11 @@ static void write_to_file(const char * const json_msg)
             if (console_output_level > 1)
             {
                 uint64_t flow_id = GetFlowId(converted_json_str);
-                printf("[nDPId Debug] write_to_file: GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
+                logger(0, "write_to_file(): GetFlowId Flow ID: %" PRIu64, flow_id);
                 if (flow_id <= 0)
                 {
-                    printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", json_msg);
-                    printf("[nDPId Error] write_to_file: Flow id not found in \n%s\n", converted_json_str);
+                    logger(1, "write_to_file(): Flow id not found in \n%s", json_msg);
+                    logger(1, "write_to_file(): Flow id not found in \n%s", converted_json_str);
                 }
             }
            
@@ -1063,7 +1056,7 @@ void ensure_capacity(flow_map_t * map)
         if (new_entries == NULL)
         {
             // realloc failed: handle gracefully
-            fprintf(stderr, "realloc failed in ensure_capacity\n");
+            logger(1, "realloc failed in ensure_capacity");
             exit(EXIT_FAILURE);
         }
         map->entries = new_entries;
@@ -1428,57 +1421,57 @@ static void printConfigurationData(int level)
 {
     if (level <= console_output_level)
     {
-        printf("nDPId Configuration Data:\n");
-        printf("\tlog_file_duration_in_seconds: %d\n", log_file_duration_in_seconds);
-        printf("\tlog_file_size_in_mb: %d\n", log_file_size_in_mb);
-        printf("\tflow_end_timeout_usec: %llu\n", (unsigned long long)flow_end_timeout_usec);
-        printf("\tflow_stale_timeout_usec: %llu\n", (unsigned long long)flow_stale_timeout_usec);
-        printf("\tconsole_output_level: %d\n", console_output_level);
-        printf("\tdetailed_log_enabled: %s\n", detailed_log_enabled ? "TRUE" : "FALSE");
-        printf("\tmaster_log_file_enabled: %s\n", master_log_file_enabled ? "TRUE" : "FALSE");
-        printf("\tmaster_log_file_duration_in_minutes: %d\n", master_log_file_duration_in_minutes);
-        printf("\toutput_send_to_socket: %s\n", output_send_to_socket ? "TRUE" : "FALSE");
-        printf("\toutput_send_to_file: %s\n", output_send_to_file ? "TRUE" : "FALSE");
-        printf("\tcollector_unix_socket_location: %s\n", collector_unix_socket_location);
-        printf("\tcollector_reconnect_interval_sec: %d\n", collector_reconnect_interval_sec);
-        printf("\tcollector_reconnect_timeout_sec: %d\n", collector_reconnect_timeout_sec);
+        logger_early(0, "%s", "nDPId Configuration Data:");
+        logger_early(0, "\tlog_file_duration_in_seconds: %d", log_file_duration_in_seconds);
+        logger_early(0, "\tlog_file_size_in_mb: %d", log_file_size_in_mb);
+        logger_early(0, "\tflow_end_timeout_usec: %llu", (unsigned long long)flow_end_timeout_usec);
+        logger_early(0, "\tflow_stale_timeout_usec: %llu", (unsigned long long)flow_stale_timeout_usec);
+        logger_early(0, "\tconsole_output_level: %d", console_output_level);
+        logger_early(0, "\tdetailed_log_enabled: %s", detailed_log_enabled ? "TRUE" : "FALSE");
+        logger_early(0, "\tmaster_log_file_enabled: %s", master_log_file_enabled ? "TRUE" : "FALSE");
+        logger_early(0, "\tmaster_log_file_duration_in_minutes: %d", master_log_file_duration_in_minutes);
+        logger_early(0, "\toutput_send_to_socket: %s", output_send_to_socket ? "TRUE" : "FALSE");
+        logger_early(0, "\toutput_send_to_file: %s", output_send_to_file ? "TRUE" : "FALSE");
+        logger_early(0, "\tcollector_unix_socket_location: %s", collector_unix_socket_location);
+        logger_early(0, "\tcollector_reconnect_interval_sec: %d", collector_reconnect_interval_sec);
+        logger_early(0, "\tcollector_reconnect_timeout_sec: %d", collector_reconnect_timeout_sec);
     }  
 }
 
 // Function to read and parse the JSON config
 static void readConfigurationData(const char * filename, int level)
 {
-    if (level <= console_output_level)
-    {
-        printf("\nReading configuration data from JSON file: %s\n", filename);
-    }
+	if (level <= console_output_level)
+	{
+		logger_early(0, "\nReading configuration data from JSON file: %s", filename);
+	}
 
-    FILE * fp = fopen(filename, "r");
-    if (!fp)
-    {
-        printf("ERROR: while opening JSON config file %s: %s\n", filename, strerror(errno));
-        return;
-    }
+	FILE * fp = fopen(filename, "r");
+	if (!fp)
+	{
+		logger_early(1, "Error while opening JSON config file %s: %s", filename, strerror(errno));
+		return;
+	}
 
     fseek(fp, 0, SEEK_END);
     long file_size = ftell(fp);
     rewind(fp);
 
-    char * file_contents = malloc(file_size + 1);
-    if (!file_contents)
-    {
-        printf("ERROR (malloc): Memory allocation failed\n");
-        fclose(fp);
-        return;
-    }
+	char * file_contents = malloc(file_size + 1);
+	if (!file_contents)
+	{
+		logger_early(1, "(malloc): Memory allocation failed");
+		fclose(fp);
+		return;
+	}
 
-    size_t read_bytes = fread(file_contents, 1, file_size, fp);
-    if (read_bytes != (size_t)file_size)
-    {
-        printf("ERROR: fread failed or incomplete (expected %ld bytes, got %zu)\n", file_size, read_bytes);
-        free(file_contents);
-        return;
-    }
+	size_t read_bytes = fread(file_contents, 1, file_size, fp);
+	if (read_bytes != (size_t)file_size)
+	{
+		logger_early(1, "fread failed or incomplete (expected %ld bytes, got %zu)", file_size, read_bytes);
+		free(file_contents);
+		return;
+	}
 
     file_contents[file_size] = '\0';
     fclose(fp);
@@ -1486,11 +1479,11 @@ static void readConfigurationData(const char * filename, int level)
     struct json_object * parsed_json = json_tokener_parse(file_contents);
     free(file_contents);
 
-    if (!parsed_json)
-    {
-        printf("ERROR: Failed to parse JSON\n");
-        return;
-    }
+	if (!parsed_json)
+	{
+		logger_early(1, "Failed to parse JSON");
+		return;
+	}
 
     struct json_object * ndpid_obj = NULL;
     if (json_object_object_get_ex(parsed_json, "nDPId", &ndpid_obj))
@@ -1536,9 +1529,7 @@ static void readConfigurationData(const char * filename, int level)
                 }
                 else
                 {
-                    printf(
-                        "Note: console_output_level is set to %d from command line argument, ignoring JSON config value %d\n",  console_output_level,  json_object_get_int(val));
-                   
+                    logger_early(0,"Note: console_output_level is set to %d from command line argument, ignoring JSON config value %d",  console_output_level, json_object_get_int(val));
                 }
             }
         }
@@ -3882,7 +3873,7 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
             {
                 logger(1,
                        "[%8llu, %zu] Could not reconnect to nDPIsrvd Collector at %s, "
-                       "will try again later. Error: %s",
+                       "will try again later. %s",
                        workflow->packets_captured,
                        reader_thread->array_index,
                        GET_CMDARG_STR(nDPId_options.collector_address),
@@ -4028,8 +4019,7 @@ void SweepStaleEndFlows(void)
         {
             uint64_t flow_id = pending[i].flow_id;
 
-            printf("WARN: flow_id=%llu timed out waiting for second END, emitting and removing\n",
-                   (unsigned long long)flow_id);
+            logger(0, "WARN: flow_id=%llu timed out waiting for second END, emitting and removing", (unsigned long long)flow_id);
 
             // Find entry in flow direction map and emit
             int map_size = 0;
@@ -4073,7 +4063,7 @@ void SweepStaleEndFlows(void)
 
         if (entry->last_update_time_usec > 0 && (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
         {
-            printf("WARN: flow_id=%llu stale for configured timeout, removing\n", (unsigned long long)entry->flow_id);
+            logger(0, "WARN: flow_id=%llu stale for configured timeout, removing", (unsigned long long)entry->flow_id);
 
             RemoveFromPendingEndList(entry->flow_id);
             RemoveFlowDirectionEntry(entry->flow_id);
@@ -4101,12 +4091,12 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     if (console_output_level > 1)
     {
-        printf("[nDPId Debug] GetFlowId Flow ID: %" PRIu64 "\n", flow_id);
+        logger(0, "GetFlowId Flow ID: %" PRIu64, flow_id);
     }
 
     if (flow_id <= 0)
     {
-        printf("Error: Flow id not found in \n%s\n", json_msg);
+        logger(1, "Flow id not found in \n%s", json_msg);
         return;
     }
 
@@ -4596,7 +4586,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
     if (success == -1)
     {
         early_returns++;       
-        printf("jsonize_flow_event: call #%lu, early returns: %lu\n", total_calls, early_returns);
+        logger(0, "WARN: jsonize_flow_even(): call #%lu, early returns: %lu", total_calls, early_returns);
         return -1; 
     }
 
@@ -7249,7 +7239,7 @@ static int stop_reader_threads(void)
         break_pcap_loop(&reader_threads[i]);
     }
 
-    printf("------------------------------------ Stopping reader threads\n");
+    logger(0, "------------------------------------ Stopping reader threads");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -7263,10 +7253,10 @@ static int stop_reader_threads(void)
         }
     }
 
-    printf("------------------------------------ Processing remaining flows\n");
+    logger(0, "------------------------------------ Processing remaining flows");
     process_remaining_flows();
 
-    printf("------------------------------------ Results\n");
+    logger(0, "------------------------------------ Results");
     for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
     {
         if (reader_threads[i].workflow == NULL)
@@ -7285,7 +7275,7 @@ static int stop_reader_threads(void)
         total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
         total_flow_updates += reader_threads[i].workflow->total_flow_updates;
 
-        printf(
+        logger(0,
             "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
             "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
             "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
@@ -7303,18 +7293,18 @@ static int stop_reader_threads(void)
             reader_threads[i].workflow->total_flow_updates);
     }
     /* total packets captured: same value for all threads as packet2thread distribution happens later */
-    printf("Total packets captured.......: %llu\n",
-           (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
-    printf("Total packets processed......: %llu\n", total_packets_processed);
-    printf("Total layer4 payload size....: %llu\n", total_l4_payload_len);
-    printf("Total flows ignopred.........: %llu\n", total_flows_skipped);
-    printf("Total flows processed........: %llu\n", total_flows_captured);
-    printf("Total flows timed out........: %llu\n", total_flows_idle);
-    printf("Total flows detected.........: %llu\n", total_flows_detected);
-    printf("Total flows guessed..........: %llu\n", total_flows_guessed);
-    printf("Total flows not detected.....: %llu\n", total_not_detected);
-    printf("Total flow updates...........: %llu\n", total_flow_updates);
-    printf("Total flow detections updates: %llu\n", total_flow_detection_updates);
+        logger(0, "Total packets captured.......: %llu",
+            (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
+        logger(0, "Total packets processed......: %llu", total_packets_processed);
+        logger(0, "Total layer4 payload size....: %llu", total_l4_payload_len);
+        logger(0, "Total flows ignopred.........: %llu", total_flows_skipped);
+        logger(0, "Total flows processed........: %llu", total_flows_captured);
+        logger(0, "Total flows timed out........: %llu", total_flows_idle);
+        logger(0, "Total flows detected.........: %llu", total_flows_detected);
+        logger(0, "Total flows guessed..........: %llu", total_flows_guessed);
+        logger(0, "Total flows not detected.....: %llu", total_not_detected);
+        logger(0, "Total flow updates...........: %llu", total_flow_updates);
+        logger(0, "Total flow detections updates: %llu", total_flow_detection_updates);
 
     return 0;
 }
@@ -7344,19 +7334,19 @@ static void sighandler(int signum)
 
 static void print_subopt_usage(void)
 {
-    fprintf(stderr, "\tsubopts:\n");
+    logger_early(0, "\tsubopts:");
     for (size_t i = 0; i < nDPIsrvd_ARRAY_LENGTH(tuning_config_map); ++i)
     {
-        fprintf(stderr, "\t\t%s = %llu\n", tuning_config_map[i].key, tuning_config_map[i].opt->ull.default_value);
+        logger_early(0, "\t\t%s = %llu", tuning_config_map[i].key, tuning_config_map[i].opt->ull.default_value);
     }
 }
 
 static void printVersion()
 {
     // MM.DD.YYYY
-    printf("------------------------------------\n");
-    printf("nDPID program version is 03.13.2026.02\n");
-    printf("------------------------------------\n");
+    logger_early(0, "-------------------------------------------------------");
+    logger_early(0, "nDPID program version is 03.15.2026.01");
+    logger_early(0, "-------------------------------------------------------");
 }
 
 static void print_usage(char const * const arg0)
@@ -7463,50 +7453,46 @@ static void print_usage(char const * const arg0)
         "\t-v\tversion\n"
         "\t-h\tthis\n\n";
 
-    fprintf(stderr,
-            usage,
-            arg0,
-            nDPId_options.collector_address.string.default_value,
-            nDPId_options.pidfile.string.default_value,
-            nDPId_options.user.string.default_value);
+    logger_early(0,
+                 usage,
+                 arg0,
+                 nDPId_options.collector_address.string.default_value,
+                 nDPId_options.pidfile.string.default_value,
+                 nDPId_options.user.string.default_value);
 }
 
 
-static void nDPId_print_deps_version(FILE * const out)
+static void nDPId_print_deps_version(void)
 {
-    if (console_output_level < 1)
-    {
-        return;
-    }
     // MM.DD.YYYY
     printVersion();
 
-    fprintf(out,
-            "-------------------------------------------------------\n"
-            "package version: %s\n"
+    logger_early(0,
+        "-------------------------------------------------------\n"
+        "package version: %s\n"
 #ifdef LIBNDPI_STATIC
-            "nDPI version...: %s (statically linked)\n"
+        "nDPI version...: %s (statically linked)\n"
 #else
-            "nDPI version...: %s\n"
+        "nDPI version...: %s\n"
 #endif
-            " API version...: %u\n"
-            "pcap version...: %s\n",
+        " API version...: %u\n"
+        "pcap version...: %s\n",
 #ifndef PKG_VERSION
-            "unknown",
+        "unknown",
 #else
-            PKG_VERSION,
+        PKG_VERSION,
 #endif
-            ndpi_revision(),
-            ndpi_get_api_version(),
-            pcap_lib_version() + strlen("libpcap version "));
+        ndpi_revision(),
+        ndpi_get_api_version(),
+        pcap_lib_version() + strlen("libpcap version "));
     if (ndpi_get_gcrypt_version() != NULL)
     {
-        fprintf(out, "gcrypt version.: %s\n", ndpi_get_gcrypt_version());
+        logger_early(0, "gcrypt version.: %s", ndpi_get_gcrypt_version());
     }
 #ifdef ENABLE_PFRING
-    npfring_print_version(out);
+    npfring_print_version(NULL);
 #endif
-    fprintf(out, "%s", "-------------------------------------------------------\n");
+    logger_early(0, "%s", "-------------------------------------------------------\n");
 }
 
 static int read_uuid_from_file(char const * const path)
@@ -7717,7 +7703,6 @@ static int nDPId_parse_options(int argc, char ** argv)
                     if (value == NULL && subopt != -1)
                     {
                         logger_early(1, "Missing value for `%s'", subopt_tokens[subopt]);
-                        fprintf(stderr, "%s", "\n");
                         print_usage(argv[0]);
                         print_subopt_usage();
                         errfnd = 1;
@@ -7726,7 +7711,6 @@ static int nDPId_parse_options(int argc, char ** argv)
                     if (subopt == -1)
                     {
                         logger_early(1, "Invalid subopt: %s", value);
-                        fprintf(stderr, "%s", "\n");
                         print_usage(argv[0]);
                         print_subopt_usage();
                         errfnd = 1;
@@ -7751,22 +7735,21 @@ static int nDPId_parse_options(int argc, char ** argv)
                 break;
             }
             case 'v':
-                fprintf(stderr, "%s", get_nDPId_version());
-                nDPId_print_deps_version(stderr);
-                return 1;
+                logger_early(0, "%s", get_nDPId_version());
+                nDPId_print_deps_version();
+                return 0;
             case 'h':
             default:
-                fprintf(stderr, "%s\n", get_nDPId_version());
+                logger_early(0, "%s", get_nDPId_version());
                 print_usage(argv[0]);
                 print_subopt_usage();
-                return 1;
+                return 0;
         }
     }
 
     if (optind < argc)
     {
         logger_early(1, "%s", "Unexpected argument after options");
-        fprintf(stderr, "%s", "\n");
         print_usage(argv[0]);
         print_subopt_usage();
         return 1;
@@ -8258,8 +8241,6 @@ int main(int argc, char ** argv)
     ndpi_set_memory_alloction_functions(ndpi_malloc_wrapper, ndpi_free_wrapper, ndpi_calloc_wrapper, ndpi_realloc_wrapper, NULL, NULL, NULL, NULL);
 
     init_logging("nDPId");
-    logger_early(0, "%s", "Hello world! Starting nDPId...");
-    logger(0, "%s", "Hello world! Starting nDPId... (regular logger)");
 
 #ifdef ENABLE_CRYPTO
     ncrypt_init();
@@ -8272,7 +8253,7 @@ int main(int argc, char ** argv)
     /* Parse all options including -x */
     if (nDPId_parse_options(argc, argv) != 0)
     {
-        printf("Error: Failed to parse options\n");
+        logger_early(1, "%s", "Failed to parse options");
         return 1;
     }
 
@@ -8287,7 +8268,7 @@ int main(int argc, char ** argv)
         }
         else
         {
-            printf("WARNING: Config file '%s' is invalid or not found. Using default configuration file %s.\n",global_config_file_path, "Settings/nDPIdConfiguration.json");           
+            logger_early(1, "Config file '%s' is invalid or not found. Using default configuration file %s.\n",global_config_file_path, "Settings/nDPIdConfiguration.json");           
         }
     }
 
@@ -8350,7 +8331,7 @@ int main(int argc, char ** argv)
         log_app_info();
     }
 
-    nDPId_print_deps_version(stdout);
+    nDPId_print_deps_version();
 
     if (NDPI_API_VERSION != ndpi_get_api_version())
     {
