@@ -7536,11 +7536,14 @@ static void nDPId_print_deps_version()
     }
     logger_early(0, "pcap version...: %s", pcap_short);
 
-    return;
 
-    if (ndpi_get_gcrypt_version() != NULL) {
+    if (ndpi_get_gcrypt_version() != NULL) 
+    {
         logger_early(0, "gcrypt version.: %s", ndpi_get_gcrypt_version());
     }
+
+    return;
+
 #ifdef ENABLE_PFRING
     npfring_print_version(NULL);
 #endif
