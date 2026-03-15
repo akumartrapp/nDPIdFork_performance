@@ -7509,7 +7509,7 @@ static void nDPId_print_deps_version()
     // MM.DD.YYYY
     printVersion();
 
-    fprintf(out,
+    printf(
             "-------------------------------------------------------\n"
             "package version: %s\n"
 #ifdef LIBNDPI_STATIC
