@@ -7532,7 +7532,7 @@ static void nDPId_print_deps_version()
         printf("gcrypt version.: %s\n", ndpi_get_gcrypt_version());
     }
 #ifdef ENABLE_PFRING
-    npfring_print_version(out);
+    npfring_print_version(NULL);
 #endif
     printf("%s", "-------------------------------------------------------\n");
 }
