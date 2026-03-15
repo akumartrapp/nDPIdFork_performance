@@ -7467,15 +7467,14 @@ static void nDPId_print_deps_version(void)
     // MM.DD.YYYY
     printVersion();
 
-    logger_early(0,
-        "-------------------------------------------------------\n"
-        "package version: %s\n"
+    logger_early(0,""
+        "\tpackage version: %s\n"
 #ifdef LIBNDPI_STATIC
         "nDPI version...: %s (statically linked)\n"
 #else
-        "nDPI version...: %s\n"
+        "\tnDPI version...: %s\n"
 #endif
-        " API version...: %u\n"
+        "\tAPI version...: %u\n"
         "pcap version...: %s\n",
 #ifndef PKG_VERSION
         "unknown",
