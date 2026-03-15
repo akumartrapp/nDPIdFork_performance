@@ -7506,10 +7506,11 @@ static void print_usage(char const * const arg0)
 
 static void nDPId_print_deps_version()
 {
-    return;
+
     // MM.DD.YYYY
     printVersion();
 
+    return;
     printf(
             "-------------------------------------------------------\n"
             "package version: %s\n"
