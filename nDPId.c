@@ -7529,7 +7529,7 @@ static void nDPId_print_deps_version()
             pcap_lib_version() + strlen("libpcap version "));
     if (ndpi_get_gcrypt_version() != NULL)
     {
-        fprintf(out, "gcrypt version.: %s\n", ndpi_get_gcrypt_version());
+        printf("gcrypt version.: %s\n", ndpi_get_gcrypt_version());
     }
 #ifdef ENABLE_PFRING
     npfring_print_version(out);
