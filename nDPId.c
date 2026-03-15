@@ -7344,9 +7344,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "-------------------------------------------------------");
     logger_early(0, "program version is 03.15.2026.01");
-    logger_early(0, "-------------------------------------------------------");
 }
 
 static void print_usage(char const * const arg0)
@@ -7468,13 +7466,13 @@ static void nDPId_print_deps_version(void)
     printVersion();
 
     logger_early(0,""
-        "\tpackage version: %s\n"
+        "package version: %s\n"
 #ifdef LIBNDPI_STATIC
         "nDPI version...: %s (statically linked)\n"
 #else
-        "\tnDPI version...: %s\n"
+        "nDPI version...: %s\n"
 #endif
-        "\tAPI version...: %u\n"
+        "API version...: %u\n"
         "pcap version...: %s\n",
 #ifndef PKG_VERSION
         "unknown",
