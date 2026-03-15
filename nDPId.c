@@ -7344,7 +7344,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 03.15.2026.01");
+    logger_early(0, "program version is 03.15.2026.02");
 }
 
 static void print_usage(char const * const arg0)
@@ -7542,12 +7542,14 @@ static void nDPId_print_deps_version()
         logger_early(0, "gcrypt version.: %s", ndpi_get_gcrypt_version());
     }
 
+    logger_early(0, "%s", "-------------------------------------------------------");
     return;
 
-#ifdef ENABLE_PFRING
-    npfring_print_version(NULL);
-#endif
-    logger_early(0, "%s", "-------------------------------------------------------");
+    //Ashwani: commented this out. It throws error since we are now passing NULL
+//#ifdef ENABLE_PFRING
+//    npfring_print_version(NULL);
+//#endif
+
 }
 
 static int read_uuid_from_file(char const * const path)
