@@ -7534,7 +7534,7 @@ static void nDPId_print_deps_version()
 #ifdef ENABLE_PFRING
     npfring_print_version(out);
 #endif
-    fprintf(out, "%s", "-------------------------------------------------------\n");
+    printf("%s", "-------------------------------------------------------\n");
 }
 
 static int read_uuid_from_file(char const * const path)
