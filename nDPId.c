@@ -7504,7 +7504,7 @@ static void print_usage(char const * const arg0)
 //    logger_early(0, "%s", "-------------------------------------------------------\n");
 //}
 
-static void nDPId_print_deps_version(FILE * const out)
+static void nDPId_print_deps_version()
 {
     // MM.DD.YYYY
     printVersion();
