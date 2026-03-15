@@ -343,7 +343,7 @@ void rotate_event_log_file()
                                                                                                              // ".tmp"
         if (rename(current_event_filename, new_name) != 0)
         {
-            logger(1, "ERROR (events log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
+            logger(1, "(events log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
         }
 
         event_log_fp = NULL;
@@ -365,7 +365,7 @@ void rotate_alert_log_file()
                                           // ".tmp"
         if (rename(current_alert_filename, new_name) != 0)
         {
-              logger(1, "ERROR (alerts log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
+              logger(1, "(alerts log file): rename() failed, current_event_filename = %s, new_name = %s", current_event_filename, new_name);
         }
 
         alert_log_fp = NULL;
@@ -387,7 +387,7 @@ void rotate_master_log_file()
 
         if (rename(current_master_filename, new_name) != 0)
         {
-            logger(1,"ERROR (master log file): rename() failed, current_master_filename = %s, new_name = %s", current_master_filename, new_name);
+            logger(1,"(master log file): rename() failed, current_master_filename = %s, new_name = %s", current_master_filename, new_name);
         }
 
         master_log_fp = NULL;
@@ -414,7 +414,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
         master_log_fp = fopen(current_master_filename, "a");
         if (!master_log_fp)
         {
-            logger(1, "ERROR: Failed to open log file: %s (%s)", current_master_filename, strerror(errno));
+            logger(1, "(master log file): Failed to open log file: %s (%s)", current_master_filename, strerror(errno));
             return;
         }
 
@@ -425,7 +425,7 @@ void write_to_master_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, master_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR: Partial write to '%s'", master_folder_full_path);
+        logger(1, " Partial write to '%s'", master_folder_full_path);
     }
 
     fwrite("\n", 1, 1, master_log_fp);
@@ -451,7 +451,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
         event_log_fp = fopen(current_event_filename, "a");
         if (!event_log_fp)
         {
-            logger(1, "ERROR (events): Failed to open log file: %s (%s)", current_event_filename, strerror(errno));            
+            logger(1, "(events): Failed to open log file: %s (%s)", current_event_filename, strerror(errno));            
             return;
         }
 
@@ -462,7 +462,7 @@ void write_to_event_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, event_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR (events): Partial write to '%s'", events_folder_full_path);       
+        logger(1, "(events): Partial write to '%s'", events_folder_full_path);       
     }
 
     fwrite("\n", 1, 1, event_log_fp);
@@ -488,7 +488,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
         alert_log_fp = fopen(current_alert_filename, "a");
         if (!alert_log_fp)
         {
-            logger(1, "ERROR (alerts): Failed to open log file: %s (%s)", current_alert_filename, strerror(errno));
+            logger(1, "(alerts): Failed to open log file: %s (%s)", current_alert_filename, strerror(errno));
             return;
         }
 
@@ -499,7 +499,7 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
     size_t written = fwrite(json_msg, 1, json_msg_len, alert_log_fp);
     if (written != json_msg_len)
     {
-        logger(1, "ERROR: Partial write to '%s'", alerts_folder_full_path);   
+        logger(1, "Partial write to '%s'", alerts_folder_full_path);   
     }
 
     fwrite("\n", 1, 1, alert_log_fp);
@@ -624,7 +624,7 @@ void create_events_and_alerts_folders()
     // Check write/execute access to parent directory
     if (access(executable_directory, W_OK | X_OK) != 0)
     {
-        logger(1, "ERROR: access() to executable_directory failed");
+        logger(1, "access() to executable_directory failed");
         exit(EXIT_FAILURE);
     }
 
@@ -637,7 +637,7 @@ void create_events_and_alerts_folders()
         }
         else
         {
-            logger(1, "ERROR:mkdir('%s') failed: %s", alerts_folder_full_path, strerror(errno));
+            logger(1, "mkdir('%s') failed: %s", alerts_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -655,7 +655,7 @@ void create_events_and_alerts_folders()
         }
         else
         {
-            logger(1, "ERROR: mkdir('%s') failed: %s", events_folder_full_path, strerror(errno));
+            logger(1, "mkdir('%s') failed: %s", events_folder_full_path, strerror(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -675,7 +675,7 @@ void create_events_and_alerts_folders()
             }
             else
             {
-                logger(1, "ERROR: mkdir('%s') failed: %s", master_folder_full_path, strerror(errno));
+                logger(1, " mkdir('%s') failed: %s", master_folder_full_path, strerror(errno));
                 exit(EXIT_FAILURE);
             }
         }
@@ -1449,7 +1449,7 @@ static void readConfigurationData(const char * filename, int level)
 	FILE * fp = fopen(filename, "r");
 	if (!fp)
 	{
-		logger_early(1, "Error while opening JSON config file %s: %s", filename, strerror(errno));
+		logger_early(1, "(JSON config file): Error while opening JSON config file %s: %s", filename, strerror(errno));
 		return;
 	}
 
