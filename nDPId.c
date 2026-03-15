@@ -7522,8 +7522,10 @@ static void nDPId_print_deps_version()
     logger_early(0, "nDPI version...: %s", ndpi_revision());
 #endif
 
-return;
+
     logger_early(0, "API version...: %u", ndpi_get_api_version());
+
+    return;
     const char *pcap_ver = pcap_lib_version();
     const char *prefix = "libpcap version ";
     const char *pcap_short = NULL;
