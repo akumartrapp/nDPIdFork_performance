@@ -8258,6 +8258,9 @@ int main(int argc, char ** argv)
     ndpi_set_memory_alloction_functions(ndpi_malloc_wrapper, ndpi_free_wrapper, ndpi_calloc_wrapper, ndpi_realloc_wrapper, NULL, NULL, NULL, NULL);
 
     init_logging("nDPId");
+    logger_early(0, "%s", "Hello world! Starting nDPId...");
+    logger(0, "%s", "Hello world! Starting nDPId... (regular logger)");
+
 #ifdef ENABLE_CRYPTO
     ncrypt_init();
     ncrypt_ctx(&ncrypt_ctx);
