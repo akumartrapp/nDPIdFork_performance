@@ -7515,12 +7515,14 @@ static void nDPId_print_deps_version()
 #else
     logger_early(0, "package version: unknown");
 #endif
-return;
+
 #ifdef LIBNDPI_STATIC
     logger_early(0, "nDPI version...: %s (statically linked)", ndpi_revision());
 #else
     logger_early(0, "nDPI version...: %s", ndpi_revision());
 #endif
+
+return;
     logger_early(0, "API version...: %u", ndpi_get_api_version());
     const char *pcap_ver = pcap_lib_version();
     const char *prefix = "libpcap version ";
