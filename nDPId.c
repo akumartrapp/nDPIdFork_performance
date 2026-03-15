@@ -7525,7 +7525,7 @@ static void nDPId_print_deps_version()
 
     logger_early(0, "API version...: %u", ndpi_get_api_version());
 
-    return;
+
     const char *pcap_ver = pcap_lib_version();
     const char *prefix = "libpcap version ";
     const char *pcap_short = NULL;
@@ -7535,6 +7535,9 @@ static void nDPId_print_deps_version()
         pcap_short = pcap_ver ? pcap_ver : "unknown";
     }
     logger_early(0, "pcap version...: %s", pcap_short);
+
+    return;
+
     if (ndpi_get_gcrypt_version() != NULL) {
         logger_early(0, "gcrypt version.: %s", ndpi_get_gcrypt_version());
     }
