@@ -7345,7 +7345,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     logger_early(0, "-------------------------------------------------------");
-    logger_early(0, "nDPID program version is 03.15.2026.01");
+    logger_early(0, "program version is 03.15.2026.01");
     logger_early(0, "-------------------------------------------------------");
 }
 
@@ -7737,13 +7737,13 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'v':
                 logger_early(0, "%s", get_nDPId_version());
                 nDPId_print_deps_version();
-                return 0;
+                return 1;
             case 'h':
             default:
                 logger_early(0, "%s", get_nDPId_version());
                 print_usage(argv[0]);
                 print_subopt_usage();
-                return 0;
+                return 1;
         }
     }
 
