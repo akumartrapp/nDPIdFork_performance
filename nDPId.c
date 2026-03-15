@@ -8254,6 +8254,8 @@ int main(int argc, char ** argv)
         return 1;
     }
 
+    logger_early(0, "Did I reach here");
+
     /* If -x was provided, reload JSON config file */
     bool read_from_default_config_file = true;
     if (strcmp(global_config_file_path, "Settings/nDPIdConfiguration.json") != 0)
