@@ -7451,12 +7451,97 @@ static void print_usage(char const * const arg0)
         "\t-v\tversion\n"
         "\t-h\tthis\n\n";
 
-    logger_early(0,
-                 usage,
-                 arg0,
-                 nDPId_options.collector_address.string.default_value,
-                 nDPId_options.pidfile.string.default_value,
-                 nDPId_options.user.string.default_value);
+    // Print usage in smaller chunks to avoid truncation
+    logger_early(0, "Usage: %s [-f config-file]", arg0);
+    logger_early(0, "\t  \t[-i pcap-file/interface] [-I] [-E] [-B bpf-filter]");
+    logger_early(0, "\t  \t[-l] [-L logfile] [-c address] [-e][-d] [-p pidfile]");
+    logger_early(0, "\t  \t[-u user] [-g group] [-P path] [-C path] [-J path]");
+    logger_early(0, "\t  \t[-a instance-alias] [-U instance-uuid] [-A]");
+    logger_early(0, "\t \t[-o subopt=value]");
+    logger_early(0, "\t  \t[-x json-config-file]");
+    logger_early(0, "\t  \t[-v] [-h]\n");
+
+    logger_early(0, "\t-f\tLoad nDPId/libnDPI options from a configuration file.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-i\tInterface or file from where to read packets from.");
+    logger_early(0, "\t  \tDefault: automatically detected");
+#ifdef ENABLE_PFRING
+    logger_early(0, "\t-r\tUse PFRING to capture packets instead of libpcap.");
+    logger_early(0, "\t  \tDefault: disabled");
+#endif
+    logger_early(0, "\t-I\tProcess only packets where the source address of the first packet");
+    logger_early(0, "\t  \tis part of the interface subnet. (Internal mode)");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-E\tProcess only packets where the source address of the first packet");
+    logger_early(0, "\t  \tis *NOT* part of the interface subnet. (External mode)");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-B\tSet an optional PCAP filter string. (BPF format)");
+    logger_early(0, "\t  \tDefault: empty");
+    logger_early(0, "\t-t\tEnable tunnel decapsulation. Supported protocols: GRE");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-l\tLog all messages to stderr.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-L\tLog all messages to a log file.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-c\tPath to a UNIX socket (nDPIsrvd Collector) or a custom UDP endpoint.");
+    logger_early(0, "\t  \tDefault: `%s'", nDPId_options.collector_address.string.default_value);
+#ifdef ENABLE_CRYPTO
+    logger_early(0, "\t-k\tPath to the client certificate file (PEM format)");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-K\tPath to the client key file (PEM format)");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-F\tPath to the server CA file (PEM format)");
+    logger_early(0, "\t  \tDefault: disabled");
+#endif
+#ifdef ENABLE_EPOLL
+    logger_early(0, "\t-e\tUse poll() instead of epoll().");
+    logger_early(0, "\t  \tDefault: epoll() on Linux, poll() otherwise");
+#endif
+    logger_early(0, "\t-d\tFork into background after initialization.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-p\tWrite the daemon PID to the given file path.");
+    logger_early(0, "\t  \tDefault: `%s'", nDPId_options.pidfile.string.default_value);
+    logger_early(0, "\t-u\tChange UID to the numeric value of user.");
+    logger_early(0, "\t  \tDefault: `%s'", nDPId_options.user.string.default_value);
+    logger_early(0, "\t-g\tChange GID to the numeric value of group.");
+    logger_early(0, "\t  \tDefault: use primary GID from `-u'");
+    logger_early(0, "\t-R\tLoad a nDPI custom risk domain file.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-P\tLoad a nDPI custom protocols file.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-C\tLoad a nDPI custom categories file.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-J\tLoad a nDPI JA4 hash blacklist file.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-y\tSet the console output level from 1 to 4.");
+    logger_early(0, "\t  \t1 = critical only, 4 = detailed output.");
+    logger_early(0, "\t  \tDefault: 1");
+    logger_early(0, "\t-S\tLoad a nDPI SSL SHA1 hash blacklist file.");
+    logger_early(0, "\t  \tSee: https://sslbl.abuse.ch/blacklist/sslblacklist.csv");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-a\tSet an alias name of this daemon instance which will");
+    logger_early(0, "\t  \tbe part of every JSON message.");
+    logger_early(0, "\t  \tThis value is required for correct flow handling of");
+    logger_early(0, "\t  \tmultiple instances and should be unique.");
+    logger_early(0, "\t  \tDefault: hostname");
+    logger_early(0, "\t-U\tSet an optional UUID for this daemon instance which will");
+    logger_early(0, "\t  \tbe part of every JSON message.");
+    logger_early(0, "\t  \tThis value must use the UUID format.");
+    logger_early(0, "\t  \tIf the value starts with a `/` or `.`, the value is interpreted");
+    logger_early(0, "\t  \tas a path from where the UUID is read from.");
+    logger_early(0, "\t  \tDefault: disabled");
+    logger_early(0, "\t-A\tEnable flow analysis aka feature extraction. Requires more memory and cpu usage.");
+    logger_early(0, "\t  \tExperimental, do not rely on those values.");
+    logger_early(0, "\t  \tDefault: disabled");
+#ifdef ENABLE_ZLIB
+    logger_early(0, "\t-z\tEnable flow memory zLib compression.");
+    logger_early(0, "\t  \tDefault: disabled");
+#endif
+    logger_early(0, "\t-x\tPath to the JSON configuration file (nDPIdConfiguration.json)");
+    logger_early(0, "\t  \tDefault: Settings/nDPIdConfiguration.json");
+    logger_early(0, "\t-o\t(Carefully) Tune some daemon options. See subopts below.");
+    logger_early(0, "\t-v\tversion");
+    logger_early(0, "\t-h\tthis\n");
 }
 
 
@@ -7799,7 +7884,7 @@ static int nDPId_parse_options(int argc, char ** argv)
             default:
                 logger_early(0, "%s", get_nDPId_version());
                 print_usage(argv[0]);
-                //print_subopt_usage();
+                print_subopt_usage();
                 return 1;
         }
     }
