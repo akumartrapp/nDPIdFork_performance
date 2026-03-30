@@ -3450,7 +3450,7 @@ static void jsonize_daemon(struct nDPId_reader_thread * const reader_thread, enu
             break;
     }
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "global_ts_usec", workflow->last_global_time);
-    serialize_and_send(reader_thread, FLOW_EVENT_INVALID);
+    serialize_and_send(reader_thread, FLOW_EVENT_INVALID, 0);
 }
 
 static void jsonize_flow(struct nDPId_workflow * const workflow, struct nDPId_flow_extended const * const flow_ext)
@@ -4719,7 +4719,7 @@ __attribute__((format(printf, 3, 4))) static void jsonize_error_eventf(struct nD
     }
 
     ndpi_serialize_string_uint64(&workflow->ndpi_serializer, "global_ts_usec", workflow->last_global_time);
-    serialize_and_send(reader_thread, FLOW_EVENT_INVALID);
+    serialize_and_send(reader_thread, FLOW_EVENT_INVALID, 0);
 }
 
 /* See: https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3 */
