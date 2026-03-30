@@ -655,7 +655,7 @@ static void printVersion()
 {
     // MM.DD.YYYY
     printf("------------------------------------\n");
-    printf("nDPId_pcap program version is 03.13.2026.02\n");
+    printf("nDPId_pcap program version is 03.30.2026.01\n");
     printf("------------------------------------\n");
 }
 
@@ -1293,7 +1293,7 @@ struct confopt tuning_config_map[] = {
 static void sighandler(int signum);
 static WARN_UNUSED int processing_threads_error_or_eof(void);
 static void free_workflow(struct nDPId_workflow ** const workflow);
-static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event);
+static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event, uint64_t flow_id);
 static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
                                struct nDPId_flow_extended * const flow_ext,
                                enum flow_event event);
@@ -3765,7 +3765,7 @@ static void write_to_socket(struct nDPId_reader_thread * const reader_thread,
     }
 }
 
-static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event)
+static void send_to_collector(struct nDPId_reader_thread * const reader_thread, char const * const json_msg, size_t json_msg_len, enum flow_event event, uint64_t flow_id)
 {
     if (master_log_file_enabled)
     {
@@ -3945,7 +3945,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread, 
     //}
 }
 
-static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event)
+static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event, uint64_t flow_id)
 {
     write_to_console(0, "serialize_and_send called");
     char * json_msg;
@@ -3966,7 +3966,7 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     else
     {
         reader_thread->workflow->total_events_serialized++;
-        send_to_collector(reader_thread, json_msg, json_msg_len, event);
+        send_to_collector(reader_thread, json_msg, json_msg_len, event, flow_id);
     }
     ndpi_reset_serializer(&reader_thread->workflow->ndpi_serializer);
 }
@@ -4260,7 +4260,7 @@ static void jsonize_packet_event(struct nDPId_reader_thread * const reader_threa
                reader_thread->workflow->packets_captured,
                reader_thread->array_index);
     }
-    serialize_and_send(reader_thread, FLOW_EVENT_INVALID);
+    serialize_and_send(reader_thread, FLOW_EVENT_INVALID, flow_ext->flow_id);
 }
 
 /* I decided against ndpi_flow2json as it does not fulfill my needs. */
@@ -4420,7 +4420,7 @@ static int jsonize_flow_event(struct nDPId_reader_thread * const reader_thread,
             break;
     }
 
-    serialize_and_send(reader_thread, event);
+    serialize_and_send(reader_thread, event, flow_ext->flow_id);
     return 1;
 }
 
@@ -4507,7 +4507,7 @@ static void jsonize_flow_detection_event(struct nDPId_reader_thread * const read
             break;
     }
 
-    serialize_and_send(reader_thread, event);
+    serialize_and_send(reader_thread, event, flow->flow_extended.flow_id);
 }
 
 static void internal_format_error(ndpi_serializer * const serializer, char const * const format, uint32_t format_index)
