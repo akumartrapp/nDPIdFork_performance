@@ -4111,13 +4111,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         return;
     }
 
-    char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg, flow_id);
-    if (updated_json_msg == NULL)
-    {
-        logger(1, "StoreOrUpdateFlowDirection returned NULL for flow_id=%" PRIu64, flow_id);
-        SweepStaleEndFlows();
-        return;
-    }
+    bool need_to_serialize = false;
 
     if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
@@ -4126,10 +4120,26 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
             logger(0, "send_to_collector [event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE]");
         }
 
-
         IncrementEndEventCount(flow_id);
 
         if (GetEndEventCount(flow_id) >= 2)
+        {
+            need_to_serialize = true
+        }
+      
+    }
+
+    char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg, flow_id, need_to_serialize);
+    if (need_to_serialize && updated_json_msg == NULL)
+    {
+        logger(1, "StoreOrUpdateFlowDirection returned NULL for flow_id=%" PRIu64, flow_id);
+        SweepStaleEndFlows();
+        return;
+    }
+
+    if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
+    {
+        if (need_to_serialize)
         {
             /* Both directions ended — emit, clean up, and remove */
             if (output_send_to_file)
@@ -7362,7 +7372,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 03.30.2026.04");
+    logger_early(0, "program version is 03.30.2026.05");
 }
 
 static void print_usage(char const * const arg0)

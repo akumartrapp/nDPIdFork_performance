@@ -742,7 +742,7 @@ static void MergeJson(json_object * stored, json_object * incoming, int is_swapp
 /* -------------------------------------------------------
  * Public entry point — same signature as before
  * ------------------------------------------------------- */
-char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id)
+char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool need_to_serialize)
 {
     json_object * root = json_tokener_parse(json_msg);
     if (!root)
@@ -896,7 +896,7 @@ char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id)
     MergeJson(stored_root, root, is_swapped_incoming);
 
     /* Serialize ONCE before any cleanup */
-    char * result = strdup(json_object_to_json_string(stored_root));
+    char * result = need_to_serialize ? strdup(json_object_to_json_string(stored_root)) : NULL;
 
     /* Update map if fallback allocated a new object */
     if (fallback_alloc)
