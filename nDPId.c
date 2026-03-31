@@ -4124,7 +4124,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
         if (GetEndEventCount(flow_id) >= 2)
         {
-            need_to_serialize = true
+            need_to_serialize = true;
         }
       
     }
