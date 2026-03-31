@@ -17,7 +17,7 @@ typedef struct {
 	char dst_ip[64];
 	int dst_port;
 	int swapped;
-	char *json_str; // Store full JSON string
+	json_object * root;
 } flow_direction_info_t;
 
 typedef struct
@@ -38,9 +38,9 @@ typedef struct
 const flow_direction_map_entry_t *GetFlowDirectionMap(int *size);
 const pending_end_entry_t * GetPendingEndList(int * size);
 
-char* StoreOrUpdateFlowDirection(const char *json_msg);
-char *UpdateFlowDirectionIfSwapped(const char *json_msg);
-void UpdateFlowDirectionJson(const char *json_msg);
+char* StoreOrUpdateFlowDirection(const char *json_msg, uint64_t flow_id)
+//char *UpdateFlowDirectionIfSwapped(const char *json_msg);
+// void UpdateFlowDirectionJson(const char *json_msg);
 void ClearFlowDirectionMap(void);
 void AddToPendingEndList(uint64_t flow_id, uint64_t time_usec);
 void RemoveFromPendingEndList(uint64_t flow_id);

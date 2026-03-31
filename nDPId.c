@@ -4012,31 +4012,40 @@ void SweepStaleEndFlows(void)
     // --- Pass 1: check pending END list for end_timeout (default: 1 minute) ---
     int pending_size = 0;
     int i = 0;
-    while (i < (GetPendingEndList(&pending_size), pending_size))
+
+    /* Get pointer once — refresh after each mutation */
+    const pending_end_entry_t * pending = GetPendingEndList(&pending_size);
+
+    while (i < pending_size)
     {
-        const pending_end_entry_t * pending = GetPendingEndList(&pending_size);
         if ((now - pending[i].first_end_time_usec) >= GetFlowEndTimeoutUsec())
         {
             uint64_t flow_id = pending[i].flow_id;
 
-            logger(0, "WARN: flow_id=%llu timed out waiting for second END, emitting and removing", (unsigned long long)flow_id);
+            logger(0, "WARN: flow_id=%llu timed out waiting for second END, emitting and removing",
+                   (unsigned long long)flow_id);
 
-            // Find entry in flow direction map and emit
+            /* Find entry in flow direction map and emit */
             int map_size = 0;
             const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
             for (int j = 0; j < map_size; ++j)
             {
                 if (map[j].flow_id == flow_id)
                 {
-                    if (map[j].info.json_str)
+                    /* Use root object directly — no json_str needed */
+                    if (map[j].info.root)
                     {
-                        if (output_send_to_file)
-                            write_to_file(map[j].info.json_str);
-
-                        if (output_send_to_socket)
+                        const char * json_str = json_object_to_json_string(map[j].info.root);
+                        if (json_str)
                         {
-                            write_to_socket_buffer(map[j].info.json_str);
-                            log_socket_buffer_stats();
+                            if (output_send_to_file)
+                                write_to_file(json_str);
+
+                            if (output_send_to_socket)
+                            {
+                                write_to_socket_buffer(json_str);
+                                log_socket_buffer_stats();
+                            }
                         }
                     }
                     break;
@@ -4045,7 +4054,10 @@ void SweepStaleEndFlows(void)
 
             RemoveFlowDirectionEntry(flow_id);
             RemovePendingEndListAtIndex(i);
-            // Don't increment i — recheck this slot
+
+            /* Refresh pointer after mutation — array may have shifted */
+            pending = GetPendingEndList(&pending_size);
+            /* Don't increment i — recheck this slot */
         }
         else
         {
@@ -4056,18 +4068,28 @@ void SweepStaleEndFlows(void)
     // --- Pass 2: scan full map for flows stale beyond stale_timeout (default: 10 minutes) ---
     i = 0;
     int map_size = 0;
-    while (i < (GetFlowDirectionMap(&map_size), map_size))
+
+    /* Get pointer once — refresh after each mutation */
+    const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
+
+    while (i < map_size)
     {
-        const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
         const flow_direction_map_entry_t * entry = &map[i];
 
-        if (entry->last_update_time_usec > 0 && (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
+        if (entry->last_update_time_usec > 0 &&
+            (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
         {
-            logger(0, "WARN: flow_id=%llu stale for configured timeout, removing", (unsigned long long)entry->flow_id);
+            logger(0, "WARN: flow_id=%llu stale for configured timeout, removing",
+                   (unsigned long long)entry->flow_id);
 
-            RemoveFromPendingEndList(entry->flow_id);
-            RemoveFlowDirectionEntry(entry->flow_id);
-            // Don't increment i — recheck this slot
+            uint64_t flow_id = entry->flow_id; /* save before removal shifts array */
+
+            RemoveFromPendingEndList(flow_id);
+            RemoveFlowDirectionEntry(flow_id);
+
+            /* Refresh pointer after mutation — array may have shifted */
+            map = GetFlowDirectionMap(&map_size);
+            /* Don't increment i — recheck this slot */
         }
         else
         {
@@ -4083,6 +4105,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
                               uint64_t flow_id)
 {
     write_to_console(0, 3, "send_to_collector called");
+
     if (master_log_file_enabled)
     {
         write_to_master_file(json_msg, json_msg_len);
@@ -4092,25 +4115,21 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     {
         logger(0, "send_to_collector Flow ID: %" PRIu64, flow_id);
     }
-    if (flow_id <= 0)
+
+    /* Validate flow_id before doing any work */
+    if (flow_id == 0 || flow_id == INVALID_FLOW_ID)
     {
         logger(1, "Flow id not found or invalid: %" PRIu64, flow_id);
         return;
     }
-    if (flow_id == INVALID_FLOW_ID)
+
+    char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg, flow_id);
+    if (updated_json_msg == NULL)
     {
-        struct nDPId_workflow * const workflow = reader_thread->workflow;
-        logger(1,
-               "[%8llu, %zu] Could not extract flow ID from caller",
-               workflow->packets_captured,
-               reader_thread->array_index);
+        logger(1, "StoreOrUpdateFlowDirection returned NULL for flow_id=%" PRIu64, flow_id);
+        SweepStaleEndFlows();
         return;
     }
-
-    // Ashwani
-    // We are not using socket so no need to connect just return from here. vv
-
-    char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg);
 
     if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
@@ -4118,7 +4137,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
         if (GetEndEventCount(flow_id) >= 2)
         {
-            // Both directions ended — emit, clean up pending list, and remove
+            /* Both directions ended — emit, clean up, and remove */
             if (output_send_to_file)
             {
                 write_to_file(updated_json_msg);
@@ -4131,11 +4150,11 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
             }
 
             RemoveFromPendingEndList(flow_id);
-            RemoveFlowDirectionEntry(flow_id);
+            RemoveFlowDirectionEntry(flow_id); /* frees info.root internally */
         }
         else
         {
-            // First END — add to pending list and wait for second
+            /* First END — add to pending list and wait for second */
             AddToPendingEndList(flow_id, GetCurrentTimeUsec());
         }
     }
@@ -7341,7 +7360,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 03.30.2026.01");
+    logger_early(0, "program version is 03.30.2026.02");
 }
 
 static void print_usage(char const * const arg0)
