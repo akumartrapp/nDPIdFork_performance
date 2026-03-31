@@ -4133,6 +4133,12 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 
     if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
+        if (console_output_level > 1)
+        {
+            logger(0, "send_to_collector [event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE]");
+        }
+
+
         IncrementEndEventCount(flow_id);
 
         if (GetEndEventCount(flow_id) >= 2)
@@ -7360,7 +7366,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 03.30.2026.02");
+    logger_early(0, "program version is 03.30.2026.03");
 }
 
 static void print_usage(char const * const arg0)
