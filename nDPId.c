@@ -1441,7 +1441,7 @@ static void printConfigurationData(int level)
         logger_early(0, "\tcollector_unix_socket_location: %s", collector_unix_socket_location);
         logger_early(0, "\tcollector_reconnect_interval_sec: %d", collector_reconnect_interval_sec);
         logger_early(0, "\tcollector_reconnect_timeout_sec: %d", collector_reconnect_timeout_sec);
-        logger_early(0, "\tdata_collection_time_in_minutes: %d", (time_t)GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes));
+        logger_early(0, "\tdata_collection_time_in_minutes: %llu", (unsigned long long)GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes));
     }  
 }
 
