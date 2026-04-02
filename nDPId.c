@@ -7425,7 +7425,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 04.01.2026.01");
+    logger_early(0, "program version is 04.02.2026.01");
 }
 
 static void print_usage(char const * const arg0)
@@ -8518,7 +8518,7 @@ int main(int argc, char ** argv)
     {
         if (is_valid_json_file(global_config_file_path))
         {
-             logger_early(0, 1, "Loading configuration file from user specified option,%s", global_config_file_path);
+             logger_early(0, "Loading configuration file from user specified option,%s", global_config_file_path);
             readConfigurationData(global_config_file_path, console_output_level);
             read_from_default_config_file = false;
         }
