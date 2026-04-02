@@ -8507,6 +8507,10 @@ int main(int argc, char ** argv)
         logger_early(1, "%s", "Failed to parse options");
         return 1;
     }
+    else
+    {
+        logger_early(0, "%s", "Options parsed successfully");
+    }
 
     /* If -x was provided, reload JSON config file */
     bool read_from_default_config_file = true;
