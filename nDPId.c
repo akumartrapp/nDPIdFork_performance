@@ -4186,25 +4186,25 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     }
 
 
-    // Exit if data_collection_time_in_minutes > 0 and time elapsed exceeds it
 
-    static time_t data_collection_time_in_minutes = 0;
-    if (data_collection_time_in_minutes == 0) 
+    // Exit if data_collection_time_in_minutes > 0 and time elapsed exceeds it
+    static time_t data_collection_start_time = 0;
+    static unsigned long long data_collection_duration_minutes = 0;
+    if (data_collection_start_time == 0)
     {
+        data_collection_start_time = time(NULL);
         if (IS_CMDARG_SET(nDPId_options.data_collection_time_in_minutes)) 
         {
-            data_collection_time_in_minutes = (time_t)GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes);
-        } 
-        else 
+            data_collection_duration_minutes = GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes);
+        } else 
         {
-            data_collection_time_in_minutes = time(NULL);
+            data_collection_duration_minutes = 0;
         }
     }
-
-    if (data_collection_time_in_minutes > 0) 
+    if (data_collection_duration_minutes > 0) 
     {
         time_t now = time(NULL);
-        if (now - data_collection_time_in_minutes >= data_collection_time_in_minutes * 60) 
+        if ((unsigned long long)(now - data_collection_start_time) >= data_collection_duration_minutes * 60ULL) 
         {
             write_to_console(0, 1, "Data collection time exceeded, exiting.");
             exit(0);
