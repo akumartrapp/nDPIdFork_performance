@@ -1383,7 +1383,7 @@ struct confopt tuning_config_map[] = {
     CONFOPT("max-packets-per-flow-to-analyse", &nDPId_options.max_packets_per_flow_to_analyse),
     CONFOPT("error-event-threshold-n", &nDPId_options.error_event_threshold_n),
     CONFOPT("error-event-threshold-time", &nDPId_options.error_event_threshold_time),
-    CONFOPT("data-collection-start-time", &nDPId_options.data_collection_time_in_minutes),
+    CONFOPT("data-collection-time-in-minutes", &nDPId_options.data_collection_time_in_minutes),
 };
 
 static void sighandler(int signum);
@@ -7605,7 +7605,7 @@ static void print_usage(char const * const arg0)
     logger_early(0, "\t-x\tPath to the JSON configuration file (nDPIdConfiguration.json)");
     logger_early(0, "\t  \tDefault: Settings/nDPIdConfiguration.json");
     logger_early(0, "\t-o\t(Carefully) Tune some daemon options. See subopts below.");
-    logger_early(0, "\t\tdata-collection-start-time = <int>  (if set, use this UNIX timestamp as the data collection start time; otherwise, current time is used)");
+    logger_early(0, "\t\tdata-collection-time-in-minutes = <int>  (if set, use this value as the data collection time in minutes; otherwise, current time is used)");
     logger_early(0, "\t-v\tversion");
     logger_early(0, "\t-h\tthis\n");
 }
