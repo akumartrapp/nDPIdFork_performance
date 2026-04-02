@@ -180,6 +180,7 @@ static bool master_log_file_enabled = false;
 static bool output_send_to_socket = true;
 static bool output_send_to_file = true; 
 static int master_log_file_duration_in_minutes = 10;
+static int data_collection_time_in_minutes = -1;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 static int collector_reconnect_interval_sec = 5;
 static int collector_reconnect_timeout_sec = 60;
@@ -1242,6 +1243,7 @@ static struct
     struct cmdarg server_ca_pem_file;
 #endif
     /* subopts */
+    struct cmdarg data_collection_time_in_minutes;
     struct cmdarg max_flows_per_thread;
     struct cmdarg max_idle_flows_per_thread;
     struct cmdarg reader_thread_count;
@@ -1305,10 +1307,13 @@ static struct
                     * To further reduce memory consumption caused by allocating nDPId / nDPI workflows per thread,
                     * we set the default reader thread count to two.
                     */
-                   .reader_thread_count = CMDARG_ULL(2),
+                   .reader_thread_count = CMDARG_ULL(1),
 #else
-                   .reader_thread_count = CMDARG_ULL(nDPId_MAX_READER_THREADS / 3),
+                    // Ashwani by default thread count is set to 1
+                    // .reader_thread_count = CMDARG_ULL(nDPId_MAX_READER_THREADS / 3),
+                   .reader_thread_count = CMDARG_ULL(1),
 #endif
+                   .data_collection_time_in_minutes = CMDARG_ULL(-1),
                    .daemon_status_interval = CMDARG_ULL(nDPId_DAEMON_STATUS_INTERVAL),
 #ifdef ENABLE_MEMORY_PROFILING
                    .memory_profiling_log_interval = CMDARG_ULL(nDPId_MEMORY_PROFILING_LOG_INTERVAL),
@@ -1378,6 +1383,7 @@ struct confopt tuning_config_map[] = {
     CONFOPT("max-packets-per-flow-to-analyse", &nDPId_options.max_packets_per_flow_to_analyse),
     CONFOPT("error-event-threshold-n", &nDPId_options.error_event_threshold_n),
     CONFOPT("error-event-threshold-time", &nDPId_options.error_event_threshold_time),
+    CONFOPT("data-collection-start-time", &nDPId_options.data_collection_time_in_minutes),
 };
 
 static void sighandler(int signum);
@@ -1435,6 +1441,7 @@ static void printConfigurationData(int level)
         logger_early(0, "\tcollector_unix_socket_location: %s", collector_unix_socket_location);
         logger_early(0, "\tcollector_reconnect_interval_sec: %d", collector_reconnect_interval_sec);
         logger_early(0, "\tcollector_reconnect_timeout_sec: %d", collector_reconnect_timeout_sec);
+        logger_early(0, "\data_collection_time_in_minutes: %d", data_collection_time_in_minutes);
     }  
 }
 
@@ -1550,6 +1557,11 @@ static void readConfigurationData(const char * filename, int level)
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
             {
                 master_log_file_duration_in_minutes = json_object_get_int(val);
+            }
+
+            if (json_object_object_get_ex(debug_logs_obj, "dataCollectionTimeInMinutes", &val))
+            {
+                data_collection_time_in_minutes = json_object_get_int(val);
             }
         }
 
@@ -4171,6 +4183,31 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     {
         last_sweep_time_usec = now_usec;
         SweepStaleEndFlows();
+    }
+
+
+    // Exit if data_collection_time_in_minutes > 0 and time elapsed exceeds it
+
+    static time_t data_collection_time_in_minutes = 0;
+    if (data_collection_time_in_minutes == 0) {
+        if (IS_CMDARG_SET(nDPId_options.data_collection_time_in_minutes)) 
+        {
+            data_collection_time_in_minutes = (time_t)GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes);
+        } 
+        else 
+        {
+            data_collection_time_in_minutes = time(NULL);
+        }
+    }
+
+    if (data_collection_time_in_minutes > 0) 
+    {
+        time_t now = time(NULL);
+        if (now - data_collection_time_in_minutes >= data_collection_time_in_minutes * 60) 
+        {
+            write_to_console(0, 1, "Data collection time exceeded, exiting.");
+            exit(0);
+        }
     }
 
     free(updated_json_msg);
@@ -7372,7 +7409,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 03.30.2026.05");
+    logger_early(0, "program version is 04.01.2026.01");
 }
 
 static void print_usage(char const * const arg0)
@@ -7568,6 +7605,7 @@ static void print_usage(char const * const arg0)
     logger_early(0, "\t-x\tPath to the JSON configuration file (nDPIdConfiguration.json)");
     logger_early(0, "\t  \tDefault: Settings/nDPIdConfiguration.json");
     logger_early(0, "\t-o\t(Carefully) Tune some daemon options. See subopts below.");
+    logger_early(0, "\t\tdata-collection-start-time = <int>  (if set, use this UNIX timestamp as the data collection start time; otherwise, current time is used)");
     logger_early(0, "\t-v\tversion");
     logger_early(0, "\t-h\tthis\n");
 }

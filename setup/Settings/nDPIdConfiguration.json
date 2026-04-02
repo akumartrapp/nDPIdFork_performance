@@ -8,7 +8,8 @@
         "debugLogs": {
             "detailedLog": false,
             "generateMasterLogFile": true,
-            "masterLogFileDurationInMinutes": 10
+            "masterLogFileDurationInMinutes": 10,
+            "dataCollectionTimeInMinutes": 5
         },
 
         "consoleOutput": {
