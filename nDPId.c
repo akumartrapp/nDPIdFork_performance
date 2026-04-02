@@ -7760,13 +7760,16 @@ static int nDPId_parse_options(int argc, char ** argv)
         switch (opt)
         {
             case 'f':
+                logger_early(0, "Option -f (config_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.config_file, optarg);
                 break;
             case 'i':
+                logger_early(0, "Option -i (pcap_file_or_interface): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.pcap_file_or_interface, optarg);
                 break;
             case 'r':
 #ifdef ENABLE_PFRING
+                logger_early(0, "Option -r (use_pfring): enabled");
                 set_cmdarg_boolean(&nDPId_options.use_pfring, 1);
                 break;
 #else
@@ -7774,31 +7777,39 @@ static int nDPId_parse_options(int argc, char ** argv)
                 return 1;
 #endif
             case 'I':
+                logger_early(0, "Option -I (process_internal_initial_direction): enabled");
                 set_cmdarg_boolean(&nDPId_options.process_internal_initial_direction, 1);
                 break;
             case 'E':
+                logger_early(0, "Option -E (process_external_initial_direction): enabled");
                 set_cmdarg_boolean(&nDPId_options.process_external_initial_direction, 1);
                 break;
             case 'B':
+                logger_early(0, "Option -B (bpf_str): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.bpf_str, optarg);
                 break;
             case 't':
+                logger_early(0, "Option -t (decode_tunnel): enabled");
                 set_cmdarg_boolean(&nDPId_options.decode_tunnel, 1);
                 break;
             case 'l':
+                logger_early(0, "Option -l (enable_console_logger): enabled");
                 enable_console_logger();
                 break;
             case 'L':
+                logger_early(0, "Option -L (enable_file_logger): %s", optarg ? optarg : "(null)");
                 if (enable_file_logger(optarg) != 0)
                 {
                     return 1;
                 }
                 break;
             case 'c':
+                logger_early(0, "Option -c (collector_address): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.collector_address, optarg);
                 break;
             case 'k':
 #ifdef ENABLE_CRYPTO
+                logger_early(0, "Option -k (client_crt_pem_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.client_crt_pem_file, optarg);
                 break;
 #else
@@ -7807,6 +7818,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 #endif
             case 'K':
 #ifdef ENABLE_CRYPTO
+                logger_early(0, "Option -K (client_key_pem_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.client_key_pem_file, optarg);
                 break;
 #else
@@ -7815,6 +7827,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 #endif
             case 'F':
 #ifdef ENABLE_CRYPTO
+                logger_early(0, "Option -F (server_ca_pem_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.server_ca_pem_file, optarg);
                 break;
 #else
@@ -7823,6 +7836,7 @@ static int nDPId_parse_options(int argc, char ** argv)
 #endif
             case 'e':
 #ifdef ENABLE_EPOLL
+                logger_early(0, "Option -e (use_poll): enabled");
                 set_cmdarg_boolean(&nDPId_options.use_poll, 1);
                 break;
 #else
@@ -7830,63 +7844,73 @@ static int nDPId_parse_options(int argc, char ** argv)
                 return 1;
 #endif
             case 'd':
+                logger_early(0, "Option -d (daemonize_enable): enabled");
                 daemonize_enable();
                 break;
             case 'p':
+                logger_early(0, "Option -p (pidfile): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.pidfile, optarg);
                 break;
             case 'u':
+                logger_early(0, "Option -u (user): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.user, optarg);
                 break;
             case 'g':
+                logger_early(0, "Option -g (group): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.group, optarg);
                 break;
             case 'R':
+                logger_early(0, "Option -R (custom_risk_domain_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.custom_risk_domain_file, optarg);
                 break;
             case 'P':
+                logger_early(0, "Option -P (custom_protocols_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.custom_protocols_file, optarg);
                 break;
             case 'C':
+                logger_early(0, "Option -C (custom_categories_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.custom_categories_file, optarg);
                 break;
             case 'J':
+                logger_early(0, "Option -J (custom_ja4_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.custom_ja4_file, optarg);
                 break;
             case 'x': /* JSON config file path */
+                logger_early(0, "Option -x (json-config-file): %s", optarg ? optarg : "(null)");
                 if (optarg && strlen(optarg) > 0)
                 {
                     snprintf(global_config_file_path, sizeof(global_config_file_path), "%s", optarg);
                 }
-                
                 break;
             case 'y': /* console output level */
             {
+                logger_early(0, "Option -y (console_output_level): %s", optarg ? optarg : "(null)");
                 char * endptr = NULL;
                 long lvl = strtol(optarg, &endptr, 10);
-
                 if (endptr == optarg || *endptr != '\0')
                 {
                     logger_early(1, "Invalid integer for -k: %s", optarg);
                     return 1;
                 }
-
                 console_output_level = (int)lvl;
                 if (console_output_level < 1 || console_output_level > 4)
-                    {
-                        logger_early(1, "Console output level must be between 1 and 4");
-                        console_output_level = -1;
-                        return 1;
-                    }
+                {
+                    logger_early(1, "Console output level must be between 1 and 4");
+                    console_output_level = -1;
+                    return 1;
+                }
                 break;
             }
             case 'S':
+                logger_early(0, "Option -S (custom_sha1_file): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.custom_sha1_file, optarg);
                 break;
             case 'a':
+                logger_early(0, "Option -a (instance_alias): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.instance_alias, optarg);
                 break;
             case 'U':
+                logger_early(0, "Option -U (instance_uuid): %s", optarg ? optarg : "(null)");
                 if (strncmp(optarg, "/", 1) == 0 || strncmp(optarg, ".", 1) == 0)
                 {
                     if (read_uuid_from_file(optarg) != 0)
@@ -7900,10 +7924,12 @@ static int nDPId_parse_options(int argc, char ** argv)
                 }
                 break;
             case 'A':
+                logger_early(0, "Option -A (enable_data_analysis): enabled");
                 set_cmdarg_boolean(&nDPId_options.enable_data_analysis, 1);
                 break;
             case 'z':
 #ifdef ENABLE_ZLIB
+                logger_early(0, "Option -z (enable_zlib_compression): enabled");
                 set_cmdarg_boolean(&nDPId_options.enable_zlib_compression, 1);
                 break;
 #else
@@ -7912,11 +7938,11 @@ static int nDPId_parse_options(int argc, char ** argv)
 #endif
             case 'o':
             {
+                logger_early(0, "Option -o (subopts): %s", optarg ? optarg : "(null)");
                 int errfnd = 0;
                 char * subopts = optarg;
                 char * value;
                 char * subopt_tokens[nDPIsrvd_ARRAY_LENGTH(tuning_config_map) + 1] = {};
-
                 for (size_t i = 0; i < nDPIsrvd_ARRAY_LENGTH(tuning_config_map); ++i)
                 {
                     subopt_tokens[i] = strdup(tuning_config_map[i].key);
@@ -7940,7 +7966,7 @@ static int nDPId_parse_options(int argc, char ** argv)
                         errfnd = 1;
                         break;
                     }
-
+                    logger_early(0, "  subopt: %s = %s", subopt_tokens[subopt], value ? value : "(null)");
                     if (set_config_from(&tuning_config_map[subopt], value) != 0)
                     {
                         logger_early(1, "Could not set subopt: %s", tuning_config_map[subopt].key);
