@@ -1438,7 +1438,7 @@ static void printConfigurationData(int level)
         logger_early(0, "\tmaster_log_file_duration_in_minutes: %d", master_log_file_duration_in_minutes);
         logger_early(0, "\toutput_send_to_socket: %s", output_send_to_socket ? "TRUE" : "FALSE");
         logger_early(0, "\toutput_send_to_file: %s", output_send_to_file ? "TRUE" : "FALSE");
-        logger_early(0, "\tcollector_unix_socket_location: %s", collector_unix_socket_location);
+        logger_early(0, "\tcollector_unix_socket_location: %s", GET_CMDARG_STR(nDPId_options.collector_address));
         logger_early(0, "\tcollector_reconnect_interval_sec: %d", collector_reconnect_interval_sec);
         logger_early(0, "\tcollector_reconnect_timeout_sec: %d", collector_reconnect_timeout_sec);
         logger_early(0, "\tdata_collection_time_in_minutes: %llu", (unsigned long long)GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes));
@@ -1500,11 +1500,13 @@ static void readConfigurationData(const char * filename, int level)
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInSeconds", &val))
         {
             log_file_duration_in_seconds = json_object_get_int(val);           
+            logger_early(0, "[Config] logFilesLengthInSeconds: %d", log_file_duration_in_seconds);
         }
 
         if (json_object_object_get_ex(ndpid_obj, "logFilesLengthInMB", &val))
         {
             log_file_size_in_mb = json_object_get_int(val);           
+            logger_early(0, "[Config] logFilesLengthInMB: %d", log_file_size_in_mb);
         }
 
         uint32_t end_timeout_min = 1;
@@ -1512,16 +1514,19 @@ static void readConfigurationData(const char * filename, int level)
         if (json_object_object_get_ex(ndpid_obj, "flowEndTimeoutInMinutes", &val))
         {
             end_timeout_min = json_object_get_int(val);
+            logger_early(0, "[Config] flowEndTimeoutInMinutes: %u", end_timeout_min);
         }
 
         if (json_object_object_get_ex(ndpid_obj, "flowStaleTimeoutInMinutes", &val))
         {
             stale_timeout_min = json_object_get_int(val);
+            logger_early(0, "[Config] flowStaleTimeoutInMinutes: %u", stale_timeout_min);
         }
 
         if (end_timeout_min >= 1 && stale_timeout_min > end_timeout_min)
         {
             SetFlowTimeouts(end_timeout_min, stale_timeout_min);
+            logger_early(0, "[Config] SetFlowTimeouts called with end_timeout_min=%u, stale_timeout_min=%u", end_timeout_min, stale_timeout_min);
         }
 
         struct json_object * consoleOutput_obj;
@@ -1533,6 +1538,7 @@ static void readConfigurationData(const char * filename, int level)
                 if (console_output_level == -1)
                 {
                     console_output_level = json_object_get_int(val);
+                    logger_early(0, "[Config] consoleOutput.detail_level: %d", console_output_level);
                 }
                 else
                 {
@@ -1547,21 +1553,25 @@ static void readConfigurationData(const char * filename, int level)
             if (json_object_object_get_ex(debug_logs_obj, "detailedLog", &val))
             {
                 detailed_log_enabled = json_object_get_boolean(val);                
+                logger_early(0, "[Config] debugLogs.detailedLog: %s", detailed_log_enabled ? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "generateMasterLogFile", &val))
             {
                 master_log_file_enabled = json_object_get_boolean(val);
+                logger_early(0, "[Config] debugLogs.generateMasterLogFile: %s", master_log_file_enabled ? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "masterLogFileDurationInMinutes", &val))
             {
                 master_log_file_duration_in_minutes = json_object_get_int(val);
+                logger_early(0, "[Config] debugLogs.masterLogFileDurationInMinutes: %d", master_log_file_duration_in_minutes);
             }
 
             if (json_object_object_get_ex(debug_logs_obj, "dataCollectionTimeInMinutes", &val))
             {
                 data_collection_time_in_minutes = json_object_get_int(val);
+                logger_early(0, "[Config] debugLogs.dataCollectionTimeInMinutes: %d", data_collection_time_in_minutes);
             }
         }
 
@@ -1571,11 +1581,13 @@ static void readConfigurationData(const char * filename, int level)
             if (json_object_object_get_ex(ouput_obj, "sendToSocket", &val))
             {
                 output_send_to_socket = json_object_get_boolean(val);
+                logger_early(0, "[Config] output.sendToSocket: %s", output_send_to_socket ? "TRUE" : "FALSE");
             }
 
             if (json_object_object_get_ex(ouput_obj, "writeToJsonFiles", &val))
             {
                 output_send_to_file = json_object_get_boolean(val);
+                logger_early(0, "[Config] output.writeToJsonFiles: %s", output_send_to_file ? "TRUE" : "FALSE");
             }
         }
 
@@ -1589,16 +1601,19 @@ static void readConfigurationData(const char * filename, int level)
                 {
                     set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
                 }
+                logger_early(0, "[Config] sockets.COLLECTOR_UNIX_SOCKET: %s", collector_unix_socket_location);
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_INTERVAL_SEC", &val))
             {
                 collector_reconnect_interval_sec = json_object_get_int(val);
+                logger_early(0, "[Config] sockets.COLLECTOR_RECONNECT_INTERVAL_SEC: %d", collector_reconnect_interval_sec);
             }
 
             if (json_object_object_get_ex(sockets_obj, "COLLECTOR_RECONNECT_TIMEOUT_SEC", &val))
             {
                 collector_reconnect_timeout_sec = json_object_get_int(val);
+                logger_early(0, "[Config] sockets.COLLECTOR_RECONNECT_TIMEOUT_SEC: %d", collector_reconnect_timeout_sec);
             }
         }
     }
@@ -8457,6 +8472,7 @@ int main(int argc, char ** argv)
 #endif
    
     /* Load default config first */
+    logger_early(0, "Loading default configuration file %s", "Settings/nDPIdConfiguration.json");
     readConfigurationData(global_config_file_path, 0);
 
     /* Parse all options including -x */
@@ -8472,6 +8488,7 @@ int main(int argc, char ** argv)
     {
         if (is_valid_json_file(global_config_file_path))
         {
+             logger_early(0, 1, "Loading configuration file from user specified option,%s", global_config_file_path);
             readConfigurationData(global_config_file_path, console_output_level);
             read_from_default_config_file = false;
         }
