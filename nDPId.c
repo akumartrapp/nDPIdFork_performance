@@ -107,6 +107,8 @@ static inline uint64_t mt_pt_get_and_add(volatile uint64_t * value, uint64_t add
     return result;
 }
 
+static int stop_reader_threads(void);
+
 #define MT_GET_AND_ADD(name, value) mt_pt_get_and_add(&name.var, value, &name.var_mutex)
 
 static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub, pthread_mutex_t * mutex)
