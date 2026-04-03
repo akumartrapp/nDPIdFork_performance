@@ -7322,7 +7322,7 @@ static void process_remaining_flows(void)
     }
 }
 
-
+static int stop_reader_threads(void);
 
 static int stop_reader_threads(void)
 {
