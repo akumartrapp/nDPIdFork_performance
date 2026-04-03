@@ -107,8 +107,6 @@ static inline uint64_t mt_pt_get_and_add(volatile uint64_t * value, uint64_t add
     return result;
 }
 
-static int stop_reader_threads(void);
-
 #define MT_GET_AND_ADD(name, value) mt_pt_get_and_add(&name.var, value, &name.var_mutex)
 
 static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub, pthread_mutex_t * mutex)
@@ -213,6 +211,7 @@ static int socket_writer_running = 1;
 static void * socket_writer_thread_func(void * arg);
 static void log_socket_buffer_stats();
 static void init_socket_buffer();
+static int stop_reader_threads(void);
 
 /* Global config file path */
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
