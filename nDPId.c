@@ -1450,7 +1450,7 @@ static void readConfigurationData(const char * filename, int level)
 {
 	if (level <= console_output_level)
 	{
-		logger_early(0, "\nReading configuration data from JSON file: %s", filename);
+		logger_early(0, "\n\nReading configuration data from JSON file: %s", filename);
 	}
 
 	FILE * fp = fopen(filename, "r");
@@ -8519,7 +8519,6 @@ int main(int argc, char ** argv)
     {
         if (is_valid_json_file(global_config_file_path))
         {
-            logger_early(0, "Loading configuration file from user specified option,%s", global_config_file_path);
             readConfigurationData(global_config_file_path, console_output_level);
             read_from_default_config_file = false;
         }
