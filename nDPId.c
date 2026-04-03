@@ -211,7 +211,6 @@ static int socket_writer_running = 1;
 static void * socket_writer_thread_func(void * arg);
 static void log_socket_buffer_stats();
 static void init_socket_buffer();
-static int stop_reader_threads(void);
 
 /* Global config file path */
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
@@ -4225,7 +4224,26 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         if ((unsigned long long)(now - data_collection_start_time) >= data_collection_duration_minutes * 60ULL) 
         {
             write_to_console(0, 1, "Data collection time exceeded, exiting.");
-            print_stats();
+            if (stop_reader_threads() != 0)
+            {
+                return 1;
+            }
+
+            free_reader_threads();
+
+            if (global_context != NULL)
+            {
+                ndpi_global_deinit(global_context);
+            }
+            global_context = NULL;
+
+            daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
+            rotate_event_log_file();
+            rotate_alert_log_file();
+            logger(0, "%s", "Bye.");
+            free_flow_map(&flow_map);
+            shutdown_socket_buffer();
+            shutdown_logging();
             exit(0);
         }
     }
@@ -7305,60 +7323,6 @@ static void process_remaining_flows(void)
 }
 
 
-static void print_stats()
-{
-    logger(0, "------------------------------------ Results");
-    for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
-    {
-        if (reader_threads[i].workflow == NULL)
-        {
-            continue;
-        }
-
-        total_packets_processed += reader_threads[i].workflow->packets_processed;
-        total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
-        total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
-        total_flows_captured += reader_threads[i].workflow->total_active_flows;
-        total_flows_idle += reader_threads[i].workflow->total_idle_flows;
-        total_not_detected += reader_threads[i].workflow->total_not_detected_flows;
-        total_flows_guessed += reader_threads[i].workflow->total_guessed_flows;
-        total_flows_detected += reader_threads[i].workflow->total_detected_flows;
-        total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
-        total_flow_updates += reader_threads[i].workflow->total_flow_updates;
-
-        logger(0,
-               "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
-               "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
-               "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
-               "\tdetection updates.: %8llu, updated flows..: %8llu\n",
-               reader_threads[i].array_index,
-               reader_threads[i].workflow->packets_processed,
-               reader_threads[i].workflow->total_l4_payload_len,
-               reader_threads[i].workflow->total_skipped_flows,
-               reader_threads[i].workflow->total_active_flows,
-               reader_threads[i].workflow->total_idle_flows,
-               reader_threads[i].workflow->total_not_detected_flows,
-               reader_threads[i].workflow->total_guessed_flows,
-               reader_threads[i].workflow->total_detected_flows,
-               reader_threads[i].workflow->total_flow_detection_updates,
-               reader_threads[i].workflow->total_flow_updates);
-    }
-    /* total packets captured: same value for all threads as packet2thread distribution happens later */
-    logger(0,
-           "Total packets captured.......: %llu",
-           (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
-    logger(0, "Total packets processed......: %llu", total_packets_processed);
-    logger(0, "Total layer4 payload size....: %llu", total_l4_payload_len);
-    logger(0, "Total flows ignopred.........: %llu", total_flows_skipped);
-    logger(0, "Total flows processed........: %llu", total_flows_captured);
-    logger(0, "Total flows timed out........: %llu", total_flows_idle);
-    logger(0, "Total flows detected.........: %llu", total_flows_detected);
-    logger(0, "Total flows guessed..........: %llu", total_flows_guessed);
-    logger(0, "Total flows not detected.....: %llu", total_not_detected);
-    logger(0, "Total flow updates...........: %llu", total_flow_updates);
-    logger(0, "Total flow detections updates: %llu", total_flow_detection_updates);
-}
-
 
 static int stop_reader_threads(void)
 {
@@ -7396,8 +7360,54 @@ static int stop_reader_threads(void)
     process_remaining_flows();
 
     logger(0, "------------------------------------ Results");
-    print_stats();
+    for (unsigned long long int i = 0; i < GET_CMDARG_ULL(nDPId_options.reader_thread_count); ++i)
+    {
+        if (reader_threads[i].workflow == NULL)
+        {
+            continue;
+        }
 
+        total_packets_processed += reader_threads[i].workflow->packets_processed;
+        total_l4_payload_len += reader_threads[i].workflow->total_l4_payload_len;
+        total_flows_skipped += reader_threads[i].workflow->total_skipped_flows;
+        total_flows_captured += reader_threads[i].workflow->total_active_flows;
+        total_flows_idle += reader_threads[i].workflow->total_idle_flows;
+        total_not_detected += reader_threads[i].workflow->total_not_detected_flows;
+        total_flows_guessed += reader_threads[i].workflow->total_guessed_flows;
+        total_flows_detected += reader_threads[i].workflow->total_detected_flows;
+        total_flow_detection_updates += reader_threads[i].workflow->total_flow_detection_updates;
+        total_flow_updates += reader_threads[i].workflow->total_flow_updates;
+
+        logger(0,
+            "Stopping Thread %2zu, processed %llu packets, %llu bytes\n"
+            "\tskipped flows.....: %8llu, processed flows: %8llu, idle flows....: %8llu\n"
+            "\tnot detected flows: %8llu, guessed flows..: %8llu, detected flows: %8llu\n"
+            "\tdetection updates.: %8llu, updated flows..: %8llu\n",
+            reader_threads[i].array_index,
+            reader_threads[i].workflow->packets_processed,
+            reader_threads[i].workflow->total_l4_payload_len,
+            reader_threads[i].workflow->total_skipped_flows,
+            reader_threads[i].workflow->total_active_flows,
+            reader_threads[i].workflow->total_idle_flows,
+            reader_threads[i].workflow->total_not_detected_flows,
+            reader_threads[i].workflow->total_guessed_flows,
+            reader_threads[i].workflow->total_detected_flows,
+            reader_threads[i].workflow->total_flow_detection_updates,
+            reader_threads[i].workflow->total_flow_updates);
+    }
+    /* total packets captured: same value for all threads as packet2thread distribution happens later */
+        logger(0, "Total packets captured.......: %llu",
+            (reader_threads[0].workflow != NULL ? reader_threads[0].workflow->packets_captured : 0));
+        logger(0, "Total packets processed......: %llu", total_packets_processed);
+        logger(0, "Total layer4 payload size....: %llu", total_l4_payload_len);
+        logger(0, "Total flows ignopred.........: %llu", total_flows_skipped);
+        logger(0, "Total flows processed........: %llu", total_flows_captured);
+        logger(0, "Total flows timed out........: %llu", total_flows_idle);
+        logger(0, "Total flows detected.........: %llu", total_flows_detected);
+        logger(0, "Total flows guessed..........: %llu", total_flows_guessed);
+        logger(0, "Total flows not detected.....: %llu", total_not_detected);
+        logger(0, "Total flow updates...........: %llu", total_flow_updates);
+        logger(0, "Total flow detections updates: %llu", total_flow_detection_updates);
 
     return 0;
 }
@@ -7437,7 +7447,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 04.02.2026.04");
+    logger_early(0, "program version is 04.02.2026.02");
 }
 
 static void print_usage(char const * const arg0)
@@ -8656,7 +8666,6 @@ int main(int argc, char ** argv)
     {
         return 1;
     }
-
     free_reader_threads();
 
     if (global_context != NULL)
