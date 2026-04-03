@@ -7430,7 +7430,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 04.02.2026.03");
+    logger_early(0, "program version is 04.02.2026.04");
 }
 
 static void print_usage(char const * const arg0)
