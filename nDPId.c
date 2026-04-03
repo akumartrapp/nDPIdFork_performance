@@ -1427,7 +1427,7 @@ static void printConfigurationData(int level)
 {
     if (level <= console_output_level)
     {
-        logger_early(0, "%s", "nDPId Configuration Data:");
+        logger_early(0, "%s", "\nnDPId Configuration Data:");
         logger_early(0, "\tlog_file_duration_in_seconds: %d", log_file_duration_in_seconds);
         logger_early(0, "\tlog_file_size_in_mb: %d", log_file_size_in_mb);
         logger_early(0, "\tflow_end_timeout_usec: %llu", (unsigned long long)flow_end_timeout_usec);
@@ -8502,6 +8502,7 @@ int main(int argc, char ** argv)
     readConfigurationData(global_config_file_path, 0);
 
     /* Parse all options including -x */
+    logger_early(0, "\nStarting to parse options");
     if (nDPId_parse_options(argc, argv) != 0)
     {
         logger_early(1, "%s", "Failed to parse options");
@@ -8518,7 +8519,7 @@ int main(int argc, char ** argv)
     {
         if (is_valid_json_file(global_config_file_path))
         {
-             logger_early(0, "Loading configuration file from user specified option,%s", global_config_file_path);
+            logger_early(0, "Loading configuration file from user specified option,%s", global_config_file_path);
             readConfigurationData(global_config_file_path, console_output_level);
             read_from_default_config_file = false;
         }
