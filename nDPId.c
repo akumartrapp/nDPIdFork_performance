@@ -1601,8 +1601,7 @@ static void readConfigurationData(const char * filename, int level)
                 collector_unix_socket_location = (char *)json_object_get_string(val);
                 if (strlen(collector_unix_socket_location) != 0)
                 {
-                    set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
-                    socket_already_set = true;
+                    set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);                
                 }
                 logger_early(0, "[Config] sockets.COLLECTOR_UNIX_SOCKET: %s", collector_unix_socket_location);
             }
@@ -7426,7 +7425,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 04.02.2026.03");
+    logger_early(0, "program version is 04.02.2026.04");
 }
 
 static void print_usage(char const * const arg0)
@@ -7807,6 +7806,7 @@ static int nDPId_parse_options(int argc, char ** argv)
             case 'c':
                 logger_early(0, "Option -c (collector_address): %s", optarg ? optarg : "(null)");
                 set_cmdarg_string(&nDPId_options.collector_address, optarg);
+                socket_already_set = true;
                 break;
             case 'k':
 #ifdef ENABLE_CRYPTO
