@@ -4224,6 +4224,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         if ((unsigned long long)(now - data_collection_start_time) >= data_collection_duration_minutes * 60ULL) 
         {
             write_to_console(0, 1, "Data collection time exceeded, exiting.");
+            stop_reader_threads();
             exit(0);
         }
     }
@@ -7427,7 +7428,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 04.02.2026.02");
+    logger_early(0, "program version is 04.02.2026.03");
 }
 
 static void print_usage(char const * const arg0)
@@ -8646,6 +8647,7 @@ int main(int argc, char ** argv)
     {
         return 1;
     }
+
     free_reader_threads();
 
     if (global_context != NULL)
