@@ -4224,27 +4224,7 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
         time_t now = time(NULL);
         if ((unsigned long long)(now - data_collection_start_time) >= data_collection_duration_minutes * 60ULL) 
         {
-            write_to_console(0, 1, "Data collection time exceeded, exiting.");
-            if (stop_reader_threads() != 0)
-            {
-                return 1;
-            }
-
-            free_reader_threads();
-
-            if (global_context != NULL)
-            {
-                ndpi_global_deinit(global_context);
-            }
-            global_context = NULL;
-
-            daemonize_shutdown(GET_CMDARG_STR(nDPId_options.pidfile));
-            rotate_event_log_file();
-            rotate_alert_log_file();
-            logger(0, "%s", "Bye.");
-            free_flow_map(&flow_map);
-            shutdown_socket_buffer();
-            shutdown_logging();
+            write_to_console(0, 1, "Data collection time exceeded, exiting.");          
             exit(0);
         }
     }
