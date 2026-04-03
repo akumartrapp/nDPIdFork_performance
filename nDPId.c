@@ -184,6 +184,7 @@ static int data_collection_time_in_minutes = -1;
 static char * collector_unix_socket_location = COLLECTOR_UNIX_SOCKET;
 static int collector_reconnect_interval_sec = 5;
 static int collector_reconnect_timeout_sec = 60;
+bool socket_already_set = false;
 
 /*----------------socket thread related code------------------------------------------------------------------*/
 struct socket_message
@@ -1427,7 +1428,7 @@ static void printConfigurationData(int level)
 {
     if (level <= console_output_level)
     {
-        logger_early(0, "%s", "\nnDPId Configuration Data:");
+        logger_early(0, "%s", "nDPId Configuration Data:");
         logger_early(0, "\tlog_file_duration_in_seconds: %d", log_file_duration_in_seconds);
         logger_early(0, "\tlog_file_size_in_mb: %d", log_file_size_in_mb);
         logger_early(0, "\tflow_end_timeout_usec: %llu", (unsigned long long)flow_end_timeout_usec);
@@ -1450,7 +1451,7 @@ static void readConfigurationData(const char * filename, int level)
 {
 	if (level <= console_output_level)
 	{
-		logger_early(0, "\n\nReading configuration data from JSON file: %s", filename);
+		logger_early(0, "nReading configuration data from JSON file: %s", filename);
 	}
 
 	FILE * fp = fopen(filename, "r");
@@ -1594,12 +1595,13 @@ static void readConfigurationData(const char * filename, int level)
         struct json_object * sockets_obj;
         if (json_object_object_get_ex(ndpid_obj, "sockets", &sockets_obj))
         {
-            if (json_object_object_get_ex(sockets_obj, "COLLECTOR_UNIX_SOCKET", &val))
+            if (!socket_already_set && json_object_object_get_ex(sockets_obj, "COLLECTOR_UNIX_SOCKET", &val))
             {
                 collector_unix_socket_location = (char *)json_object_get_string(val);
                 if (strlen(collector_unix_socket_location) != 0)
                 {
                     set_cmdarg_string(&nDPId_options.collector_address, collector_unix_socket_location);
+                    socket_already_set = true;
                 }
                 logger_early(0, "[Config] sockets.COLLECTOR_UNIX_SOCKET: %s", collector_unix_socket_location);
             }
@@ -7425,7 +7427,7 @@ static void print_subopt_usage(void)
 static void printVersion()
 {
     // MM.DD.YYYY
-    logger_early(0, "program version is 04.02.2026.01");
+    logger_early(0, "program version is 04.02.2026.02");
 }
 
 static void print_usage(char const * const arg0)
@@ -8502,7 +8504,7 @@ int main(int argc, char ** argv)
     readConfigurationData(global_config_file_path, 0);
 
     /* Parse all options including -x */
-    logger_early(0, "\nStarting to parse options");
+    logger_early(0, "Starting to parse options");
     if (nDPId_parse_options(argc, argv) != 0)
     {
         logger_early(1, "%s", "Failed to parse options");
