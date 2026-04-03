@@ -150,8 +150,6 @@ static inline uint64_t mt_pt_get_and_sub(volatile uint64_t * value, uint64_t sub
 static uint64_t flow_end_timeout_usec = (60ULL * 1000000ULL);    // default: 1 minute
 static uint64_t flow_stale_timeout_usec = (600ULL * 1000000ULL); // default: 10 minutes
 
-
-
 const char * alerts_folder_name = "Alerts";
 const char * events_folder_name = "Events";
 const char * master_folder_name = "Master";
@@ -211,6 +209,7 @@ static int socket_writer_running = 1;
 static void * socket_writer_thread_func(void * arg);
 static void log_socket_buffer_stats();
 static void init_socket_buffer();
+static int stop_reader_threads(void);
 
 /* Global config file path */
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
@@ -7321,8 +7320,6 @@ static void process_remaining_flows(void)
         jsonize_daemon(&reader_threads[i], DAEMON_EVENT_SHUTDOWN);
     }
 }
-
-static int stop_reader_threads(void);
 
 static int stop_reader_threads(void)
 {
