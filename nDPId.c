@@ -210,6 +210,8 @@ static void * socket_writer_thread_func(void * arg);
 static void log_socket_buffer_stats();
 static void init_socket_buffer();
 static int stop_reader_threads(void);
+static void free_reader_threads(void);
+static void shutdown_socket_buffer();
 
 /* Global config file path */
 static char global_config_file_path[PATH_MAX] = "Settings/nDPIdConfiguration.json";
