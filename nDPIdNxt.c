@@ -513,10 +513,16 @@ void write_to_alert_file(const char * const json_msg, size_t json_msg_len)
 static void write_to_file(const char * const json_msg)
 {
     write_to_console(0, 3, "write_to_file called new ");
+
+    /* Parse ONCE for all ConvertnDPIDataFormat calls */
+    json_object * root = json_tokener_parse(json_msg);
+    if (!root)
+        return;
+
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
-    ConvertnDPIDataFormat(json_msg, 0, &converted_json_str, &flow_risk_count);
+    ConvertnDPIDataFormat(root, 0, &converted_json_str, &flow_risk_count);
     if (converted_json_str != NULL)
     {
         int length = strlen(converted_json_str);
@@ -524,7 +530,7 @@ static void write_to_file(const char * const json_msg)
         {
             if (console_output_level > 1)
             {
-                uint64_t flow_id = GetFlowId(converted_json_str);
+                uint64_t flow_id = GetFlowId(json_msg);
                 logger(0, "write_to_file(): GetFlowId Flow ID: %" PRIu64, flow_id);
                 if (flow_id <= 0)
                 {
@@ -532,7 +538,7 @@ static void write_to_file(const char * const json_msg)
                     logger(1, "write_to_file(): Flow id not found in \n%s", converted_json_str);
                 }
             }
-           
+
             if (flow_risk_count)
             {
                 write_to_alert_file(converted_json_str, length);
@@ -540,12 +546,11 @@ static void write_to_file(const char * const json_msg)
                 {
                     free(converted_json_str);
                     int flow_risk_count_dummy = 0;
-                    ConvertnDPIDataFormat(json_msg, index, &converted_json_str, &flow_risk_count_dummy);
+                    /* Reuse root — no re-parse */
+                    ConvertnDPIDataFormat(root, index, &converted_json_str, &flow_risk_count_dummy);
                     length = strlen(converted_json_str);
                     if (length != 0)
-                    {
                         write_to_alert_file(converted_json_str, length);
-                    }                  
                 }
 
                 if (length == 0)
@@ -564,13 +569,13 @@ static void write_to_file(const char * const json_msg)
             else
             {
                 write_to_event_file(converted_json_str, length);
-            }            
+            }
         }
-
-        free(converted_json_str);
     }
-}
 
+    json_object_put(root);    /* always release — owns root */
+    free(converted_json_str); /* safe even if NULL */
+}
 
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -3871,9 +3876,7 @@ static int write_to_socket_2(struct nDPId_reader_thread * const reader_thread,
 
 
 
- 
-static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
-                           const char * const json_msg)
+static int write_to_socket(struct nDPId_reader_thread * const reader_thread, const char * const json_msg)
 {
     write_to_console(0, 3, "write_to_socket called");
     struct nDPId_workflow * const workflow = reader_thread->workflow;
@@ -3897,7 +3900,6 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
         }
         else
         {
-            /* Still failed – keep the queue entry so retry later */
             if (saved_errno != reader_thread->collector_sock_last_errno)
             {
                 logger(1,
@@ -3910,7 +3912,7 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
                             ? strerror(reader_thread->collector_sock_last_errno)
                             : "Internal Error"));
             }
-            return -1; // do NOT free json; writer thread will retry same entry
+            return -1;
         }
     }
 
@@ -3945,15 +3947,20 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
 #endif
 
     /* --------------------------------------------
-       3. Convert JSON to nDPI format
+       3. Parse ONCE — reuse for all ConvertnDPIDataFormat calls
     --------------------------------------------- */
+    json_object * root = json_tokener_parse(json_msg);
+    if (!root)
+        return 0;
+
     char * converted_json_str = NULL;
     int flow_risk_count = 0;
 
-    ConvertnDPIDataFormat(json_msg, 0, &converted_json_str, &flow_risk_count);
+    ConvertnDPIDataFormat(root, 0, &converted_json_str, &flow_risk_count);
 
     if (converted_json_str == NULL)
     {
+        json_object_put(root);
         return 0; // nothing to send → not an error
     }
 
@@ -3963,8 +3970,7 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
     if (length > 0)
     {
         /* ======================================================
-           4. If multiple risk chunks → send each independently
-              and if ANY fails, stop immediately (no free!)
+           4. Multiple risk chunks — reuse root, no re-parse
            ====================================================== */
         if (flow_risk_count > 0)
         {
@@ -3972,15 +3978,12 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
             {
                 if (index > 0)
                 {
-                    // Free previous chunk only because we will replace it
                     free(converted_json_str);
-
                     int dummy = 0;
-                    ConvertnDPIDataFormat(json_msg, index, &converted_json_str, &dummy);
+                    ConvertnDPIDataFormat(root, index, &converted_json_str, &dummy); // reuse root
                 }
 
                 length = strlen(converted_json_str);
-
                 if (length > 0)
                 {
                     if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
@@ -3999,7 +4002,7 @@ static int write_to_socket(struct nDPId_reader_thread * const reader_thread,
             if (write_to_socket_2(reader_thread, converted_json_str, length) != 0)
             {
                 rc = -1;
-                goto out; // do NOT free → message stays in queue
+                goto out;
             }
         }
     }
@@ -4009,9 +4012,9 @@ out:
     if (rc == 0)
         free(converted_json_str);
 
+    json_object_put(root); // always release root regardless of rc
     return rc;
 }
-
 
 
 static void write_to_socket_buffer(const char * json_msg)

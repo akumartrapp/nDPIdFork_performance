@@ -1198,7 +1198,11 @@ static const char* ndpi_risk2description(ndpi_risk_enum risk)
 /*--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 // Function to convert ndpi field to the desired structure
-struct NDPI_Data getnDPIStructure(const char * ndpiJson )
+// OLD signature:
+// struct NDPI_Data getnDPIStructure(const char * ndpiJson)
+
+// NEW signature — accepts pre-parsed root, does NOT call json_object_put:
+struct NDPI_Data getnDPIStructure(json_object * root)
 {
     struct NDPI_Data result;
     result.flow_risk = NULL;
@@ -1212,7 +1216,6 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson )
     result.tls.cipher = NULL;
     result.tls.issuerDN = NULL;
     result.tls.subjectDN = NULL;
-
     result.confidence_value = NULL;
     result.proto_id = NULL;
     result.protocol = NULL;
@@ -1227,220 +1230,134 @@ struct NDPI_Data getnDPIStructure(const char * ndpiJson )
     result.http.filename = NULL;
     result.http.code = RANDOM_UNINITIALIZED_NUMBER_VALUE;
 
-    // Parse JSON string
-    json_object* root = json_tokener_parse(ndpiJson);
     if (root == NULL)
-    {
-        fprintf(stderr, "Error parsing JSON\n");
         return result;
-    }
 
-    json_object* ndpiObject;
+    json_object * ndpiObject;
     if (json_object_object_get_ex(root, "ndpi", &ndpiObject))
     {
-        // Extract flow_risk array
-        json_object* flowRiskObj = NULL;
-        if (json_object_object_get_ex(ndpiObject, "flow_risk", &flowRiskObj) && json_object_is_type(flowRiskObj, json_type_object))
+        json_object * flowRiskObj = NULL;
+        if (json_object_object_get_ex(ndpiObject, "flow_risk", &flowRiskObj) &&
+            json_object_is_type(flowRiskObj, json_type_object))
         {
-            // Get the number of elements in the flow_risk object
             int flowRiskCount = json_object_object_length(flowRiskObj);
-
-            // Allocate memory for NDPI_Risk array
             result.flow_risk = malloc(flowRiskCount * sizeof(struct NDPI_Risk));
-            if (result.flow_risk == NULL) 
+            if (result.flow_risk == NULL)
             {
                 fprintf(stderr, "Memory allocation failed\n");
                 return result;
             }
-
-            // Initialize the count of flow_risk elements
             result.flow_risk_count = 0;
 
-            // Iterate through each element of the flow_risk object
-            json_object_object_foreach(flowRiskObj, key, val) 
+            json_object_object_foreach(flowRiskObj, key, val)
             {
-                json_object* riskObj = val;
-
-                // Extract risk, severity, and risk_score objects
-                json_object* risk;
-                json_object* severity;
-                json_object* riskScoreObj;
+                json_object * riskObj = val;
+                json_object *risk, *severity, *riskScoreObj;
                 if (json_object_object_get_ex(riskObj, "risk", &risk) &&
                     json_object_object_get_ex(riskObj, "severity", &severity) &&
                     json_object_object_get_ex(riskObj, "risk_score", &riskScoreObj))
                 {
-
-                    // Extract risk_score values
-                    json_object* totalObj;
-                    json_object* clientObj;
-                    json_object* serverObj;
+                    json_object *totalObj, *clientObj, *serverObj;
                     if (json_object_object_get_ex(riskScoreObj, "total", &totalObj) &&
                         json_object_object_get_ex(riskScoreObj, "client", &clientObj) &&
                         json_object_object_get_ex(riskScoreObj, "server", &serverObj))
                     {
-
-                        // Allocate memory for the NDPI_Risk structure
                         result.flow_risk[result.flow_risk_count].risk = strDuplicate(json_object_get_string(risk));
-                        result.flow_risk[result.flow_risk_count].severity = strDuplicate(json_object_get_string(severity));
+                        result.flow_risk[result.flow_risk_count].severity =
+                            strDuplicate(json_object_get_string(severity));
                         result.flow_risk[result.flow_risk_count].risk_score.total = json_object_get_int(totalObj);
                         result.flow_risk[result.flow_risk_count].risk_score.client = json_object_get_int(clientObj);
                         result.flow_risk[result.flow_risk_count].risk_score.server = json_object_get_int(serverObj);
                         result.flow_risk[result.flow_risk_count].key = atoi(key);
-
-                        // Increment the count of flow_risk elements
                         result.flow_risk_count++;
                     }
                 }
             }
         }
 
-        // Extract confidence object
-        json_object* confidenceObj;
-        if (json_object_object_get_ex(ndpiObject, "confidence", &confidenceObj) && json_object_is_type(confidenceObj, json_type_object))
+        json_object * confidenceObj;
+        if (json_object_object_get_ex(ndpiObject, "confidence", &confidenceObj) &&
+            json_object_is_type(confidenceObj, json_type_object))
         {
-            // Extract key and value
-            const char* keyStr = NULL;
+            const char * keyStr = NULL;
             json_object_object_foreach(confidenceObj, key, val)
             {
                 keyStr = key;
-                break; // Assuming there's only one key in confidence
+                break;
             }
-            json_object* value = json_object_object_get(confidenceObj, keyStr);
-
-            // Store confidence data in the result
+            json_object * value = json_object_object_get(confidenceObj, keyStr);
             result.confidence.key = atoi(keyStr);
             result.confidence.value = strDuplicate(json_object_get_string(value));
         }
 
-        // Extract rest of ndpi data
-        json_object* proto_id;
+        json_object * proto_id;
         if (json_object_object_get_ex(ndpiObject, "proto_id", &proto_id))
-        {
             result.proto_id = strDuplicate(json_object_get_string(proto_id));
-        }
 
-        json_object* proto_by_ip;
+        json_object * proto_by_ip;
         if (json_object_object_get_ex(ndpiObject, "proto_by_ip", &proto_by_ip))
-        {
             result.proto_by_ip = strDuplicate(json_object_get_string(proto_by_ip));
-        }
 
         json_object * protocol;
         if (json_object_object_get_ex(ndpiObject, "proto", &protocol))
-        {
             result.protocol = strDuplicate(json_object_get_string(protocol));
-        }
 
-        json_object* proto_by_ip_id;
+        json_object * proto_by_ip_id;
         if (json_object_object_get_ex(ndpiObject, "proto_by_ip_id", &proto_by_ip_id))
-        {
             result.proto_by_ip_id = json_object_get_int(proto_by_ip_id);
-        }
 
-        json_object* encrypted;
+        json_object * encrypted;
         if (json_object_object_get_ex(ndpiObject, "encrypted", &encrypted))
-        {
             result.encrypted = json_object_get_int(encrypted);
-        }
 
-        json_object* category_id;
+        json_object * category_id;
         if (json_object_object_get_ex(ndpiObject, "category_id", &category_id))
-        {
             result.category_id = json_object_get_int(category_id);
-        }
 
-        json_object* category;
+        json_object * category;
         if (json_object_object_get_ex(ndpiObject, "category", &category))
-        {
             result.category = strDuplicate(json_object_get_string(category));
-        }
 
-        // Extract http object
         json_object * httpObject;
         if (json_object_object_get_ex(ndpiObject, "http", &httpObject) &&
             json_object_is_type(httpObject, json_type_object))
         {
-            json_object * request_content_type_object;
-            if (json_object_object_get_ex(httpObject, "request_content_type", &request_content_type_object))
-            {
-                result.http.request_content_type = strDuplicate(json_object_get_string(request_content_type_object));
-            }
-
-            json_object * content_type_object;
-            if (json_object_object_get_ex(httpObject, "content_type", &content_type_object))
-            {
-                result.http.content_type = strDuplicate(json_object_get_string(content_type_object));
-            }
-
-            json_object * user_agent_object;
-            if (json_object_object_get_ex(httpObject, "user_agent", &user_agent_object))
-            {
-                result.http.user_agent = strDuplicate(json_object_get_string(user_agent_object));
-            }
-
-            json_object * filename_object;
-            if (json_object_object_get_ex(httpObject, "filename", &filename_object))
-            {
-                result.http.filename = strDuplicate(json_object_get_string(filename_object));
-            }
-
-            json_object * code_object;
-            if (json_object_object_get_ex(httpObject, "code", &code_object))
-            {
-                result.http.code = json_object_get_int(code_object);
-            }
+            json_object * o;
+            if (json_object_object_get_ex(httpObject, "request_content_type", &o))
+                result.http.request_content_type = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(httpObject, "content_type", &o))
+                result.http.content_type = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(httpObject, "user_agent", &o))
+                result.http.user_agent = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(httpObject, "filename", &o))
+                result.http.filename = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(httpObject, "code", &o))
+                result.http.code = json_object_get_int(o);
         }
 
-        // Extract tls object
         json_object * tlsObject;
-        if (json_object_object_get_ex(ndpiObject, "tls", &tlsObject) &&  json_object_is_type(tlsObject, json_type_object))
+        if (json_object_object_get_ex(ndpiObject, "tls", &tlsObject) &&
+            json_object_is_type(tlsObject, json_type_object))
         {
-            json_object * version_object;
-            if (json_object_object_get_ex(tlsObject, "version", &version_object))
-            {
-                result.tls.version = strDuplicate(json_object_get_string(version_object));
-            }
-
-            json_object * server_names_object;
-            if (json_object_object_get_ex(tlsObject, "server_names", &server_names_object))
-            {
-                result.tls.server_names = strDuplicate(json_object_get_string(server_names_object));
-            }
-
-            json_object * ja3_object;
-            if (json_object_object_get_ex(tlsObject, "ja4", &ja3_object))
-            {
-                result.tls.ja4 = strDuplicate(json_object_get_string(ja3_object));
-            }
-
-            json_object * ja3s_object;
-            if (json_object_object_get_ex(tlsObject, "ja3s", &ja3s_object))
-            {
-                result.tls.ja3s = strDuplicate(json_object_get_string(ja3s_object));
-            }
-
-            json_object * cipher_object;
-            if (json_object_object_get_ex(tlsObject, "cipher", &cipher_object))
-            {
-                result.tls.cipher = strDuplicate(json_object_get_string(cipher_object));
-            }
-
-            json_object * issuerDN_object;
-            if (json_object_object_get_ex(tlsObject, "issuerDN", &issuerDN_object))
-            {
-                result.tls.issuerDN = strDuplicate(json_object_get_string(issuerDN_object));
-            }
-
-            json_object * subjectDN_object;
-            if (json_object_object_get_ex(tlsObject, "subjectDN", &subjectDN_object))
-            {
-                result.tls.subjectDN = strDuplicate(json_object_get_string(subjectDN_object));
-            }
+            json_object * o;
+            if (json_object_object_get_ex(tlsObject, "version", &o))
+                result.tls.version = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(tlsObject, "server_names", &o))
+                result.tls.server_names = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(tlsObject, "ja4", &o))
+                result.tls.ja4 = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(tlsObject, "ja3s", &o))
+                result.tls.ja3s = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(tlsObject, "cipher", &o))
+                result.tls.cipher = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(tlsObject, "issuerDN", &o))
+                result.tls.issuerDN = strDuplicate(json_object_get_string(o));
+            if (json_object_object_get_ex(tlsObject, "subjectDN", &o))
+                result.tls.subjectDN = strDuplicate(json_object_get_string(o));
         }
     }
 
-    json_object_put(root);
-
+    /* NOTE: caller owns root — do NOT json_object_put here */
     return result;
 }
 
@@ -1487,7 +1404,11 @@ uint64_t GetFlowId(const char * json_str)
     return flow_id;
 }
 
-static struct Root_data getRootDataStructure(const char* originalJsonStr)
+// OLD signature:
+// static struct Root_data getRootDataStructure(const char * originalJsonStr)
+
+// NEW signature — accepts pre-parsed root, does NOT call json_object_put:
+static struct Root_data getRootDataStructure(json_object * root)
 {
     struct Root_data result;
     result.src_ip = NULL;
@@ -1513,179 +1434,75 @@ static struct Root_data getRootDataStructure(const char* originalJsonStr)
     result.event_duration = INVALID_TIMESTAMP;
     result.hostname = NULL;
 
-    // Parse JSON string
-    json_object* root = json_tokener_parse(originalJsonStr);
     if (root == NULL)
-    {
-        fprintf(stderr, "Error parsing JSON\n");
         return result;
-    }
 
-    // src_ip and src_port data
-    json_object* src_ip;
-    if (json_object_object_get_ex(root, "src_ip", &src_ip))
-    {
-        result.src_ip = strDuplicate(json_object_get_string(src_ip));
-    }    
+    json_object * o;
+    if (json_object_object_get_ex(root, "src_ip", &o))
+        result.src_ip = strDuplicate(json_object_get_string(o));
+    if (json_object_object_get_ex(root, "src_port", &o))
+        result.src_port = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "flow_src_packets_processed", &o))
+        result.src_packets = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "src2dst_bytes", &o))
+        result.src_bytes = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "dst_ip", &o))
+        result.dest_ip = strDuplicate(json_object_get_string(o));
+    if (json_object_object_get_ex(root, "dst_port", &o))
+        result.dst_port = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "flow_dst_packets_processed", &o))
+        result.des_packets = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "dst2src_bytes", &o))
+        result.des_bytes = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "flow_src_tot_l4_payload_len", &o))
+        result.flow_src_tot_l4_payload_len = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "flow_dst_tot_l4_payload_len", &o))
+        result.flow_dst_tot_l4_payload_len = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "ip", &o))
+        result.ip = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "l4_proto", &o))
+        result.l4_proto = strDuplicate(json_object_get_string(o));
 
-    json_object* src_port;
-    if (json_object_object_get_ex(root, "src_port", &src_port))
-    {
-        result.src_port = json_object_get_int(src_port);
-    }
-
-    json_object * flow_src_packets_processed_object;
-    if (json_object_object_get_ex(root, "flow_src_packets_processed", &flow_src_packets_processed_object))
-    {
-        result.src_packets = json_object_get_int(flow_src_packets_processed_object);
-    }
-
-    json_object * src2dst_bytes_object;
-    if (json_object_object_get_ex(root, "src2dst_bytes", &src2dst_bytes_object))
-    {
-        result.src_bytes = json_object_get_int(src2dst_bytes_object);
-    }
-    
-    // dest_ip and dst_port data
-    json_object* dest_ip;
-    if (json_object_object_get_ex(root, "dst_ip", &dest_ip))
-    {
-        result.dest_ip = strDuplicate(json_object_get_string(dest_ip));
-    }
-    
-    json_object* dst_port;
-    if (json_object_object_get_ex(root, "dst_port", &dst_port))
-    {
-        result.dst_port = json_object_get_int(dst_port);
-    }
-
-    json_object * flow_dst_packets_processed_object;
-    if (json_object_object_get_ex(root, "flow_dst_packets_processed", &flow_dst_packets_processed_object))
-    {
-        result.des_packets = json_object_get_int(flow_dst_packets_processed_object);
-    }
-
-    json_object * dst2src_bytes_object;
-    if (json_object_object_get_ex(root, "dst2src_bytes", &dst2src_bytes_object))
-    {
-        result.des_bytes = json_object_get_int(dst2src_bytes_object);
-    }
-
-    json_object * flow_src_tot_l4_payload_len_object;
-    if (json_object_object_get_ex(root, "flow_src_tot_l4_payload_len", &flow_src_tot_l4_payload_len_object))
-    {
-        result.flow_src_tot_l4_payload_len = json_object_get_int(flow_src_tot_l4_payload_len_object);
-    }
-
-    json_object * flow_dst_tot_l4_payload_len_object;
-    if (json_object_object_get_ex(root, "flow_dst_tot_l4_payload_len", &flow_dst_tot_l4_payload_len_object))
-    {
-        result.flow_dst_tot_l4_payload_len = json_object_get_int(flow_dst_tot_l4_payload_len_object);
-    }
-
-    // network object
-    //json_object* l3_proto;
-    //if (json_object_object_get_ex(root, "l3_proto", &l3_proto))
-    //{
-    //    result.l3_proto = strDuplicate(json_object_get_string(l3_proto));
-    //}
-
-    json_object* ip;
-    if (json_object_object_get_ex(root, "ip", &ip))
-    {
-        result.ip = json_object_get_int(ip);
-    }
-   
-
-    json_object* l4_proto;
-    if (json_object_object_get_ex(root, "l4_proto", &l4_proto))
-    {
-        result.l4_proto = strDuplicate(json_object_get_string(l4_proto));
-    }
-   
-    //json_object* proto;
-    //if (json_object_object_get_ex(root, "proto", &proto))
-    //{
-    //    result.proto = strDuplicate(json_object_get_string(proto));
-    //}
-    
-    json_object* ndpi_object;
+    json_object * ndpi_object;
     if (json_object_object_get_ex(root, "ndpi", &ndpi_object))
     {
-        json_object* breed;
-        if (json_object_object_get_ex(ndpi_object, "breed", &breed))
-        {
-            result.breed = strDuplicate(json_object_get_string(breed));
-        }
-
-        json_object* hostname;
-        if (json_object_object_get_ex(ndpi_object, "hostname", &hostname))
-        {
-            result.hostname = strDuplicate(json_object_get_string(hostname));
-        }
+        if (json_object_object_get_ex(ndpi_object, "breed", &o))
+            result.breed = strDuplicate(json_object_get_string(o));
+        if (json_object_object_get_ex(ndpi_object, "hostname", &o))
+            result.hostname = strDuplicate(json_object_get_string(o));
     }
-    
 
-    json_object* flow_id;
-    if (json_object_object_get_ex(root, "flow_id", &flow_id))
-    {
-        result.flow_id = json_object_get_uint64(flow_id);
-    }
+    if (json_object_object_get_ex(root, "flow_id", &o))
+        result.flow_id = json_object_get_uint64(o);
     else
-    {
         logger(1, "getRootDataStructure(): flow_id field not found in JSON\n");
-    }
 
-    json_object * flow_event_id;
-    if (json_object_object_get_ex(root, "flow_event_id", &flow_event_id))
+    if (json_object_object_get_ex(root, "flow_event_id", &o))
+        result.flow_event_id = json_object_get_int(o);
+    if (json_object_object_get_ex(root, "packet_id", &o))
+        result.packet_id = json_object_get_int(o);
+
+    uint64_t start_time = 0, src_last_pkt_time = 0, dst_last_pkt_time = 0;
+    if (json_object_object_get_ex(root, "flow_first_seen", &o))
     {
-        result.flow_event_id = json_object_get_int(flow_event_id);
-    }
-  
-
-    json_object * packet_id;
-    if (json_object_object_get_ex(root, "packet_id", &packet_id))
-    {
-        result.packet_id = json_object_get_int(packet_id);
-    }
-  
-  
-    // event
-    uint64_t start_time = 0;
-    uint64_t src_last_pkt_time = 0;
-    uint64_t dst_last_pkt_time = 0;
-
-    json_object * flow_first_seen;
-    if (json_object_object_get_ex(root, "flow_first_seen", &flow_first_seen))
-    {       
-        start_time = json_object_get_uint64(flow_first_seen);
+        start_time = json_object_get_uint64(o);
         char buf[64];
         convert_usec_to_utc_string(start_time, buf, sizeof(buf));
         result.event_start = strDuplicate(buf);
     }
-
-    json_object * flow_src_last_pkt_time;
-    if (json_object_object_get_ex(root, "flow_src_last_pkt_time", &flow_src_last_pkt_time))
-    {       
-       src_last_pkt_time = json_object_get_uint64(flow_src_last_pkt_time);
-    }
-
-    json_object * flow_dst_last_pkt_time;
-    if (json_object_object_get_ex(root, "flow_dst_last_pkt_time", &flow_dst_last_pkt_time))
-    {
-        dst_last_pkt_time = json_object_get_uint64(flow_dst_last_pkt_time);
-    }
-
+    if (json_object_object_get_ex(root, "flow_src_last_pkt_time", &o))
+        src_last_pkt_time = json_object_get_uint64(o);
+    if (json_object_object_get_ex(root, "flow_dst_last_pkt_time", &o))
+        dst_last_pkt_time = json_object_get_uint64(o);
     if (start_time != 0)
-    {       
+    {
         char buf[64];
         convert_usec_to_utc_string(max_u64(src_last_pkt_time, dst_last_pkt_time), buf, sizeof(buf));
         result.event_end = strDuplicate(buf);
         result.event_duration = convert_usec_to_nsec(max_u64(src_last_pkt_time, dst_last_pkt_time) - start_time);
     }
 
-    json_object_put(root);
-
+    /* NOTE: caller owns root — do NOT json_object_put here */
     return result;
 }
 
@@ -2291,30 +2108,40 @@ static void add_Root_Data(json_object ** root_object,
     }   
 }
 
-void ConvertnDPIDataFormat(const char * originalJsonStr,
-                           int flowRiskIndex,
-                           char ** converted_json_str,
-                           int * createAlert)
-{
-   
-    struct NDPI_Data ndpiData = getnDPIStructure(originalJsonStr);
+// OLD signature:
+// void ConvertnDPIDataFormat(const char * originalJsonStr, int flowRiskIndex,
+//                            char ** converted_json_str, int * createAlert)
 
+// NEW signature — parse once, reuse for all calls:
+void ConvertnDPIDataFormat(json_object * root, int flowRiskIndex, char ** converted_json_str, int * createAlert)
+{
+    *converted_json_str = NULL;
+    *createAlert = 0;
+
+    if (!root)
+        return;
+
+    struct NDPI_Data ndpiData = getnDPIStructure(root); // no parse — uses root directly
     *createAlert = ndpiData.flow_risk_count;
 
-    json_object* root_object = json_object_new_object();
+    json_object * root_object = json_object_new_object();
     struct Root_data rootData;
+
     if (add_nDPI_Data(&root_object, ndpiData, flowRiskIndex))
     {
-        rootData = getRootDataStructure(originalJsonStr);
-        bool filterd = matchEntryInParamsVector(rootData.src_ip, rootData.dest_ip, rootData.dst_port);
-        if (!filterd)
+        rootData = getRootDataStructure(root); // no parse — uses root directly
+        bool filtered = matchEntryInParamsVector(rootData.src_ip, rootData.dest_ip, rootData.dst_port);
+        if (!filtered)
         {
             add_Root_Data(&root_object, rootData, ndpiData.flow_risk_count, ndpiData.proto_by_ip, ndpiData.protocol);
             *converted_json_str = strDuplicate(json_object_to_json_string(root_object));
         }
         else
         {
-            printf("Flow Filtered: src_ip = %s, dest_ip = %s, destination_port = %d", rootData.src_ip, rootData.dest_ip, rootData.dst_port);
+            printf("Flow Filtered: src_ip = %s, dest_ip = %s, destination_port = %d",
+                   rootData.src_ip,
+                   rootData.dest_ip,
+                   rootData.dst_port);
         }
     }
 

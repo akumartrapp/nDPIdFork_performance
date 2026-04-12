@@ -62,7 +62,12 @@ void RemovePendingEndListAtIndex(int idx);
 void IncrementEndEventCount(uint64_t flow_id);
 int  GetEndEventCount(uint64_t flow_id);
 
-void ConvertnDPIDataFormat(const char * json_str, int flowRiskIndex, char ** converted_json_str, int * create_alert);
+// OLD:
+// void ConvertnDPIDataFormat(const char * originalJsonStr, int flowRiskIndex,
+//                            char ** converted_json_str, int * createAlert);
+
+// NEW:
+void ConvertnDPIDataFormat(json_object * root, int flowRiskIndex, char ** converted_json_str, int * createAlert);
 void DeletenDPIRisk(char* jsonStr, char** converted_json_str);
 void GetAlertJsonStringWithFlowRisk(char * alertStringWithFlowRiskArray, char ** converted_json_str, int flow_risk_index);
 void GetFlowRiskArraySizeAndFlowId(char * alertStringWithFlowRiskArray, int * flow_risk_array_size, uint64_t * flow_id);
