@@ -9,6 +9,7 @@ extern "C" {
 #define RANDOM_UNINITIALIZED_INT_VALUE -84742891
 #define INVALID_FLOW_ID UINT64_MAX
 
+#include <uthash.h>   
 #include "../json-c/include/json-c/json.h"
 // New APIs for flow direction tracking
 // Accessor APIs for flow_direction_map
