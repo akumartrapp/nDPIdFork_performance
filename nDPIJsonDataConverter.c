@@ -723,6 +723,34 @@ static void MergeJson(json_object * stored, json_object * incoming, int is_swapp
     }
 }
 
+// O(1) lookup — returns the entry for the given flow_id, or NULL if not found.
+// Used by SweepStaleEndFlows in nDPId.c to avoid exposing flow_direction_map.
+flow_direction_map_entry_t * GetFlowDirectionEntry(uint64_t flow_id)
+{
+    flow_direction_map_entry_t * entry = NULL;
+    HASH_FIND(hh, flow_direction_map, &flow_id, sizeof(uint64_t), entry);
+    return entry;
+}
+
+// Iterator support for SweepStaleEndFlows pass 2 —
+// calls callback for every entry in the map.
+// Callback returns 1 to remove the entry, 0 to keep it.
+void IterateFlowDirectionMap(int (*callback)(flow_direction_map_entry_t * entry))
+{
+    flow_direction_map_entry_t *entry, *tmp;
+    HASH_ITER(hh, flow_direction_map, entry, tmp)
+    {
+        if (callback(entry))
+        {
+            HASH_DEL(flow_direction_map, entry);
+            if (entry->info.root)
+                json_object_put(entry->info.root);
+            free(entry);
+            flow_direction_map_size--;
+        }
+    }
+}
+
 /* -------------------------------------------------------
  * Public entry point — same signature as before
  * ------------------------------------------------------- */

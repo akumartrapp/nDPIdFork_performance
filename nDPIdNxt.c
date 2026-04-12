@@ -4033,12 +4033,28 @@ static void write_to_socket_buffer(const char * json_msg)
     pthread_mutex_unlock(&socket_queue.lock);
     write_to_console(0, 3, "write_to_socket_buffer exiting");
 }
+/* Callback for pass 2 stale sweep — called by IterateFlowDirectionMap */
+static int stale_flow_callback(flow_direction_map_entry_t * entry)
+{
+    extern uint64_t sweep_now_usec;  // set before calling IterateFlowDirectionMap
+    if (entry->last_update_time_usec > 0 &&
+        (sweep_now_usec - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
+    {
+        logger(0, "WARN: flow_id=%llu stale, removing",
+               (unsigned long long)entry->flow_id);
+        RemoveFromPendingEndList(entry->flow_id);
+        return 1;  /* tell iterator to remove */
+    }
+    return 0;
+}
+
+static uint64_t sweep_now_usec = 0;  /* file-scope, set before callback */
 
 void SweepStaleEndFlows(uint64_t now)
 {
     static uint64_t last_stale_sweep_usec = 0;
 
-    /* --- Pass 1: pending END list — check 1-minute timeout --- */
+    /* --- Pass 1: pending END list --- */
     int pending_size = 0;
     int i = 0;
     const pending_end_entry_t * pending = GetPendingEndList(&pending_size);
@@ -4051,9 +4067,8 @@ void SweepStaleEndFlows(uint64_t now)
             logger(0, "WARN: flow_id=%llu timed out waiting for second END",
                    (unsigned long long)fid);
 
-            /* O(1) lookup via uthash */
-            flow_direction_map_entry_t * entry = NULL;
-            HASH_FIND(hh, flow_direction_map, &fid, sizeof(uint64_t), entry);
+            /* O(1) lookup via accessor — no direct map access */
+            flow_direction_map_entry_t * entry = GetFlowDirectionEntry(fid);
             if (entry && entry->info.root)
             {
                 const char * json_str = json_object_to_json_string(entry->info.root);
@@ -4071,7 +4086,7 @@ void SweepStaleEndFlows(uint64_t now)
 
             RemoveFlowDirectionEntry(fid);
             RemovePendingEndListAtIndex(i);
-            pending = GetPendingEndList(&pending_size); /* refresh */
+            pending = GetPendingEndList(&pending_size);
             /* Don't increment i */
         }
         else
@@ -4085,20 +4100,8 @@ void SweepStaleEndFlows(uint64_t now)
         return;
     last_stale_sweep_usec = now;
 
-    /* Iterate uthash directly — no GetFlowDirectionMap array needed */
-    flow_direction_map_entry_t *entry, *tmp;
-    HASH_ITER(hh, flow_direction_map, entry, tmp)
-    {
-        if (entry->last_update_time_usec > 0 &&
-            (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
-        {
-            logger(0, "WARN: flow_id=%llu stale, removing",
-                   (unsigned long long)entry->flow_id);
-            RemoveFromPendingEndList(entry->flow_id);
-            RemoveFlowDirectionEntry(entry->flow_id);
-            /* HASH_ITER with HASH_DEL is safe — uthash guarantees this */
-        }
-    }
+    sweep_now_usec = now;  /* make available to callback */
+    IterateFlowDirectionMap(stale_flow_callback);
 }
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
