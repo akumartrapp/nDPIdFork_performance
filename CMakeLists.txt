@@ -231,8 +231,9 @@ endif()
 add_executable(nDPId nDPId.c ${NDPID_PFRING_SRCS} nio.c utils.c ${CRYPTO_SRCS} nDPIJsonDataConverter.c)
 add_executable(nDPIsrvd nDPIsrvd.c nio.c utils.c)
 add_executable(nDPId-test nDPId-test.c ${NDPID_PFRING_SRCS} ${CRYPTO_SRCS} nDPIJsonDataConverter.c)
-add_executable(nDPId_pcap nDPId_pcap.c ${NDPID_PFRING_SRCS}  ${CRYPTO_SRCS} nio.c utils.c nDPIJsonDataConverter.c)
 add_executable(nDPIdNxt nDPIdNxt.c ${NDPID_PFRING_SRCS}  ${CRYPTO_SRCS} nio.c utils.c nDPIJsonDataConverter.c)
+add_executable(nDPId_pcap nDPId_pcap.c ${NDPID_PFRING_SRCS}  ${CRYPTO_SRCS} nio.c utils.c nDPIJsonDataConverter.c)
+
 
 add_custom_target(umask_check)
 add_custom_command(
