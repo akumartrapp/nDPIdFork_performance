@@ -44,7 +44,7 @@ const pending_end_entry_t * GetPendingEndList(int * size);
 flow_direction_map_entry_t * GetFlowDirectionEntry(uint64_t flow_id);
 void IterateFlowDirectionMap(int (*callback)(flow_direction_map_entry_t * entry));
 
-char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool need_to_serialize);
+char * StoreOrUpdateFlowDirection(json_object * root, uint64_t flow_id, bool need_to_serialize);
 //char *UpdateFlowDirectionIfSwapped(const char *json_msg);
 // void UpdateFlowDirectionJson(const char *json_msg);
 void ClearFlowDirectionMap(void);
