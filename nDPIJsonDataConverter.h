@@ -28,6 +28,7 @@ typedef struct
     int end_event_count;
     uint64_t first_end_time_usec;
     uint64_t last_update_time_usec;
+    UT_hash_handle        hh;                   // uthash handle — ADD THIS
 } flow_direction_map_entry_t;
 
 typedef struct

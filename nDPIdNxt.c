@@ -4034,12 +4034,11 @@ static void write_to_socket_buffer(const char * json_msg)
     write_to_console(0, 3, "write_to_socket_buffer exiting");
 }
 
-void SweepStaleEndFlows(void)
+void SweepStaleEndFlows(uint64_t now)
 {
-    uint64_t now = GetCurrentTimeUsec();
     static uint64_t last_stale_sweep_usec = 0;
 
-    /* --- Pass 1: pending END list — runs every call --- */
+    /* --- Pass 1: pending END list — check 1-minute timeout --- */
     int pending_size = 0;
     int i = 0;
     const pending_end_entry_t * pending = GetPendingEndList(&pending_size);
@@ -4048,34 +4047,29 @@ void SweepStaleEndFlows(void)
     {
         if ((now - pending[i].first_end_time_usec) >= GetFlowEndTimeoutUsec())
         {
-            uint64_t flow_id = pending[i].flow_id;
-            logger(0, "WARN: flow_id=%llu timed out waiting for second END", (unsigned long long)flow_id);
+            uint64_t fid = pending[i].flow_id;
+            logger(0, "WARN: flow_id=%llu timed out waiting for second END",
+                   (unsigned long long)fid);
 
-            int map_size = 0;
-            const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
-            for (int j = 0; j < map_size; ++j)
+            /* O(1) lookup via uthash */
+            flow_direction_map_entry_t * entry = NULL;
+            HASH_FIND(hh, flow_direction_map, &fid, sizeof(uint64_t), entry);
+            if (entry && entry->info.root)
             {
-                if (map[j].flow_id == flow_id)
+                const char * json_str = json_object_to_json_string(entry->info.root);
+                if (json_str)
                 {
-                    if (map[j].info.root)
+                    if (output_send_to_file)
+                        write_to_file(json_str);
+                    if (output_send_to_socket)
                     {
-                        const char * json_str = json_object_to_json_string(map[j].info.root);
-                        if (json_str)
-                        {
-                            if (output_send_to_file)
-                                write_to_file(json_str);
-                            if (output_send_to_socket)
-                            {
-                                write_to_socket_buffer(json_str);
-                                log_socket_buffer_stats();
-                            }
-                        }
+                        write_to_socket_buffer(json_str);
+                        log_socket_buffer_stats();
                     }
-                    break;
                 }
             }
 
-            RemoveFlowDirectionEntry(flow_id);
+            RemoveFlowDirectionEntry(fid);
             RemovePendingEndListAtIndex(i);
             pending = GetPendingEndList(&pending_size); /* refresh */
             /* Don't increment i */
@@ -4086,83 +4080,70 @@ void SweepStaleEndFlows(void)
         }
     }
 
-    /* --- Pass 2: stale flow scan — runs at most every 60 seconds --- */
+    /* --- Pass 2: stale flow scan — at most every 60 seconds --- */
     if (now - last_stale_sweep_usec < 60000000ULL)
         return;
     last_stale_sweep_usec = now;
 
-    i = 0;
-    int map_size = 0;
-    const flow_direction_map_entry_t * map = GetFlowDirectionMap(&map_size);
-
-    while (i < map_size)
+    /* Iterate uthash directly — no GetFlowDirectionMap array needed */
+    flow_direction_map_entry_t *entry, *tmp;
+    HASH_ITER(hh, flow_direction_map, entry, tmp)
     {
-        const flow_direction_map_entry_t * entry = &map[i];
-
-        if (entry->last_update_time_usec > 0 && (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
+        if (entry->last_update_time_usec > 0 &&
+            (now - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
         {
-            uint64_t flow_id = entry->flow_id;
-            logger(0, "WARN: flow_id=%llu stale, removing", (unsigned long long)flow_id);
-            RemoveFromPendingEndList(flow_id);
-            RemoveFlowDirectionEntry(flow_id);
-            map = GetFlowDirectionMap(&map_size); /* refresh */
-            /* Don't increment i */
-        }
-        else
-        {
-            i++;
+            logger(0, "WARN: flow_id=%llu stale, removing",
+                   (unsigned long long)entry->flow_id);
+            RemoveFromPendingEndList(entry->flow_id);
+            RemoveFlowDirectionEntry(entry->flow_id);
+            /* HASH_ITER with HASH_DEL is safe — uthash guarantees this */
         }
     }
 }
 
 static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
-                              char const * const json_msg,
-                              size_t json_msg_len,
-                              enum flow_event event,
-                              uint64_t flow_id)
+                               char const * const json_msg,
+                               size_t json_msg_len,
+                               enum flow_event event,
+                               uint64_t flow_id,
+                               json_object * root)           // NEW PARAMETER
 {
     write_to_console(0, 3, "send_to_collector called");
 
     if (master_log_file_enabled)
-    {
         write_to_master_file(json_msg, json_msg_len);
-    }
 
     if (console_output_level > 1)
-    {
         logger(0, "send_to_collector Flow ID: %" PRIu64, flow_id);
-    }
 
-    /* Validate flow_id before doing any work */
+    /* Validate flow_id */
     if (flow_id == 0 || flow_id == INVALID_FLOW_ID)
     {
         logger(1, "Flow id not found or invalid: %" PRIu64, flow_id);
         return;
     }
 
-    bool need_to_serialize = false;
+    /* Single clock call for this entire invocation */
+    uint64_t now_usec = GetCurrentTimeUsec();
 
+    bool need_to_serialize = false;
     if (event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE)
     {
         if (console_output_level > 1)
-        {
             logger(0, "send_to_collector [event == FLOW_EVENT_END || event == FLOW_EVENT_IDLE]");
-        }
 
         IncrementEndEventCount(flow_id);
-
         if (GetEndEventCount(flow_id) >= 2)
-        {
             need_to_serialize = true;
-        }
-      
     }
 
-    char * updated_json_msg = StoreOrUpdateFlowDirection(json_msg, flow_id, need_to_serialize);
+    /* Pass pre-parsed root — no re-parse inside */
+    char * updated_json_msg = StoreOrUpdateFlowDirection(root, flow_id, need_to_serialize);
+
     if (need_to_serialize && updated_json_msg == NULL)
     {
         logger(1, "StoreOrUpdateFlowDirection returned NULL for flow_id=%" PRIu64, flow_id);
-        SweepStaleEndFlows();
+        SweepStaleEndFlows(now_usec);
         return;
     }
 
@@ -4170,11 +4151,8 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
     {
         if (need_to_serialize)
         {
-            /* Both directions ended — emit, clean up, and remove */
             if (output_send_to_file)
-            {
                 write_to_file(updated_json_msg);
-            }
 
             if (output_send_to_socket)
             {
@@ -4183,47 +4161,41 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
             }
 
             RemoveFromPendingEndList(flow_id);
-            RemoveFlowDirectionEntry(flow_id); /* frees info.root internally */
+            RemoveFlowDirectionEntry(flow_id);
         }
         else
         {
-            /* First END — add to pending list and wait for second */
-            AddToPendingEndList(flow_id, GetCurrentTimeUsec());
+            /* First END — record timestamp (reuse now_usec, no second clock call) */
+            AddToPendingEndList(flow_id, now_usec);
         }
     }
 
-   static uint64_t last_sweep_time_usec = 0;
-
-    // Replace the counter-based sweep:
-    uint64_t now_usec = GetCurrentTimeUsec();
-    if (now_usec - last_sweep_time_usec >= 5000000ULL) /* 5 second */
+    /* Time-gated sweep — reuse now_usec */
+    static uint64_t last_sweep_time_usec = 0;
+    if (now_usec - last_sweep_time_usec >= 5000000ULL)
     {
         last_sweep_time_usec = now_usec;
-        SweepStaleEndFlows();
+        SweepStaleEndFlows(now_usec);  // pass now_usec — no clock call inside
     }
 
-
-
-    // Exit if data_collection_time_in_minutes > 0 and time elapsed exceeds it
+    /* Data collection timeout check */
     static time_t data_collection_start_time = 0;
     static unsigned long long data_collection_duration_minutes = 0;
     if (data_collection_start_time == 0)
     {
         data_collection_start_time = time(NULL);
-        if (IS_CMDARG_SET(nDPId_options.data_collection_time_in_minutes)) 
-        {
-            data_collection_duration_minutes = GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes);
-        } else 
-        {
-            data_collection_duration_minutes = 0;
-        }
+        data_collection_duration_minutes =
+            IS_CMDARG_SET(nDPId_options.data_collection_time_in_minutes)
+                ? GET_CMDARG_ULL(nDPId_options.data_collection_time_in_minutes)
+                : 0;
     }
-    if (data_collection_duration_minutes > 0) 
+    if (data_collection_duration_minutes > 0)
     {
         time_t now = time(NULL);
-        if ((unsigned long long)(now - data_collection_start_time) >= data_collection_duration_minutes * 60ULL) 
+        if ((unsigned long long)(now - data_collection_start_time) >=
+            data_collection_duration_minutes * 60ULL)
         {
-            write_to_console(0, 1, "Data collection time exceeded, exiting.");          
+            write_to_console(0, 1, "Data collection time exceeded, exiting.");
             exit(0);
         }
     }
@@ -4325,7 +4297,10 @@ static void send_to_collector(struct nDPId_reader_thread * const reader_thread,
 //    json_string_with_http_or_tls_info = NULL;
 //}
 
-static void serialize_and_send(struct nDPId_reader_thread * const reader_thread, enum flow_event event, uint64_t flow_id)
+
+static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
+                                enum flow_event event,
+                                uint64_t flow_id)
 {
     write_to_console(0, 3, "serialize_and_send called");
     char * json_msg;
@@ -4333,8 +4308,6 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
 
     json_msg = ndpi_serializer_get_buffer(&reader_thread->workflow->ndpi_serializer, &json_msg_len);
 
-    // Ashwani: This prints json output to console log.
-    //printf("%s\n", json_msg);
     if (json_msg == NULL || json_msg_len == 0)
     {
         logger(1,
@@ -4346,7 +4319,13 @@ static void serialize_and_send(struct nDPId_reader_thread * const reader_thread,
     else
     {
         reader_thread->workflow->total_events_serialized++;
-        send_to_collector(reader_thread, json_msg, json_msg_len, event, flow_id);
+
+        /* Parse ONCE here — pass object into send_to_collector
+           to avoid re-parsing inside StoreOrUpdateFlowDirection */
+        json_object * root = json_tokener_parse(json_msg);
+        send_to_collector(reader_thread, json_msg, json_msg_len, event, flow_id, root);
+        if (root)
+            json_object_put(root);  // release our ref — map holds its own ref via json_object_get()
     }
     ndpi_reset_serializer(&reader_thread->workflow->ndpi_serializer);
 }

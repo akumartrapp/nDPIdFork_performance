@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <uthash.h>
 
 
 #define EPHEMERAL_PORT_MIN     32768
@@ -148,7 +149,7 @@ static char * strDuplicate(const char * inputSting)
 #define FLOW_DIRECTION_MAP_MAX 500000
 #define PENDING_END_MAX 500000
 
-static flow_direction_map_entry_t flow_direction_map[FLOW_DIRECTION_MAP_MAX];
+static flow_direction_map_entry_t * flow_direction_map = NULL;  // uthash head
 static int flow_direction_map_size = 0;
 
 static pending_end_entry_t pending_end_list[PENDING_END_MAX];
@@ -157,11 +158,16 @@ static int pending_end_list_size = 0;
 // API to clear the flow_direction_map
 void ClearFlowDirectionMap(void)
 {
+    flow_direction_map_entry_t *entry, *tmp;
+    HASH_ITER(hh, flow_direction_map, entry, tmp)
+    {
+        HASH_DEL(flow_direction_map, entry);
+        if (entry->info.root)
+            json_object_put(entry->info.root);
+        free(entry);
+    }
     flow_direction_map_size = 0;
-    // Optionally zero out the array for safety
-    memset(flow_direction_map, 0, sizeof(flow_direction_map));
 }
-
 // Accessor API for flow_direction_map
 const flow_direction_map_entry_t *GetFlowDirectionMap(int *size)
 {
@@ -197,58 +203,36 @@ void RemovePendingEndListAtIndex(int idx)
     pending_end_list_size--;
 }
 
+
 void IncrementEndEventCount(uint64_t flow_id)
 {
-    for (int i = 0; i < flow_direction_map_size; ++i)
-    {
-        if (flow_direction_map[i].flow_id == flow_id)
-        {
-            flow_direction_map[i].end_event_count++;
-            return;
-        }
-    }
+    flow_direction_map_entry_t * entry = NULL;
+    HASH_FIND(hh, flow_direction_map, &flow_id, sizeof(uint64_t), entry);
+    if (entry)
+        entry->end_event_count++;
 }
 
 int GetEndEventCount(uint64_t flow_id)
 {
-    for (int i = 0; i < flow_direction_map_size; ++i)
-    {
-        if (flow_direction_map[i].flow_id == flow_id)
-            return flow_direction_map[i].end_event_count;
-    }
-    return 0;
+    flow_direction_map_entry_t * entry = NULL;
+    HASH_FIND(hh, flow_direction_map, &flow_id, sizeof(uint64_t), entry);
+    return entry ? entry->end_event_count : 0;
 }
 
 // Removes the entry with the given flow_id from the map.
 // Returns 1 if found and removed, 0 if not found.
 int RemoveFlowDirectionEntry(uint64_t flow_id)
 {
-    for (int i = 0; i < flow_direction_map_size; ++i)
-    {
-        if (flow_direction_map[i].flow_id == flow_id)
-        {
-            /* Free the json_object — replaces old free(json_str) */
-            if (flow_direction_map[i].info.root)
-            {
-                json_object_put(flow_direction_map[i].info.root);
-                flow_direction_map[i].info.root = NULL;
-            }
-
-            /* Swap with the last entry to fill the gap */
-            if (i < flow_direction_map_size - 1)
-            {
-                flow_direction_map[i] = flow_direction_map[flow_direction_map_size - 1];
-            }
-
-            /* Clear the last slot and shrink the map */
-            memset(&flow_direction_map[flow_direction_map_size - 1], 0,
-                   sizeof(flow_direction_map_entry_t));
-            flow_direction_map_size--;
-
-            return 1;
-        }
-    }
-    return 0;
+    flow_direction_map_entry_t * entry = NULL;
+    HASH_FIND(hh, flow_direction_map, &flow_id, sizeof(uint64_t), entry);
+    if (!entry)
+        return 0;
+    HASH_DEL(flow_direction_map, entry);
+    if (entry->info.root)
+        json_object_put(entry->info.root);
+    free(entry);
+    flow_direction_map_size--;
+    return 1;
 }
 
 int GetPendingEndListSize()
@@ -742,9 +726,11 @@ static void MergeJson(json_object * stored, json_object * incoming, int is_swapp
 /* -------------------------------------------------------
  * Public entry point — same signature as before
  * ------------------------------------------------------- */
-char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool need_to_serialize)
+// Signature change: accepts pre-parsed json_object * instead of const char *
+// Caller (serialize_and_send) parses ONCE and passes root here.
+// root ownership: caller retains — we call json_object_get() when storing.
+char * StoreOrUpdateFlowDirection(json_object * root, uint64_t flow_id, bool need_to_serialize)
 {
-    json_object * root = json_tokener_parse(json_msg);
     if (!root)
         return NULL;
 
@@ -762,54 +748,51 @@ char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool 
     if (json_object_object_get_ex(root, "dst_port", &obj))
         dst_port = json_object_get_int(obj);
 
-    /* ---- Look up existing map entry ---- */
-    int idx = -1;
-    for (int i = 0; i < flow_direction_map_size; ++i)
-    {
-        if (flow_direction_map[i].flow_id == flow_id)
-        {
-            idx = i;
-            break;
-        }
-    }
+    /* ---- O(1) lookup via uthash ---- */
+    flow_direction_map_entry_t * entry = NULL;
+    HASH_FIND(hh, flow_direction_map, &flow_id, sizeof(uint64_t), entry);
 
     /* ======================================================
      * CASE A: New flow_id — first time we see this flow
      * ====================================================== */
-    if (idx < 0)
+    if (!entry)
     {
         if (flow_direction_map_size >= FLOW_DIRECTION_MAP_MAX)
         {
-            printf("ERROR: flow_direction_map is FULL, cannot add flow_id=%llu\n",
+            logger(1, "ERROR: flow_direction_map is FULL, cannot add flow_id=%llu",
                    (unsigned long long)flow_id);
-            json_object_put(root);
             return NULL;
         }
 
-        idx = flow_direction_map_size++;
-        flow_direction_map[idx].flow_id = flow_id;
+        entry = calloc(1, sizeof(flow_direction_map_entry_t));
+        if (!entry)
+            return NULL;
 
-        /* Resolve canonical direction before storing */
+        entry->flow_id = flow_id;
+
+        /* Resolve canonical direction before storing — modifies root in place */
         ResolveInitialDirection(root, src_port, dst_port);
 
         /* Re-read possibly-swapped IP/port into map metadata */
         if (json_object_object_get_ex(root, "src_ip", &obj))
-            strncpy(flow_direction_map[idx].info.src_ip, json_object_get_string(obj), 63);
+            strncpy(entry->info.src_ip, json_object_get_string(obj), 63);
         if (json_object_object_get_ex(root, "dst_ip", &obj))
-            strncpy(flow_direction_map[idx].info.dst_ip, json_object_get_string(obj), 63);
+            strncpy(entry->info.dst_ip, json_object_get_string(obj), 63);
         if (json_object_object_get_ex(root, "src_port", &obj))
-            flow_direction_map[idx].info.src_port = json_object_get_int(obj);
+            entry->info.src_port = json_object_get_int(obj);
         if (json_object_object_get_ex(root, "dst_port", &obj))
-            flow_direction_map[idx].info.dst_port = json_object_get_int(obj);
-        flow_direction_map[idx].info.swapped = 0;
+            entry->info.dst_port = json_object_get_int(obj);
+        entry->info.swapped = 0;
 
-        /* Store object in map — increment refcount so map owns it */
-        flow_direction_map[idx].info.root = json_object_get(root);
+        /* Map owns a ref — increment refcount */
+        entry->info.root = json_object_get(root);
+        entry->last_update_time_usec = GetCurrentTimeUsec();
 
-        /* Serialize once for return value */
-        char * result = strdup(json_object_to_json_string(root));
-        json_object_put(root);  // release our local ref (map still holds its ref)
-        return result;
+        HASH_ADD(hh, flow_direction_map, flow_id, sizeof(uint64_t), entry);
+        flow_direction_map_size++;
+
+        /* New entries are never emitted immediately — skip serialize */
+        return NULL;
     }
 
     /* ======================================================
@@ -818,20 +801,20 @@ char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool 
 
     /* Determine if this incoming event is in the reverse direction */
     int is_swapped_incoming =
-        (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
-         strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
-         src_port == flow_direction_map[idx].info.dst_port &&
-         dst_port == flow_direction_map[idx].info.src_port);
+        (strcmp(src_ip, entry->info.dst_ip) == 0 &&
+         strcmp(dst_ip, entry->info.src_ip) == 0 &&
+         src_port == entry->info.dst_port &&
+         dst_port == entry->info.src_port);
 
-    flow_direction_map[idx].info.swapped = is_swapped_incoming;
+    entry->info.swapped = is_swapped_incoming;
 
     /* Get stored object directly — zero cost, no parse */
-    json_object * stored_root = flow_direction_map[idx].info.root;
-    int fallback_alloc = 0;
+    json_object * stored_root = entry->info.root;
     if (!stored_root)
     {
-        stored_root = json_tokener_parse(json_msg);  /* fallback */
-        fallback_alloc = 1;  /* track that we own this allocation */
+        /* Fallback: map entry lost its object — take ownership of incoming */
+        entry->info.root = json_object_get(root);
+        stored_root = entry->info.root;
     }
 
     /* ----------------------------------------------------------
@@ -845,22 +828,22 @@ char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool 
 
     if (is_detected_event)
     {
-        ReevaluateDirectionOnDetected(root, stored_root, flow_direction_map[idx].info.src_ip);
+        ReevaluateDirectionOnDetected(root, stored_root, entry->info.src_ip);
 
         if (json_object_object_get_ex(stored_root, "src_ip", &obj))
-            strncpy(flow_direction_map[idx].info.src_ip, json_object_get_string(obj), 63);
+            strncpy(entry->info.src_ip, json_object_get_string(obj), 63);
         if (json_object_object_get_ex(stored_root, "dst_ip", &obj))
-            strncpy(flow_direction_map[idx].info.dst_ip, json_object_get_string(obj), 63);
+            strncpy(entry->info.dst_ip, json_object_get_string(obj), 63);
         if (json_object_object_get_ex(stored_root, "src_port", &obj))
-            flow_direction_map[idx].info.src_port = json_object_get_int(obj);
+            entry->info.src_port = json_object_get_int(obj);
         if (json_object_object_get_ex(stored_root, "dst_port", &obj))
-            flow_direction_map[idx].info.dst_port = json_object_get_int(obj);
+            entry->info.dst_port = json_object_get_int(obj);
 
         is_swapped_incoming =
-            (strcmp(src_ip, flow_direction_map[idx].info.dst_ip) == 0 &&
-             strcmp(dst_ip, flow_direction_map[idx].info.src_ip) == 0 &&
-             src_port == flow_direction_map[idx].info.dst_port &&
-             dst_port == flow_direction_map[idx].info.src_port);
+            (strcmp(src_ip, entry->info.dst_ip) == 0 &&
+             strcmp(dst_ip, entry->info.src_ip) == 0 &&
+             src_port == entry->info.dst_port &&
+             dst_port == entry->info.src_port);
     }
 
     /* ----------------------------------------------------------
@@ -895,20 +878,11 @@ char * StoreOrUpdateFlowDirection(const char * json_msg, uint64_t flow_id, bool 
     /* Merge all other fields — modifies stored_root in place */
     MergeJson(stored_root, root, is_swapped_incoming);
 
-    /* Serialize ONCE before any cleanup */
-    char * result = need_to_serialize ? strdup(json_object_to_json_string(stored_root)) : NULL;
+    /* Update timestamp */
+    entry->last_update_time_usec = GetCurrentTimeUsec();
 
-    /* Update map if fallback allocated a new object */
-    if (fallback_alloc)
-    {
-        /* Map had no object — store this one */
-        flow_direction_map[idx].info.root = json_object_get(stored_root);
-        json_object_put(stored_root);  /* release our local ref */
-    }
-    /* else: stored_root IS info.root, already up to date (modified in place) */
-
-    json_object_put(root);  /* release incoming message ref */
-    return result;
+    /* Serialize only when emitting */
+    return need_to_serialize ? strdup(json_object_to_json_string(stored_root)) : NULL;
 }
 
 // // Update json_msg if direction swapped, returns new string if updated, else NULL
