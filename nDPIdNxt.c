@@ -4033,10 +4033,14 @@ static void write_to_socket_buffer(const char * json_msg)
     pthread_mutex_unlock(&socket_queue.lock);
     write_to_console(0, 3, "write_to_socket_buffer exiting");
 }
-/* Callback for pass 2 stale sweep — called by IterateFlowDirectionMap */
+
+/* File-scope variable — visible to both the callback and SweepStaleEndFlows */
+static uint64_t sweep_now_usec = 0;
+
+/* Callback for pass 2 stale sweep */
 static int stale_flow_callback(flow_direction_map_entry_t * entry)
 {
-    extern uint64_t sweep_now_usec;  // set before calling IterateFlowDirectionMap
+    /* Uses file-scope sweep_now_usec directly — no extern needed */
     if (entry->last_update_time_usec > 0 &&
         (sweep_now_usec - entry->last_update_time_usec) >= GetFlowStaleTimeoutUsec())
     {
@@ -4047,8 +4051,6 @@ static int stale_flow_callback(flow_direction_map_entry_t * entry)
     }
     return 0;
 }
-
-static uint64_t sweep_now_usec = 0;  /* file-scope, set before callback */
 
 void SweepStaleEndFlows(uint64_t now)
 {
@@ -4067,7 +4069,6 @@ void SweepStaleEndFlows(uint64_t now)
             logger(0, "WARN: flow_id=%llu timed out waiting for second END",
                    (unsigned long long)fid);
 
-            /* O(1) lookup via accessor — no direct map access */
             flow_direction_map_entry_t * entry = GetFlowDirectionEntry(fid);
             if (entry && entry->info.root)
             {
@@ -4087,7 +4088,6 @@ void SweepStaleEndFlows(uint64_t now)
             RemoveFlowDirectionEntry(fid);
             RemovePendingEndListAtIndex(i);
             pending = GetPendingEndList(&pending_size);
-            /* Don't increment i */
         }
         else
         {
@@ -4100,7 +4100,7 @@ void SweepStaleEndFlows(uint64_t now)
         return;
     last_stale_sweep_usec = now;
 
-    sweep_now_usec = now;  /* make available to callback */
+    sweep_now_usec = now;  /* set before callback so it can read it */
     IterateFlowDirectionMap(stale_flow_callback);
 }
 
