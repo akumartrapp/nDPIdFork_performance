@@ -8481,7 +8481,7 @@ int is_valid_json_file(const char * filepath)
 /*----------------------------------------------------------------------------*/
 
 
-#ifndef NO_MAIN
+//#ifndef NO_MAIN
 int main(int argc, char ** argv)
 {
     if (argc == 0 || stdout == NULL || stderr == NULL)
